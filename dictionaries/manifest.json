@@ -1,16 +1,25 @@
 {
-  "last_updated": "2026-05-23T00:00:00Z",
+  "last_updated": "2026-05-23T15:00:00Z",
   "version": 1,
   "dictionaries": {
     "monolingual": [
       {
-        "id": "eng_oxford",
+        "id": "eng_monolingual",
         "source_language": "en",
-        "display_name": "Oxford Advanced Dictionary",
-        "description": "Premium English monolingual definitions with phonetics.",
-        "remote_url": "https://api.yourserver.com/dicts/eng_oxford.zip",
+        "display_name": "English Monolingual Dictionary",
+        "description": "English definitions and meanings.",
+        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_monolingual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": ""
+        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+      },
+      {
+        "id": "ger_monolingual",
+        "source_language": "de",
+        "display_name": "German Monolingual Dictionary",
+        "description": "German definitions and meanings.",
+        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_monolingual.db.zip",
+        "file_size_bytes": 0,
+        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
       }
     ],
     "bilingual": [
@@ -18,11 +27,21 @@
         "id": "eng_to_pes",
         "source_language": "en",
         "native_language": "fa",
-        "display_name": "English-to-Persian Dictionary",
-        "description": "Bilingual translations for Persian learners.",
-        "remote_url": "https://api.yourserver.com/dicts/eng_to_pes.zip",
+        "display_name": "English to Persian Dictionary",
+        "description": "English translations for Persian speakers.",
+        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_to_persian_bilangual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": ""
+        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+      },
+      {
+        "id": "ger_to_eng",
+        "source_language": "de",
+        "native_language": "en",
+        "display_name": "German to English Dictionary",
+        "description": "German translations for English speakers.",
+        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_to_english_bilangual.db.zip",
+        "file_size_bytes": 0,
+        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
       }
     ]
   }
