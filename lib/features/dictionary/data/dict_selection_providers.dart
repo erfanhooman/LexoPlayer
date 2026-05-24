@@ -48,13 +48,16 @@ final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manualEntries = ref.watch(manualDictEntriesProvider);
 
   final List<DictionaryEntry> list = [];
+  final Set<String> seenIds = {};
 
   // Add matching manually uploaded dictionaries
   for (final e in manualEntries) {
     if (e.type == DictionaryType.monolingual &&
         e.sourceLanguage == activeLang &&
         downloadedIds.contains(e.id)) {
-      list.add(e);
+      if (seenIds.add(e.id)) {
+        list.add(e);
+      }
     }
   }
 
@@ -68,7 +71,12 @@ final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
     },
     orElse: () => const <DictionaryEntry>[],
   );
-  list.addAll(manifestList);
+
+  for (final e in manifestList) {
+    if (seenIds.add(e.id)) {
+      list.add(e);
+    }
+  }
 
   return list;
 });
@@ -84,13 +92,16 @@ final availableBilingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manualEntries = ref.watch(manualDictEntriesProvider);
 
   final List<DictionaryEntry> list = [];
+  final Set<String> seenIds = {};
 
   // Add matching manually uploaded dictionaries
   for (final e in manualEntries) {
     if (e.type == DictionaryType.bilingual &&
         e.sourceLanguage == activeLang &&
         downloadedIds.contains(e.id)) {
-      list.add(e);
+      if (seenIds.add(e.id)) {
+        list.add(e);
+      }
     }
   }
 
@@ -104,7 +115,12 @@ final availableBilingualProvider = Provider<List<DictionaryEntry>>((ref) {
     },
     orElse: () => const <DictionaryEntry>[],
   );
-  list.addAll(manifestList);
+
+  for (final e in manifestList) {
+    if (seenIds.add(e.id)) {
+      list.add(e);
+    }
+  }
 
   return list;
 });

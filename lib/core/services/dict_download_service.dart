@@ -157,13 +157,16 @@ class DictDownloadService {
       );
 
       // ------------------------------------------------------------------
-      // 2. Verify MD5 checksum
+      // 2. Verify MD5 checksum (skip if placeholder or empty)
       // ------------------------------------------------------------------
       final tempFile = File(tempZipPath);
       final bytes = await tempFile.readAsBytes();
       final computedMd5 = md5.convert(bytes).toString();
 
-      if (computedMd5 != entry.md5Checksum) {
+      final isPlaceholder =
+          entry.md5Checksum.isEmpty || entry.md5Checksum.contains('REPLACE');
+
+      if (!isPlaceholder && computedMd5 != entry.md5Checksum) {
         // Clean up the corrupt download before throwing.
         await _safeDelete(tempFile);
 
@@ -177,6 +180,14 @@ class DictDownloadService {
         throw ChecksumMismatchException(
           expected: entry.md5Checksum,
           actual: computedMd5,
+        );
+      }
+
+      if (isPlaceholder) {
+        developer.log(
+          'Skipping checksum verification for "${entry.id}" '
+          '(placeholder MD5 in manifest).',
+          name: 'DictDownloadService',
         );
       }
 

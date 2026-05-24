@@ -70,464 +70,263 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   @override
   Widget build(BuildContext context) {
     final recentVideos = ref.watch(recentVideosProvider);
-    final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF070709), // Ultra-dark charcoal
-      body: Stack(
-        children: [
-          // ── Background Grid ──────────────────────────────────────────
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _EditorialGridPainter(),
-              ),
-            ),
-          ),
-
-          // ── Glowing Radial Blur (Top Left) ──────────────────────────
-          Positioned(
-            left: -150,
-            top: -150,
-            child: IgnorePointer(
-              child: Container(
-                width: 450,
-                height: 450,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFFF5500).withValues(alpha: 0.04),
-                ),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Glowing Radial Blur (Bottom Right) ──────────────────────
-          Positioned(
-            right: -100,
-            bottom: -100,
-            child: IgnorePointer(
-              child: Container(
-                width: 400,
-                height: 400,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFFF5500).withValues(alpha: 0.03),
-                ),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          // ── Massive Watermark ──────────────────────────────────────────
-          Positioned(
-            right: -size.width * 0.04,
-            bottom: -size.height * 0.03,
-            child: IgnorePointer(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'LEXO',
-                    style: TextStyle(
-                      fontSize: size.width * 0.22,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0x02FFFFFF), // 2% opacity
-                      height: 0.8,
-                      letterSpacing: -12,
-                      fontFamily: 'Helvetica Neue',
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 32),
-                    child: Text(
-                      'THE ART OF READING MEDIA',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0x06FFFFFF),
-                        letterSpacing: 10,
-                        fontFamily: 'Helvetica Neue',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // ── Main Content Layout ───────────────────────────────────────
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 54, vertical: 48),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Column (History & Main Nav)
-                  Expanded(
-                    flex: 12,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Bar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Library.',
-                          style: TextStyle(
-                            fontSize: 68,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                            letterSpacing: -2,
+                        Text(
+                          'Library',
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 44,
-                          height: 2,
-                          color: const Color(0xFFFF5500),
-                        ),
-                        const SizedBox(height: 48),
-                        
-                        // Recent Videos Title Bar
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'RECENT LOGS',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white30,
-                                letterSpacing: 4,
-                              ),
-                            ),
-                            if (recentVideos.isNotEmpty)
-                              TextButton.icon(
-                                onPressed: () {
-                                  ref.read(recentVideosProvider.notifier).clearHistory();
-                                },
-                                icon: const Icon(Icons.delete_sweep_rounded, size: 14, color: Colors.white30),
-                                label: const Text(
-                                  'CLEAR ALL',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white30,
-                                    letterSpacing: 2,
-                                  ),
-                                ),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        if (recentVideos.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 16),
-                            child: Text(
-                              'No recent media playback detected.',
-                              style: TextStyle(
-                                color: Colors.white24,
-                                fontStyle: FontStyle.italic,
-                                fontFamily: 'Georgia',
-                                fontSize: 15,
-                              ),
-                            ),
-                          )
-                        else
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: recentVideos.length,
-                              physics: const BouncingScrollPhysics(),
-                              itemBuilder: (context, index) {
-                                final uri = recentVideos[index];
-                                return _HistoryItemWidget(
-                                  index: index + 1,
-                                  uri: uri,
-                                  onTap: () => _openVideoScreen(uri),
-                                  onDelete: () {
-                                    ref.read(recentVideosProvider.notifier).removeMedia(uri);
-                                  },
-                                );
-                              },
-                            ),
+                        Text(
+                          'LEXOPLAYER',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                            letterSpacing: 2,
                           ),
+                        ),
                       ],
                     ),
-                  ),
-                  
-                  // Asymmetric spacing
-                  const Spacer(flex: 2),
-
-                  // Right Column (Actions Index)
-                  Expanded(
-                    flex: 10,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 100),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'INDEX OF OPERATIONS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white30,
-                              letterSpacing: 3,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          _EditorialActionButton(
-                            number: '01',
-                            title: 'OPEN LOCAL FILE',
-                            onTap: _pickLocalFile,
-                          ),
-                          
-                          _EditorialActionButton(
-                            number: '02',
-                            title: 'STREAM FROM LINK',
-                            onTap: () {
-                              setState(() {
-                                _isShowingUrlInput = !_isShowingUrlInput;
-                              });
-                            },
-                          ),
-                          
-                          // Custom Slide/Fade URL Input Panel
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 350),
-                            curve: Curves.easeOutCubic,
-                            height: _isShowingUrlInput ? 64 : 0,
-                            margin: EdgeInsets.only(
-                              top: _isShowingUrlInput ? 16 : 0,
-                              bottom: _isShowingUrlInput ? 16 : 0,
-                            ),
-                            clipBehavior: Clip.hardEdge,
-                            decoration: const BoxDecoration(),
-                            child: AnimatedOpacity(
-                              opacity: _isShowingUrlInput ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.03),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: const Color(0xFFFF5500).withValues(alpha: 0.3),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFFF5500).withValues(alpha: 0.05),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
+                    const SizedBox(height: 32),
+                    
+                    // Responsive layout of primary operations
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 600;
+                        if (isWide) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: _LibraryActionCard(
+                                  title: 'Open Local File',
+                                  icon: Icons.folder_open_rounded,
+                                  onTap: _pickLocalFile,
                                 ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _LibraryActionCard(
+                                  title: 'Stream from Link',
+                                  icon: Icons.link_rounded,
+                                  onTap: () {
+                                    setState(() {
+                                      _isShowingUrlInput = !_isShowingUrlInput;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _LibraryActionCard(
+                                  title: 'Dictionary Hub',
+                                  icon: Icons.book_rounded,
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => const DownloadHubScreen()),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _LibraryActionCard(
+                                title: 'Open Local File',
+                                icon: Icons.folder_open_rounded,
+                                onTap: _pickLocalFile,
+                              ),
+                              const SizedBox(height: 12),
+                              _LibraryActionCard(
+                                title: 'Stream from Link',
+                                icon: Icons.link_rounded,
+                                onTap: () {
+                                  setState(() {
+                                    _isShowingUrlInput = !_isShowingUrlInput;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _LibraryActionCard(
+                                title: 'Dictionary Hub',
+                                icon: Icons.book_rounded,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const DownloadHubScreen()),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                    
+                    // URL Input field panel with M3 Card style
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      child: _isShowingUrlInput
+                          ? Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(top: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: theme.colorScheme.outlineVariant,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: TextField(
                                         controller: _urlController,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontFamily: 'Helvetica Neue',
-                                        ),
-                                        decoration: const InputDecoration(
+                                        style: theme.textTheme.bodyMedium,
+                                        decoration: InputDecoration(
                                           hintText: 'Enter media streaming link...',
-                                          hintStyle: TextStyle(color: Colors.white24),
                                           border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                          hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
                                         ),
                                         onSubmitted: (_) => _submitUrl(),
                                       ),
                                     ),
-                                    GestureDetector(
-                                      onTap: _submitUrl,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFF5500),
-                                          borderRadius: BorderRadius.circular(18),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(0xFFFF5500).withValues(alpha: 0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Text(
-                                          'STREAM',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.5,
-                                          ),
+                                    FilledButton(
+                                      onPressed: _submitUrl,
+                                      style: FilledButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                       ),
+                                      child: const Text('STREAM'),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    
+                    const SizedBox(height: 48),
+                    
+                    // Continue Watching Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Continue Watching',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-
-                          _EditorialActionButton(
-                            number: '03',
-                            title: 'DICTIONARY HUB',
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const DownloadHubScreen()),
-                              );
+                        ),
+                        if (recentVideos.isNotEmpty)
+                          TextButton.icon(
+                            onPressed: () {
+                              ref.read(recentVideosProvider.notifier).clearHistory();
                             },
-                          ),
-                          
-                          const Spacer(),
-                          
-                          // Premium layout description footer
-                          const Text(
-                            'LexoPlayer / Structural Reading Framework.\nOptimised for vocabulary acquisition through media exploration.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white24,
-                              height: 1.5,
-                              fontFamily: 'Georgia',
-                              fontStyle: FontStyle.italic,
+                            icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                            label: const Text('CLEAR ALL'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    if (recentVideos.isEmpty)
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 48),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.movie_filter_outlined,
+                                  size: 48,
+                                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No recent media playback detected.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: recentVideos.length,
+                        itemBuilder: (context, index) {
+                          final uri = recentVideos[index];
+                          return _ContinueWatchingItemWidget(
+                            uri: uri,
+                            onTap: () => _openVideoScreen(uri),
+                            onDelete: () {
+                              ref.read(recentVideosProvider.notifier).removeMedia(uri);
+                            },
+                          );
+                        },
+                      ),
+                    
+                    const SizedBox(height: 48),
+                    
+                    // Simple Footer
+                    Center(
+                      child: Text(
+                        'LexoPlayer  •  Structural Reading Framework\nOptimised for vocabulary acquisition through media exploration.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                          height: 1.5,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  Background Grid Painter (Magazine Grid Layout)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class _EditorialGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.02)
-      ..strokeWidth = 1.0;
-
-    // Draw vertical columns (magazine grid lines)
-    const columns = 6;
-    final spacing = size.width / columns;
-    for (var i = 1; i < columns; i++) {
-      canvas.drawLine(
-        Offset(i * spacing, 0),
-        Offset(i * spacing, size.height),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  Editorial Action Button Widget
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class _EditorialActionButton extends StatefulWidget {
-  final String number;
-  final String title;
-  final VoidCallback onTap;
-
-  const _EditorialActionButton({
-    required this.number,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  State<_EditorialActionButton> createState() => _EditorialActionButtonState();
-}
-
-class _EditorialActionButtonState extends State<_EditorialActionButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 22),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: _isHovered ? const Color(0xFFFF5500) : Colors.white.withValues(alpha: 0.06),
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Text(
-                widget.number,
-                style: TextStyle(
-                  fontFamily: 'Georgia',
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: _isHovered ? const Color(0xFFFF5500) : Colors.white24,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
-                  style: TextStyle(
-                    fontFamily: 'Helvetica Neue',
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                    color: _isHovered ? Colors.white : Colors.white54,
-                  ),
-                  child: Text(widget.title),
-                ),
-              ),
-              AnimatedRotation(
-                turns: _isHovered ? 0.125 : 0.0, // Slight rotation on hover
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  Icons.arrow_outward_rounded,
-                  color: _isHovered ? const Color(0xFFFF5500) : Colors.white24,
-                  size: 20,
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -536,108 +335,271 @@ class _EditorialActionButtonState extends State<_EditorialActionButton> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  Detailed History Log Item Widget
+//  Library Action Card Widget
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _HistoryItemWidget extends StatefulWidget {
-  final int index;
+class _LibraryActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _LibraryActionCard({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isWide = MediaQuery.of(context).size.width >= 600;
+
+    Widget content;
+    if (isWide) {
+      content = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 32,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Row(
+        children: [
+          const SizedBox(width: 16),
+          Icon(
+            icon,
+            size: 28,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 16),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Spacer(),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 16),
+        ],
+      );
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          width: isWide ? 220 : double.infinity,
+          height: isWide ? 130 : 64,
+          alignment: Alignment.center,
+          child: content,
+        ),
+      ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Continue Watching Item Widget
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _ContinueWatchingItemWidget extends StatelessWidget {
   final String uri;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _HistoryItemWidget({
-    required this.index,
+  const _ContinueWatchingItemWidget({
     required this.uri,
     required this.onTap,
     required this.onDelete,
   });
 
   @override
-  State<_HistoryItemWidget> createState() => _HistoryItemWidgetState();
-}
-
-class _HistoryItemWidgetState extends State<_HistoryItemWidget> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    final fileName = widget.uri.split(Platform.pathSeparator).last;
-    
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: _isHovered ? Colors.white.withValues(alpha: 0.02) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _isHovered ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
-            width: 1,
-          ),
+    final theme = Theme.of(context);
+    final title = formatMediaTitle(uri);
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant,
+          width: 1,
         ),
-        child: Row(
-          children: [
-            Text(
-              widget.index.toString().padLeft(2, '0'),
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                fontSize: 14,
-                fontWeight: FontWeight.w300,
-                color: _isHovered ? const Color(0xFFFF5500) : Colors.white24,
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: InkWell(
+        onTap: onTap,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            width: 80,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primaryContainer,
+                  theme.colorScheme.surfaceVariant,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: GestureDetector(
-                onTap: widget.onTap,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Helvetica Neue',
-                        fontSize: 15,
-                        fontWeight: _isHovered ? FontWeight.bold : FontWeight.normal,
-                        color: _isHovered ? Colors.white : Colors.white70,
-                      ),
-                    ),
-                    if (_isHovered) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.uri,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Helvetica Neue',
-                          fontSize: 11,
-                          color: Colors.white24,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+            child: Icon(
+              Icons.play_circle_outline_rounded,
+              color: theme.colorScheme.onPrimaryContainer,
+              size: 24,
             ),
-            if (_isHovered) ...[
+          ),
+          title: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: Text(
+            uri,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               IconButton(
-                icon: const Icon(Icons.close_rounded, size: 16),
-                color: Colors.white24,
-                hoverColor: Colors.redAccent.withValues(alpha: 0.15),
-                tooltip: 'Remove from history',
-                onPressed: widget.onDelete,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                icon: Icon(
+                  Icons.play_arrow_rounded,
+                  color: theme.colorScheme.primary,
+                ),
+                tooltip: 'Play',
+                onPressed: onTap,
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: theme.colorScheme.error,
+                ),
+                tooltip: 'Remove',
+                onPressed: onDelete,
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Media Title Parser/Formatter
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+String formatMediaTitle(String uri) {
+  if (uri.isEmpty) return 'Unknown Title';
+  
+  // 1. Get last segment (filename)
+  String fileName = uri.split(Platform.pathSeparator).last;
+  // If it's a URL and Split by PathSeparator doesn't work well due to web format:
+  if (uri.startsWith('http://') || uri.startsWith('https://')) {
+    fileName = uri.split('/').last;
+    // Remove query params
+    if (fileName.contains('?')) {
+      fileName = fileName.split('?').first;
+    }
+  }
+  
+  // 2. Decode percent encoding if any
+  try {
+    fileName = Uri.decodeFull(fileName);
+  } catch (_) {
+    // If decoding fails, just use fileName as is
+  }
+  
+  // 3. Remove extension
+  final dotIndex = fileName.lastIndexOf('.');
+  if (dotIndex != -1 && dotIndex > 0) {
+    fileName = fileName.substring(0, dotIndex);
+  }
+  
+  // 4. Clean up common release tags, resolutions, and codecs
+  // Normalize separators (dots, underscores, dashes) to spaces
+  String title = fileName.replaceAll(RegExp(r'[\._\-]'), ' ');
+  
+  // Remove multiple spaces
+  title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
+  
+  // 5. Look for Season/Episode patterns: S02, S02E03, etc.
+  final seasonEpisodeRegex = RegExp(
+    r'\b(S\d+E\d+|S\d+|E\d+)\b',
+    caseSensitive: false,
+  );
+  final seasonEpisodeMatch = seasonEpisodeRegex.firstMatch(title);
+  
+  if (seasonEpisodeMatch != null) {
+    final matchText = seasonEpisodeMatch.group(0)!;
+    final matchIndex = seasonEpisodeMatch.start;
+    
+    // Everything before the match is the main title
+    String mainTitle = title.substring(0, matchIndex).trim();
+    
+    // Format the match (e.g. S02 -> S02, s02e03 -> S02E03)
+    String formattedSeasonEpisode = matchText.toUpperCase();
+    
+    if (mainTitle.isNotEmpty) {
+      return '$mainTitle - $formattedSeasonEpisode';
+    }
+  }
+  
+  // 6. Look for Movie Year pattern: e.g. 1999, 2024
+  final yearRegex = RegExp(r'\b(19|20)\d{2}\b');
+  final yearMatch = yearRegex.firstMatch(title);
+  if (yearMatch != null) {
+    final matchText = yearMatch.group(0)!;
+    final matchIndex = yearMatch.start;
+    String mainTitle = title.substring(0, matchIndex).trim();
+    if (mainTitle.isNotEmpty) {
+      return '$mainTitle ($matchText)';
+    }
+  }
+  
+  // 7. General cleanup of common media tags if no season/year was matched (or for movies)
+  final tagsToRemove = RegExp(
+    r'\b(1080p|720p|4k|2160p|480p|360p|x264|x265|h264|h265|hevc|vp9|av1|bluray|brrip|webrip|web\-dl|dvdrip|hdtv|bdrip|rip|aac|mp3|ac3|dts|dd5\.1)\b',
+    caseSensitive: false,
+  );
+  title = title.replaceAll(tagsToRemove, '');
+  title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
+  
+  return title.isNotEmpty ? title : fileName;
 }

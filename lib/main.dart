@@ -72,16 +72,11 @@ class _LexoPlayerAppState extends ConsumerState<LexoPlayerApp> {
     return MaterialApp(
       title: 'LexoPlayer',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0C0C0E), // Midnight Charcoal
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFFF5500), // Burnt Tangerine
           brightness: Brightness.dark,
-          primary: const Color(0xFFFF5500),
         ),
-        useMaterial3: true,
-        fontFamily: 'Helvetica Neue',
         tooltipTheme: TooltipThemeData(
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E24),

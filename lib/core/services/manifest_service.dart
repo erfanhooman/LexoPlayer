@@ -39,7 +39,7 @@ class ManifestService {
   /// Remote URL that serves the latest `manifest.json`.
   ///
   /// Change this to point to your production or staging server.
-  static const String _manifestUrl = 'https://api.yourserver.com/manifest.json';
+  static const String _manifestUrl = 'https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json';
 
   /// File name used when persisting the manifest to local storage.
   static const String _cacheFileName = 'manifest_cache.json';

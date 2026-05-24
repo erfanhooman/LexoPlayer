@@ -10,7 +10,7 @@
         "description": "English definitions and meanings.",
         "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_monolingual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+        "md5_checksum": "3119e21f99a4ac1e970b3589e3fcf846"
       },
       {
         "id": "ger_monolingual",
@@ -19,7 +19,7 @@
         "description": "German definitions and meanings.",
         "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_monolingual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+        "md5_checksum": "eb1213e077393a59ba3f9488d389ab38"
       }
     ],
     "bilingual": [
@@ -31,7 +31,7 @@
         "description": "English translations for Persian speakers.",
         "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_to_persian_bilangual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+        "md5_checksum": "6d41472fa135133068a34de879160d03"
       },
       {
         "id": "ger_to_eng",
@@ -41,7 +41,7 @@
         "description": "German translations for English speakers.",
         "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_to_english_bilangual.db.zip",
         "file_size_bytes": 0,
-        "md5_checksum": "REPLACE_WITH_ACTUAL_MD5"
+        "md5_checksum": "c238afa1ee4ef54883aa0401039408d0"
       }
     ]
   }
