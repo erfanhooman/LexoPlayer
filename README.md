@@ -1,228 +1,97 @@
 # LexoPlayer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.2+-02569B?logo=flutter)](https://flutter.dev)
-[![Platform](https://img.shields.io/badge/Platform-macOS-lightgrey?logo=apple)](https://flutter.dev/macos)
-
-An interactive video player optimized for language acquisition, featuring dual-tier dictionary lookups, interactive subtitles, and a flexible dictionary subsystem.
+LexoPlayer is a modern, interactive desktop video player designed for language learning. It lets you watch movies and TV shows with interactive subtitles, allowing you to hover over or click any word to instantly view monolingual (definition) and bilingual (translation) dictionary lookups offline.
 
 ---
 
-## Features
+## Quick Start
 
-- **Video Playback**: Full-featured video player powered by `media_kit`
-- **Interactive Subtitles**: Tap any word in subtitles for instant lookup
-- **Dual Dictionary System**: 
-  - Monolingual (definition) dictionaries for in-depth explanations
-  - Bilingual (translation) dictionaries for quick native translations
-- **Cloud Dictionary Downloads**: Fetch dictionaries from a remote server via `manifest.json`
-- **Local Dictionary Import**: Import custom `.db` SQLite dictionaries directly from your device
-- **Download Hub**: Manage, track, and install dictionaries from within the app
+### 1. Prerequisites
+- Flutter SDK (`>= 3.2.0`)
+- Dart SDK (`>= 3.2.0`)
 
----
-
-## Getting Started
-
-### Prerequisites
-
-- Flutter SDK >= 3.2.0
-- Dart SDK >= 3.2.0
-- macOS (primary target platform)
-
-### Installation
+### 2. Launching the App
+Run these commands in your terminal to set up and start the application:
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/lexo-player.git
-cd lexo-player
-
-# Install dependencies
+# Get dependencies
 flutter pub get
 
-# Run the app
-flutter run -d macos
+# Run in Debug mode (best for development/hot-reload)
+flutter run -d macos  # Or: flutter run -d windows
+
+# Run in Release mode (best for smooth, lag-free video testing)
+flutter run -d macos --release
 ```
 
 ---
 
-## Project Structure
+## Step-by-Step Testing Guide
 
-```
-your-username/lexo-player/
-├── .github/                          # GitHub templates & workflows
-│   ├── ISSUE_TEMPLATE/
-│   └── workflows/
-├── lib/                              # Flutter/Dart source code
-│   ├── main.dart                     # App entry point
-│   ├── core/                         # Shared services, models, utils
-│   │   ├── database/
-│   │   ├── models/
-│   │   ├── services/
-│   │   └── utils/
-│   └── features/                     # Feature-based modules
-│       ├── dictionary/
-│       ├── subtitles/
-│       ├── video_player/
-│       └── main_menu/
-├── test/                             # Unit & widget tests
-├── macos/                            # macOS platform-specific code
-├── dictionaries/                     # Dictionary distribution folder
-│   ├── manifest.json                 # Central dictionary manifest
-│   ├── eng_oxford.zip                # Oxford dictionary (user-provided)
-│   └── eng_to_pes.zip                # English-to-Persian dictionary (user-provided)
-├── pubspec.yaml                      # Flutter dependencies
-├── analysis_options.yaml             # Dart linter rules
-├── LICENSE                           # MIT License
-└── README.md
-```
+Follow these steps to thoroughly test all core features of LexoPlayer:
+
+### Step 1: Set Up Dictionaries
+To test word lookups, you need active dictionaries:
+1. Launch the app and click on **Dictionary Hub** from the main library dashboard.
+2. In the Download Hub, download one of the available dictionaries from the cloud (or click **Import Local Db** to select a custom `.db` dictionary database file).
+3. Go to the active dictionary dropdowns at the top right of the dashboard, and select your downloaded dictionary in the **Definition Slot** (monolingual) or **Translation Slot** (bilingual).
+
+### Step 2: Play a Video
+1. On the main library screen, click **Open Local File** and pick a video file (MP4, MKV, AVI, MOV, or WEBM).
+2. Alternatively, click **Stream from Link**, paste a streaming video URL, and click **Stream**.
+
+### Step 3: Load Subtitles
+1. While the video is playing, click the **Settings icon** on the bottom control bar.
+2. Choose **Import Subtitle File** and select an external `.srt` or `.vtt` file.
+3. In the subtitle track selection list, click on your imported subtitle track to activate it.
+
+### Step 4: Interactive Word Lookup
+1. Pause or play the video on a frame with subtitles.
+2. Hover your mouse cursor over any word in the subtitle track. The word will highlight.
+3. Observe the popup at the top/center of the screen. It should display:
+   - The word's base form (stemmed/tokenized).
+   - The bilingual translation (e.g. English to Persian) if a translation dictionary is selected.
+   - The monolingual dictionary definitions and usage examples if a definition dictionary is selected.
+
+### Step 5: Test Playback Resumption
+1. Play the video, seek to the middle (e.g. 5 minutes in), and watch for a few seconds.
+2. Click the **Back arrow button** in the top-left corner of the screen to return to the library dashboard.
+3. In the library dashboard, look at the **Continue Watching** list.
+4. Click on the video you just exited. It should resume playing **exactly** from where you left off.
+5. Watch the video near completion (within 5 seconds of the end), exit back to the library, and click on it again. It should start over from the beginning (`0:00`).
 
 ---
 
-## Dictionary System
+## Dictionary SQLite Schema
 
-LexoPlayer uses SQLite databases for both monolingual and bilingual dictionaries. Dictionaries can be loaded either from a remote server (via `manifest.json`) or imported locally.
+If you want to import your own custom dictionaries, prepare your SQLite `.db` database using the following schemas:
 
-### Database Schema
-
-#### Monolingual (Definition) Dictionary
-
+### Monolingual (Definition) Dictionary
 ```sql
 CREATE TABLE entries (
   word TEXT PRIMARY KEY,
-  html_definition TEXT
+  html_definition TEXT -- JSON string containing parts of speech, definitions, and examples
 );
-CREATE INDEX idx_entries_word ON entries(word);
 ```
 
-The `html_definition` field contains a JSON string with structured definition cards:
-
-```json
-{
-  "part_of_speech": "adjective",
-  "definitions": [
-    {
-      "meaning": "A word that describes or limits a noun.",
-      "example": "In the phrase 'the blue car', 'blue' is an adjective."
-    }
-  ]
-}
-```
-
-#### Bilingual (Translation) Dictionary
-
+### Bilingual (Translation) Dictionary
 ```sql
 CREATE TABLE entries (
   word TEXT PRIMARY KEY,
-  localized_text TEXT
+  localized_text TEXT -- Translation text string
 );
-CREATE INDEX idx_entries_word ON entries(word);
-```
-
-### Manifest File
-
-The `dictionaries/manifest.json` file defines available dictionaries for cloud download:
-
-```json
-{
-  "last_updated": "2026-05-23T00:00:00Z",
-  "version": 1,
-  "dictionaries": {
-    "monolingual": [
-      {
-        "id": "eng_oxford",
-        "source_language": "en",
-        "display_name": "Oxford Advanced Dictionary",
-        "description": "Premium English monolingual definitions with phonetics.",
-        "remote_url": "https://api.yourserver.com/dicts/eng_oxford.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": ""
-      }
-    ],
-    "bilingual": [
-      {
-        "id": "eng_to_pes",
-        "source_language": "en",
-        "native_language": "fa",
-        "display_name": "English-to-Persian Dictionary",
-        "description": "Bilingual translations for Persian learners.",
-        "remote_url": "https://api.yourserver.com/dicts/eng_to_pes.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": ""
-      }
-    ]
-  }
-}
-```
-
-### Creating Dictionary Archives
-
-```bash
-# Zip a SQLite database
-zip -j eng_oxford.zip english_monolingual.db
-
-# Get file size and MD5 checksum
-wc -c eng_oxford.zip
-md5 eng_oxford.zip   # macOS
-md5sum eng_oxford.zip # Linux
-```
-
-> **Note**: The `dictionaries/` folder in this repo contains only the `manifest.json` template. Database files (`.db`) and zip archives (`.zip`) are excluded from version control. You will need to provide your own dictionary files.
-
----
-
-## Configuration
-
-The manifest endpoint URL is configured in:
-- `lib/core/services/manifest_service.dart`
-
-Update this URL to point to your hosted `manifest.json` file.
-
----
-
-## Testing
-
-```bash
-# Run all tests
-flutter test
-
-# Run a specific test file
-flutter test test/subtitle_parser_test.dart
 ```
 
 ---
 
-## Building for Production
+## Command Cheat Sheet
 
-```bash
-# Build for macOS
-flutter build macos --release
-
-# Build for other platforms (if configured)
-flutter build <platform> --release
-```
-
----
-
-## Contributing
-
-Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md) before submitting a pull request.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-- [media_kit](https://github.com/media-kit/media-kit) - Video playback engine
-- [flutter_riverpod](https://riverpod.dev) - State management
-- [sqflite](https://pub.dev/packages/sqflite) - SQLite database support
+| Task | Command |
+| :--- | :--- |
+| **Install packages** | `flutter pub get` |
+| **Run app (Debug)** | `flutter run` |
+| **Run app (Release)** | `flutter run --release` |
+| **Run static analysis** | `flutter analyze` |
+| **Run unit tests** | `flutter test` |
+| **Build macOS App** | `flutter build macos --release` |
+| **Build Windows App** | `flutter build windows --release` |
