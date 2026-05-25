@@ -44,7 +44,6 @@ final selectedBilingualIdProvider = StateProvider<String?>((ref) => null);
 final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manifestAsync = ref.watch(manifestDataProvider);
   final downloadedIds = ref.watch(downloadedDictIdsProvider);
-  final activeLang = ref.watch(activeSourceLanguageProvider);
   final manualEntries = ref.watch(manualDictEntriesProvider);
 
   final List<DictionaryEntry> list = [];
@@ -52,9 +51,7 @@ final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
 
   // Add matching manually uploaded dictionaries
   for (final e in manualEntries) {
-    if (e.type == DictionaryType.monolingual &&
-        e.sourceLanguage == activeLang &&
-        downloadedIds.contains(e.id)) {
+    if (e.type == DictionaryType.monolingual) {
       if (seenIds.add(e.id)) {
         list.add(e);
       }
@@ -65,8 +62,7 @@ final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manifestList = manifestAsync.maybeWhen(
     data: (manifest) {
       return manifest.monolingual
-          .where((e) =>
-              downloadedIds.contains(e.id) && e.sourceLanguage == activeLang)
+          .where((e) => downloadedIds.contains(e.id))
           .toList();
     },
     orElse: () => const <DictionaryEntry>[],
@@ -88,7 +84,6 @@ final availableMonolingualProvider = Provider<List<DictionaryEntry>>((ref) {
 final availableBilingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manifestAsync = ref.watch(manifestDataProvider);
   final downloadedIds = ref.watch(downloadedDictIdsProvider);
-  final activeLang = ref.watch(activeSourceLanguageProvider);
   final manualEntries = ref.watch(manualDictEntriesProvider);
 
   final List<DictionaryEntry> list = [];
@@ -96,9 +91,7 @@ final availableBilingualProvider = Provider<List<DictionaryEntry>>((ref) {
 
   // Add matching manually uploaded dictionaries
   for (final e in manualEntries) {
-    if (e.type == DictionaryType.bilingual &&
-        e.sourceLanguage == activeLang &&
-        downloadedIds.contains(e.id)) {
+    if (e.type == DictionaryType.bilingual) {
       if (seenIds.add(e.id)) {
         list.add(e);
       }
@@ -109,8 +102,7 @@ final availableBilingualProvider = Provider<List<DictionaryEntry>>((ref) {
   final manifestList = manifestAsync.maybeWhen(
     data: (manifest) {
       return manifest.bilingual
-          .where((e) =>
-              downloadedIds.contains(e.id) && e.sourceLanguage == activeLang)
+          .where((e) => downloadedIds.contains(e.id))
           .toList();
     },
     orElse: () => const <DictionaryEntry>[],

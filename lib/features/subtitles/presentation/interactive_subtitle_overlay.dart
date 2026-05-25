@@ -32,9 +32,8 @@ class InteractiveSubtitleOverlay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subtitleText = ref.watch(activeSubtitleTextProvider);
     final isVisible = ref.watch(subtitleVisibilityProvider);
-    final controlsVisible = ref.watch(controlsVisibleProvider);
 
-    final bottomOffset = controlsVisible ? 120.0 : 40.0;
+    const bottomOffset = 120.0;
 
     // Nothing to show — return an empty box that still occupies the
     // Positioned slot so AnimatedSwitcher can animate out correctly.

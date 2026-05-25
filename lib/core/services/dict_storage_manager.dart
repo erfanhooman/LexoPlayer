@@ -58,9 +58,9 @@ class DictStorageManager {
   /// Returns the absolute path to the dictionaries directory, creating it if
   /// necessary.
   ///
-  /// Path: `<appDocumentsDir>/dicts/`
+  /// Path: `<appSupportDir>/dicts/`
   Future<String> getDictsDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
+    final appDir = await getApplicationSupportDirectory();
     final dictsDir = Directory(p.join(appDir.path, _dictSubdir));
 
     if (!dictsDir.existsSync()) {
@@ -71,12 +71,36 @@ class DictStorageManager {
       );
     }
 
+    // Auto-migrate from old Documents directory
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final oldDictsDir = Directory(p.join(docsDir.path, _dictSubdir));
+      if (oldDictsDir.existsSync()) {
+        final files = oldDictsDir.listSync();
+        bool movedAny = false;
+        for (final entity in files) {
+          if (entity is File && entity.path.endsWith('.db')) {
+            final newPath = p.join(dictsDir.path, p.basename(entity.path));
+            if (!File(newPath).existsSync()) {
+              await entity.copy(newPath);
+              movedAny = true;
+            }
+          }
+        }
+        if (movedAny) {
+          developer.log('Migrated dictionary databases from Documents to ApplicationSupport.', name: 'DictStorageManager');
+        }
+      }
+    } catch (e) {
+      developer.log('Failed to migrate old dictionaries: $e', name: 'DictStorageManager');
+    }
+
     return dictsDir.path;
   }
 
   /// Returns the expected path for a dictionary file with the given [dictId].
   ///
-  /// Path: `<appDocumentsDir>/dicts/<dictId>.db`
+  /// Path: `<appSupportDir>/dicts/<dictId>.db`
   Future<String> getDictPath(String dictId) async {
     final dictsPath = await getDictsDirectory();
     return p.join(dictsPath, '$dictId.db');
@@ -182,7 +206,30 @@ class DictStorageManager {
   Future<List<String>> getDownloadedIds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getStringList(_prefsKey) ?? <String>[];
+      final ids = prefs.getStringList(_prefsKey) ?? <String>[];
+      
+      // Auto-recover any existing .db files not in prefs
+      final dictsPath = await getDictsDirectory();
+      final dir = Directory(dictsPath);
+      if (dir.existsSync()) {
+        final files = dir.listSync();
+        bool changed = false;
+        for (final entity in files) {
+          if (entity is File && entity.path.endsWith('.db')) {
+            final id = p.basenameWithoutExtension(entity.path);
+            if (!ids.contains(id)) {
+              ids.add(id);
+              changed = true;
+            }
+          }
+        }
+        if (changed) {
+          await prefs.setStringList(_prefsKey, ids);
+          developer.log('Auto-recovered orphaned dictionary files into downloaded list.', name: 'DictStorageManager');
+        }
+      }
+      
+      return ids;
     } catch (e) {
       developer.log(
         'Failed to read downloaded IDs: $e',

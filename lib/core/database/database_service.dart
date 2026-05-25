@@ -80,10 +80,10 @@ class DatabaseService {
   }
 
   /// Resolves the full filesystem path for a database named [dbName]
-  /// in the application documents directory.
+  /// in the application support directory.
   Future<String> getDatabasePath(String dbName) async {
-    final documentsDir = await getApplicationDocumentsDirectory();
-    return p.join(documentsDir.path, dbName);
+    final supportDir = await getApplicationSupportDirectory();
+    return p.join(supportDir.path, dbName);
   }
 
   /// Closes every cached [Database] and clears the cache.

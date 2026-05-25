@@ -199,8 +199,6 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: () {
-                  final player = ref.read(playerProvider);
-                  PlayerActions.stop(player);
                   ref.read(isVideoLoadedProvider.notifier).state = false;
                   Navigator.of(context).pop();
                 },

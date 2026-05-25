@@ -210,7 +210,7 @@ class ManifestService {
 
   /// Resolves the full filesystem path for the cache file.
   Future<String> _getCachePath() async {
-    final directory = await getApplicationDocumentsDirectory();
+    final directory = await getApplicationSupportDirectory();
     return p.join(directory.path, _cacheFileName);
   }
 }

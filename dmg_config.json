@@ -1,0 +1,10 @@
+{
+  "title": "LexoPlayer Installation",
+  "icon": "assets/icon/icon.png",
+  "background": "#1a1a24",
+  "icon-size": 96,
+  "contents": [
+    { "x": 150, "y": 150, "type": "file", "path": "build/macos/Build/Products/Release/Lexo.app" },
+    { "x": 450, "y": 150, "type": "link", "path": "/Applications" }
+  ]
+}
