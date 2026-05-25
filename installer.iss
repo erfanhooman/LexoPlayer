@@ -11,9 +11,11 @@ OutputBaseFilename=LexoPlayer-Setup-x64
 ; High-efficiency LZMA2 compression configurations
 Compression=lzma2/max
 SolidCompression=yes
-; Reset to x64 since Flutter successfully targeted x64 compilation!
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
+
+; --- FORCE LOGO ON THE INSTALLER WIZARD FILE ---
+SetupIconFile=C:\src\LexoPlayer\windows\runner\resources\app_icon.ico
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -26,8 +28,9 @@ Source: "C:\src\LexoPlayer\build\windows\x64\runner\Release\lexo_player.exe"; De
 Source: "C:\src\LexoPlayer\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\LexoPlayer"; Filename: "{app}\lexo_player.exe"
-Name: "{autodesktop}\LexoPlayer"; Filename: "{app}\lexo_player.exe"; Tasks: desktopicon
+; --- FORCE LOGO ON START MENU AND DESKTOP SHORTCUTS ---
+Name: "{group}\LexoPlayer"; Filename: "{app}\lexo_player.exe"; IconFilename: "{app}\windows\runner\resources\app_icon.ico"
+Name: "{autodesktop}\LexoPlayer"; Filename: "{app}\lexo_player.exe"; Tasks: desktopicon; IconFilename: "{app}\windows\runner\resources\app_icon.ico"
 
 [Run]
 Filename: "{app}\lexo_player.exe"; Description: "{cm:LaunchProgram,LexoPlayer}"; Flags: nowait postinstall skipifsilent

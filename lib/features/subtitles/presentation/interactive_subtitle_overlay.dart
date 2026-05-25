@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/features/subtitles/presentation/word_token_widget.dart';
-import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 
 /// Displays the active subtitle text at the bottom of the video player.
 ///
@@ -75,8 +74,15 @@ class InteractiveSubtitleOverlay extends ConsumerWidget {
             child: Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
-              children:
-                  tokens.map((token) => WordTokenWidget(token: token)).toList(),
+              children: tokens
+                  .asMap()
+                  .entries
+                  .map((entry) => WordTokenWidget(
+                        token: entry.value,
+                        lineTokens: tokens,
+                        tokenIndex: entry.key,
+                      ))
+                  .toList(),
             ),
           ),
         ),

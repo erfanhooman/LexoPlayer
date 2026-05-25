@@ -10,6 +10,7 @@ import 'package:lexo_player/features/dictionary/data/dual_dictionary_repository.
 import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
+import 'package:lexo_player/core/utils/word_tokenizer.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Database service singleton
@@ -57,10 +58,10 @@ final dictionarySwitcherProvider = FutureProvider<void>((ref) async {
   String? monoPath;
   String? biPath;
 
-  if (monoId != null) {
+  if (monoId != null && monoId != 'none') {
     monoPath = await storage.getDictPath(monoId);
   }
-  if (biId != null) {
+  if (biId != null && biId != 'none') {
     biPath = await storage.getDictPath(biId);
   }
 
@@ -80,9 +81,16 @@ final dictionarySwitcherProvider = FutureProvider<void>((ref) async {
 // User interaction state
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The token string currently selected by the user for lookup.
+class SelectedTokenData {
+  final List<TokenSpan> lineTokens;
+  final int tokenIndex;
+
+  SelectedTokenData(this.lineTokens, this.tokenIndex);
+}
+
+/// The token data currently selected by the user for lookup.
 /// `null` means no word is selected and the popup should be hidden.
-final selectedTokenProvider = StateProvider<String?>((ref) => null);
+final selectedTokenProvider = StateProvider<SelectedTokenData?>((ref) => null);
 
 /// The [LayerLink] of the word widget that triggered the popup.
 /// Used by [CompositedTransformFollower] on desktop to position the popup.
@@ -97,22 +105,59 @@ final selectedTokenContextProvider =
 // Lookup result provider (async)
 // ─────────────────────────────────────────────────────────────────────────────
 
+List<String> _generateCandidatePhrases(List<TokenSpan> lineTokens, int targetIndex, int maxWords) {
+  final wordIndices = <int>[];
+  for (int i = 0; i < lineTokens.length; i++) {
+    if (lineTokens[i].isWord) {
+      wordIndices.add(i);
+    }
+  }
+  
+  final targetWordPos = wordIndices.indexOf(targetIndex);
+  if (targetWordPos == -1) {
+    return [];
+  }
+  
+  final candidates = <String>{};
+  
+  for (int len = 1; len <= maxWords; len++) {
+    for (int startPos = targetWordPos - len + 1; startPos <= targetWordPos; startPos++) {
+      int endPos = startPos + len - 1;
+      if (startPos >= 0 && endPos < wordIndices.length) {
+        final phraseWords = <String>[];
+        for (int i = startPos; i <= endPos; i++) {
+          phraseWords.add(lineTokens[wordIndices[i]].text);
+        }
+        candidates.add(phraseWords.join(' '));
+      }
+    }
+  }
+  
+  // Sort longest candidates first
+  final list = candidates.toList();
+  list.sort((a, b) => b.length.compareTo(a.length));
+  return list;
+}
+
 /// Performs the dictionary lookup when [selectedTokenProvider] changes.
 ///
-/// Returns `null` when no token is selected or no dictionaries are loaded;
-/// otherwise returns the [DictionaryResult] from the dual-tier pipeline.
+/// Returns an empty list when no token is selected or no dictionaries are loaded;
+/// otherwise returns a list of [DictionaryResult]s matching the generated phrases.
 final lookupResultProvider =
-    FutureProvider.autoDispose<DictionaryResult?>((ref) async {
-  final token = ref.watch(selectedTokenProvider);
-  if (token == null) return null;
+    FutureProvider.autoDispose<List<DictionaryResult>>((ref) async {
+  final data = ref.watch(selectedTokenProvider);
+  if (data == null) return [];
 
   // Ensure the switcher has completed so DBs are ready.
   await ref.watch(dictionarySwitcherProvider.future);
 
   final repo = ref.read(dictionaryRepositoryProvider);
-  if (!repo.isReady) return null;
+  if (!repo.isReady) return [];
 
-  return repo.lookup(token);
+  final candidates = _generateCandidatePhrases(data.lineTokens, data.tokenIndex, 8);
+  if (candidates.isEmpty) return [];
+
+  return repo.lookupMultiple(candidates);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +182,7 @@ class HoverPlaybackTimer {
   HoverPlaybackTimer(this._ref);
 
   /// Triggered when the pointer enters a word token in the subtitle track.
-  void onHoverEnter(String text, LayerLink layerLink, BuildContext context) {
+  void onHoverEnter(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink, BuildContext context) {
     final player = _ref.read(playerProvider);
 
     // If a transition timer was already running, cancel it so we don't
@@ -153,7 +198,7 @@ class HoverPlaybackTimer {
       PlayerActions.pause(player);
     }
 
-    _ref.read(selectedTokenProvider.notifier).state = text;
+    _ref.read(selectedTokenProvider.notifier).state = SelectedTokenData(lineTokens, tokenIndex);
     _ref.read(selectedTokenLayerLinkProvider.notifier).state = layerLink;
     _ref.read(selectedTokenContextProvider.notifier).state = context;
   }
@@ -181,7 +226,7 @@ class HoverPlaybackTimer {
   ///
   /// Unlike temporary hover popups, explicit clicks pin the popup and disable
   /// automatic playback resume when the hover exits.
-  void onTap(String text, LayerLink layerLink, BuildContext context) {
+  void onTap(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink, BuildContext context) {
     _debounceTimer?.cancel();
     _debounceTimer = null;
     _wasPlaying = false; // Disable auto-resume for explicit clicks.
@@ -189,7 +234,7 @@ class HoverPlaybackTimer {
     final player = _ref.read(playerProvider);
     PlayerActions.pause(player);
 
-    _ref.read(selectedTokenProvider.notifier).state = text;
+    _ref.read(selectedTokenProvider.notifier).state = SelectedTokenData(lineTokens, tokenIndex);
     _ref.read(selectedTokenLayerLinkProvider.notifier).state = layerLink;
     _ref.read(selectedTokenContextProvider.notifier).state = context;
   }

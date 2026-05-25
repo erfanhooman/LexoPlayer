@@ -14,10 +14,11 @@ class StemmerUtils {
   StemmerUtils._();
 
   /// Regex that matches every character that is **not** a word character
-  /// (`[a-zA-Z0-9_]`) and **not** an apostrophe.
-  static final RegExp _nonWordExceptApostrophe = RegExp(r"[^\w']");
+  /// (`[a-zA-Z0-9_]`), **not** an apostrophe, **not** a space, and **not** a hyphen.
+  static final RegExp _nonWordExceptApostropheSpaceHyphen = RegExp(r"[^\w'\s-]");
 
-  /// Removes non-word characters (except apostrophes) and lowercases [raw].
+  /// Removes non-word characters (except apostrophes, spaces, and hyphens)
+  /// and lowercases [raw], then collapses multiple spaces into a single space.
   ///
   /// This is the first normalization step before stemming, ensuring that
   /// punctuation and casing do not interfere with dictionary lookups.
@@ -25,9 +26,11 @@ class StemmerUtils {
   /// ```dart
   /// StemmerUtils.cleanToken("Hello!"); // → "hello"
   /// StemmerUtils.cleanToken("it's");   // → "it's"
+  /// StemmerUtils.cleanToken("able-bodied"); // → "able-bodied"
   /// ```
   static String cleanToken(String raw) {
-    return raw.replaceAll(_nonWordExceptApostrophe, '').toLowerCase();
+    final cleaned = raw.replaceAll(_nonWordExceptApostropheSpaceHyphen, '').toLowerCase();
+    return cleaned.trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 
   /// Returns the Porter 2 stem of [word].

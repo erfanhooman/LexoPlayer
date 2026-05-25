@@ -36,6 +36,17 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    final player = ref.read(playerProvider);
+    player.pause();
+    PlayerActions.stop(player);
+    Future.microtask(() {
+      ref.read(isVideoLoadedProvider.notifier).state = false;
+    });
+    super.dispose();
+  }
+
   Future<void> _loadInitialVideo(String uri) async {
     try {
       final player = ref.read(playerProvider);
@@ -199,6 +210,9 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: () {
+                  final player = ref.read(playerProvider);
+                  player.pause();
+                  PlayerActions.stop(player);
                   ref.read(isVideoLoadedProvider.notifier).state = false;
                   Navigator.of(context).pop();
                 },

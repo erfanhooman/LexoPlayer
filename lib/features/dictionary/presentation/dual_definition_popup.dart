@@ -46,11 +46,11 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
     }
 
     // Desktop: watch for lookup results and display overlay.
-    ref.listen<AsyncValue<DictionaryResult?>>(lookupResultProvider,
+    ref.listen<AsyncValue<List<DictionaryResult>>>(lookupResultProvider,
         (prev, next) {
-      next.whenData((result) {
+      next.whenData((results) {
         _removeOverlay();
-        if (result == null || result.isEmpty) return;
+        if (results.isEmpty) return;
 
         final layerLink = ref.read(selectedTokenLayerLinkProvider);
         final tokenContext = ref.read(selectedTokenContextProvider);
@@ -58,7 +58,7 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
 
         _overlayEntry = _buildOverlayEntry(
           context: context,
-          result: result,
+          results: results,
           layerLink: layerLink,
           tokenContext: tokenContext,
         );
@@ -72,14 +72,14 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
 
   OverlayEntry _buildOverlayEntry({
     required BuildContext context,
-    required DictionaryResult result,
+    required List<DictionaryResult> results,
     required LayerLink layerLink,
     required BuildContext? tokenContext,
   }) {
     return OverlayEntry(
       builder: (overlayContext) {
         final screenSize = MediaQuery.of(context).size;
-        const popupWidth = 360.0;
+        const popupWidth = 450.0;
 
         var targetAnchor = Alignment.topCenter;
         var followerAnchor = Alignment.bottomCenter;
@@ -137,7 +137,7 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
                         ref.read(hoverPlaybackTimerProvider).onPopupHoverExit(),
                     child: Material(
                       color: Colors.transparent,
-                      child: _DefinitionCard(result: result),
+                      child: _DefinitionCard(results: results),
                     ),
                   ),
                 ),
@@ -157,11 +157,11 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
 class _MobileLookupListener extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen<AsyncValue<DictionaryResult?>>(lookupResultProvider,
+    ref.listen<AsyncValue<List<DictionaryResult>>>(lookupResultProvider,
         (prev, next) {
-      next.whenData((result) {
-        if (result == null || result.isEmpty) return;
-        _showMobileBottomSheet(context, ref, result);
+      next.whenData((results) {
+        if (results.isEmpty) return;
+        _showMobileBottomSheet(context, ref, results);
       });
     });
     return const SizedBox.shrink();
@@ -170,54 +170,14 @@ class _MobileLookupListener extends ConsumerWidget {
   void _showMobileBottomSheet(
     BuildContext context,
     WidgetRef ref,
-    DictionaryResult result,
+    List<DictionaryResult> results,
   ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return FractionallySizedBox(
-          heightFactor: 0.45,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0E0E10), // Midnight Charcoal
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Drag handle
-                Padding(
-                  padding: const EdgeInsets.only(top: 12, bottom: 8),
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _DefinitionContent(result: result),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        return _MobileBottomSheetContent(results: results);
       },
     ).whenComplete(() {
       // Resume playback when the bottom sheet is dismissed.
@@ -228,19 +188,119 @@ class _MobileLookupListener extends ConsumerWidget {
   }
 }
 
+class _MobileBottomSheetContent extends StatefulWidget {
+  final List<DictionaryResult> results;
+  const _MobileBottomSheetContent({required this.results});
+  @override
+  State<_MobileBottomSheetContent> createState() => _MobileBottomSheetContentState();
+}
+
+class _MobileBottomSheetContentState extends State<_MobileBottomSheetContent> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0E0E10), // Midnight Charcoal
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+          border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.results.length > 1) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: List.generate(widget.results.length, (index) {
+                    final isSelected = index == _selectedIndex;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedIndex = index),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFFF5500) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: isSelected ? const Color(0xFFFF5500) : const Color(0xFF2C2C35)),
+                        ),
+                        child: Text(
+                          widget.results[index].word,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFF8A8A93),
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: _DefinitionContent(result: widget.results[_selectedIndex]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  Shared definition card (desktop overlay)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _DefinitionCard extends StatelessWidget {
-  final DictionaryResult result;
-  const _DefinitionCard({required this.result});
+class _DefinitionCard extends StatefulWidget {
+  final List<DictionaryResult> results;
+  const _DefinitionCard({required this.results});
+  @override
+  State<_DefinitionCard> createState() => _DefinitionCardState();
+}
+
+class _DefinitionCardState extends State<_DefinitionCard> {
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 360,
-      constraints: const BoxConstraints(maxHeight: 400),
+      width: 450,
+      constraints: const BoxConstraints(maxHeight: 550),
       decoration: BoxDecoration(
         color: const Color(0xE6141416), // 90% Midnight Charcoal
         borderRadius: BorderRadius.circular(16),
@@ -259,7 +319,48 @@ class _DefinitionCard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
           child: Padding(
             padding: const EdgeInsets.all(18),
-            child: _DefinitionContent(result: result),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (widget.results.length > 1) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(widget.results.length, (index) {
+                        final isSelected = index == _selectedIndex;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = index),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFFF5500) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFFFF5500) : const Color(0xFF2C2C35),
+                              ),
+                            ),
+                            child: Text(
+                              widget.results[index].word,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF8A8A93),
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Flexible(
+                  child: _DefinitionContent(result: widget.results[_selectedIndex]),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -344,6 +445,9 @@ class _DefinitionContent extends StatelessWidget {
   }
 
   Widget _buildLegacyLayout(BuildContext context) {
+    if (!result.hasDefinition) {
+      return _buildHeader();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -357,28 +461,18 @@ class _DefinitionContent extends StatelessWidget {
         const SizedBox(height: 12),
 
         // ── HTML definition body ────────────────────────────────────
-        if (result.hasDefinition)
-          Flexible(
-            child: SingleChildScrollView(
-              child: HtmlWidget(
-                result.htmlDefinition!,
-                textStyle: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+        Flexible(
+          child: SingleChildScrollView(
+            child: HtmlWidget(
+              result.htmlDefinition!,
+              textStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-          )
-        else
-          const Text(
-            'No definition available.',
-            style: TextStyle(
-              color: Color(0xFF8A8A93),
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-            ),
           ),
+        ),
       ],
     );
   }
@@ -393,38 +487,37 @@ class _DefinitionContent extends StatelessWidget {
       children: [
         // 1. Main header line: Word [Translation on the right]
         Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              result.word,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
+            Expanded(
+              flex: 5,
+              child: Text(
+                result.word,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 12),
             if (result.hasTranslation)
-              Flexible(
+              Expanded(
+                flex: 6,
                 child: Directionality(
                   textDirection: _isRtl(result.localizedText!)
                       ? TextDirection.rtl
                       : TextDirection.ltr,
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 48),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        result.localizedText!,
-                        style: const TextStyle(
-                          color: Color(0xFFFF5500), // Tangerine orange
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.end,
-                      ),
+                  child: Text(
+                    result.localizedText!,
+                    style: const TextStyle(
+                      color: Color(0xFFFF5500), // Tangerine orange
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.end,
                   ),
                 ),
               ),
@@ -542,62 +635,67 @@ class _DefinitionContent extends StatelessWidget {
 
   Widget _buildHeader() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Flexible(
-          child: Text(
-            result.word,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.2,
-            ),
+        Expanded(
+          flex: 5,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  result.word,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+              if (result.wasStemmed) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5500).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: const Color(0xFFFF5500).withOpacity(0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Text(
+                    'stemmed',
+                    style: TextStyle(
+                      color: Color(0xFFFF5500),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (result.wasStemmed) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF5500).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: const Color(0xFFFF5500).withOpacity(0.4),
-                width: 1,
-              ),
-            ),
-            child: const Text(
-              'stemmed',
-              style: TextStyle(
-                color: Color(0xFFFF5500),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
+        const SizedBox(width: 12),
         if (result.hasTranslation)
-          Flexible(
+          Expanded(
+            flex: 6,
             child: Directionality(
               textDirection: _isRtl(result.localizedText!)
                   ? TextDirection.rtl
                   : TextDirection.ltr,
-              child: Container(
-                constraints: const BoxConstraints(maxHeight: 48),
-                child: SingleChildScrollView(
-                  child: Text(
-                    result.localizedText!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF5500), // Tangerine orange
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.end,
-                  ),
+              child: Text(
+                result.localizedText!,
+                style: const TextStyle(
+                  color: Color(0xFFFF5500), // Tangerine orange
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.end,
               ),
             ),
           ),

@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 
@@ -69,18 +70,50 @@ class DualDictionaryRepository {
 
     // Open new handles.
     if (monolingualPath != null) {
-      _monoDb = await _dbService.getDatabaseByPath(monolingualPath);
-      developer.log(
-        'DualDictionaryRepository: Opened monolingual DB at $monolingualPath',
-        name: 'DictRepo',
-      );
+      try {
+        if (File(monolingualPath).existsSync()) {
+          _monoDb = await _dbService.getDatabaseByPath(monolingualPath);
+          developer.log(
+            'DualDictionaryRepository: Opened monolingual DB at $monolingualPath',
+            name: 'DictRepo',
+          );
+        } else {
+          developer.log(
+            'DualDictionaryRepository: Monolingual database file does not exist at $monolingualPath',
+            name: 'DictRepo',
+            level: 900,
+          );
+        }
+      } catch (e) {
+        developer.log(
+          'DualDictionaryRepository: Failed to open monolingual DB: $e',
+          name: 'DictRepo',
+          level: 1000,
+        );
+      }
     }
     if (bilingualPath != null) {
-      _biDb = await _dbService.getDatabaseByPath(bilingualPath);
-      developer.log(
-        'DualDictionaryRepository: Opened bilingual DB at $bilingualPath',
-        name: 'DictRepo',
-      );
+      try {
+        if (File(bilingualPath).existsSync()) {
+          _biDb = await _dbService.getDatabaseByPath(bilingualPath);
+          developer.log(
+            'DualDictionaryRepository: Opened bilingual DB at $bilingualPath',
+            name: 'DictRepo',
+          );
+        } else {
+          developer.log(
+            'DualDictionaryRepository: Bilingual database file does not exist at $bilingualPath',
+            name: 'DictRepo',
+            level: 900,
+          );
+        }
+      } catch (e) {
+        developer.log(
+          'DualDictionaryRepository: Failed to open bilingual DB: $e',
+          name: 'DictRepo',
+          level: 1000,
+        );
+      }
     }
   }
 
@@ -117,7 +150,11 @@ class DualDictionaryRepository {
       );
     }
 
-    // Phase 2: Stemming fallback – try the root form.
+    // Phase 2: Stemming fallback – try the root form (only for single words without spaces or hyphens).
+    if (cleaned.contains(' ') || cleaned.contains('-')) {
+      return DictionaryResult(word: cleaned);
+    }
+
     final stemmed = StemmerUtils.stem(cleaned);
     if (stemmed == cleaned || stemmed.isEmpty) {
       return DictionaryResult(word: cleaned);
@@ -136,13 +173,29 @@ class DualDictionaryRepository {
     );
   }
 
+  /// Look up multiple candidates and return all matches.
+  /// The shortest candidate (single word) is always included even if no match is found.
+  Future<List<DictionaryResult>> lookupMultiple(List<String> candidates) async {
+    final results = <DictionaryResult>[];
+    for (final candidate in candidates) {
+      final res = await lookup(candidate);
+      final isSingleWord = !candidate.contains(' ');
+      
+      if (res.hasDefinition || res.hasTranslation || isSingleWord) {
+        results.add(res);
+      }
+    }
+    return results;
+  }
+
   // ── Private query helpers ───────────────────────────────────────────────
 
   /// Query the monolingual (target-to-target) dictionary for an HTML definition.
   Future<String?> _queryMonolingual(String word) async {
     if (_monoDb == null) return null;
     try {
-      final rows = await _monoDb!.query(
+      // 1. Try exact match.
+      var rows = await _monoDb!.query(
         'entries',
         columns: ['html_definition'],
         where: 'word = ?',
@@ -151,6 +204,22 @@ class DualDictionaryRepository {
       );
       if (rows.isNotEmpty) {
         return rows.first['html_definition'] as String?;
+      }
+
+      // 2. Try normalized fallback (ignoring spaces and hyphens).
+      final normalized = word.replaceAll(RegExp(r'[\s-]'), '').toLowerCase();
+      if (normalized.isNotEmpty) {
+        final firstChar = normalized[0];
+        rows = await _monoDb!.query(
+          'entries',
+          columns: ['html_definition'],
+          where: 'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
+          whereArgs: ['$firstChar%', normalized],
+          limit: 1,
+        );
+        if (rows.isNotEmpty) {
+          return rows.first['html_definition'] as String?;
+        }
       }
     } catch (_) {
       // Database query error – return null gracefully.
@@ -162,7 +231,8 @@ class DualDictionaryRepository {
   Future<String?> _queryBilingual(String word) async {
     if (_biDb == null) return null;
     try {
-      final rows = await _biDb!.query(
+      // 1. Try exact match.
+      var rows = await _biDb!.query(
         'entries',
         columns: ['localized_text'],
         where: 'word = ?',
@@ -171,6 +241,22 @@ class DualDictionaryRepository {
       );
       if (rows.isNotEmpty) {
         return rows.first['localized_text'] as String?;
+      }
+
+      // 2. Try normalized fallback (ignoring spaces and hyphens).
+      final normalized = word.replaceAll(RegExp(r'[\s-]'), '').toLowerCase();
+      if (normalized.isNotEmpty) {
+        final firstChar = normalized[0];
+        rows = await _biDb!.query(
+          'entries',
+          columns: ['localized_text'],
+          where: 'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
+          whereArgs: ['$firstChar%', normalized],
+          limit: 1,
+        );
+        if (rows.isNotEmpty) {
+          return rows.first['localized_text'] as String?;
+        }
       }
     } catch (_) {
       // Database query error – return null gracefully.

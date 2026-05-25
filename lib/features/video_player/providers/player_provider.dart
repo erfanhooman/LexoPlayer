@@ -290,6 +290,7 @@ class PlayerActions {
   
   /// Stop playback, but explicitly save the position first so it is not lost.
   static Future<void> stop(Player player) async {
+    await player.pause();
     await saveCurrentPosition(player);
     await player.stop();
   }

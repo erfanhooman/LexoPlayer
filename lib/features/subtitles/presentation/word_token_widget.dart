@@ -29,10 +29,18 @@ class WordTokenWidget extends ConsumerStatefulWidget {
   /// The token this widget represents.
   final TokenSpan token;
 
+  /// The list of all tokens in the current line.
+  final List<TokenSpan> lineTokens;
+
+  /// The index of this token within [lineTokens].
+  final int tokenIndex;
+
   /// Creates a [WordTokenWidget] for the given [token].
   const WordTokenWidget({
     super.key,
     required this.token,
+    required this.lineTokens,
+    required this.tokenIndex,
   });
 
   @override
@@ -122,7 +130,8 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
       onEnter: (_) {
         _setHovered(true);
         ref.read(hoverPlaybackTimerProvider).onHoverEnter(
-              widget.token.text,
+              widget.lineTokens,
+              widget.tokenIndex,
               _layerLink,
               context,
             );
@@ -175,7 +184,8 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
   /// into the dictionary providers so the look-up flow is triggered reactively.
   void _onTap() {
     ref.read(hoverPlaybackTimerProvider).onTap(
-          widget.token.text,
+          widget.lineTokens,
+          widget.tokenIndex,
           _layerLink,
           context,
         );

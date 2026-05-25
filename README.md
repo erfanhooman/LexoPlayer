@@ -1,70 +1,65 @@
 # LexoPlayer
 
-LexoPlayer is a modern, interactive desktop video player designed for language learning. It lets you watch movies and TV shows with interactive subtitles, allowing you to hover over or click any word to instantly view monolingual (definition) and bilingual (translation) dictionary lookups offline.
+LexoPlayer is a modern, premium cross-platform video player built with Flutter, designed specifically for language learning and acquisition. It features interactive subtitles that allow users to hover over or click any word to instantly lookup monolingual definitions and bilingual translations from offline SQLite databases.
 
 ---
 
-## Quick Start
+## Key Features
+
+- **Interactive Subtitles (Softsubs & Hardsubs)**: Every word in the subtitle track is rendered as an independent interactive token. Hovering or tapping highlights the token and initiates a dictionary lookup.
+- **Multi-Word Phrase Detection**: Instead of relying on predefined chunking, the app dynamically constructs candidate phrases up to **8 words** in length by looking ahead and behind the hovered word. This allows automatic matching of compound verbs, idioms, and phrases (e.g., hovering over *"voice"* in *"i had no voice in that matter"* matches the entire phrase).
+- **Graceful Compound Word Matching**: Normalizes casing, spaces, and hyphens so compound variations match seamlessly (e.g., subtitle word `"able-bodied"`, `"able bodied"`, or `"ablebodied"` will successfully find whatever variation is stored in the dictionary database).
+- **Tabbed Result Interface**: If multiple overlapping phrases or words match (e.g., `"voice"`, `"no voice"`, and `"i had no voice in that matter"`), the definition card renders sleek, horizontal tabs at the top to easily switch between definitions.
+- **Premium, Adaptive Glassmorphic UI**: Dynamic position guards prevent popup clipping near screen edges. Wide-wrap header layouts prevent premature scrolling of bilingual translations.
+- **Intelligent Playback Lifecycle**: Automatically pauses the video when hovering/tapping on words. Resumes playback after exit. Mutes and stops all audio playback in **0ms** when exiting back to the main menu.
+- **Playback Resume**: Remembers the exact playback location of each video. Resumes from the last watched position, resetting automatically if you watched near the end.
+
+---
+
+## Getting Started
 
 ### 1. Prerequisites
-- Flutter SDK (`>= 3.2.0`)
-- Dart SDK (`>= 3.2.0`)
+- **Flutter SDK** (`>= 3.2.0`)
+- **Dart SDK** (`>= 3.2.0`)
 
-### 2. Launching the App
-Run these commands in your terminal to set up and start the application:
+### 2. Setup and Run
+Execute the following commands in your workspace:
 
 ```bash
-# Get dependencies
+# Get dependency packages
 flutter pub get
 
-# Run in Debug mode (best for development/hot-reload)
+# Run in Debug mode (supports hot-reload)
 flutter run -d macos  # Or: flutter run -d windows
 
-# Run in Release mode (best for smooth, lag-free video testing)
-flutter run -d macos --release
+# Run in Release mode (best for smooth video testing)
+flutter run -d macos --release  # Or: flutter run -d windows --release
 ```
 
 ---
 
 ## Step-by-Step Testing Guide
 
-Follow these steps to thoroughly test all core features of LexoPlayer:
-
-### Step 1: Set Up Dictionaries
-To test word lookups, you need active dictionaries:
-1. Launch the app and click on **Dictionary Hub** from the main library dashboard.
-2. In the Download Hub, download one of the available dictionaries from the cloud (or click **Import Local Db** to select a custom `.db` dictionary database file).
-3. Go to the active dictionary dropdowns at the top right of the dashboard, and select your downloaded dictionary in the **Definition Slot** (monolingual) or **Translation Slot** (bilingual).
-
-### Step 2: Play a Video
-1. On the main library screen, click **Open Local File** and pick a video file (MP4, MKV, AVI, MOV, or WEBM).
-2. Alternatively, click **Stream from Link**, paste a streaming video URL, and click **Stream**.
-
-### Step 3: Load Subtitles
-1. While the video is playing, click the **Settings icon** on the bottom control bar.
-2. Choose **Import Subtitle File** and select an external `.srt` or `.vtt` file.
-3. In the subtitle track selection list, click on your imported subtitle track to activate it.
-
-### Step 4: Interactive Word Lookup
-1. Pause or play the video on a frame with subtitles.
-2. Hover your mouse cursor over any word in the subtitle track. The word will highlight.
-3. Observe the popup at the top/center of the screen. It should display:
-   - The word's base form (stemmed/tokenized).
-   - The bilingual translation (e.g. English to Persian) if a translation dictionary is selected.
-   - The monolingual dictionary definitions and usage examples if a definition dictionary is selected.
-
-### Step 5: Test Playback Resumption
-1. Play the video, seek to the middle (e.g. 5 minutes in), and watch for a few seconds.
-2. Click the **Back arrow button** in the top-left corner of the screen to return to the library dashboard.
-3. In the library dashboard, look at the **Continue Watching** list.
-4. Click on the video you just exited. It should resume playing **exactly** from where you left off.
-5. Watch the video near completion (within 5 seconds of the end), exit back to the library, and click on it again. It should start over from the beginning (`0:00`).
+1. **Set Up Dictionaries**:
+   - Go to **Dictionary Hub** from the main library dashboard.
+   - Click **Download Hub** to fetch dictionaries or click **Import Local Db** to select a custom `.db` SQLite file.
+   - Select your active dictionaries in the **Definition Slot** (monolingual) and **Translation Slot** (bilingual) dropdowns.
+2. **Open Media**:
+   - Click **Open Local File** to pick a video file (MP4, MKV, AVI, MOV, WEBM) or click **Stream from Link** to paste a streaming video URL.
+3. **Load Subtitles**:
+   - Tap the **Settings icon** on the bottom control bar during playback.
+   - Select **Import Subtitle File** to load an external `.srt` or `.vtt` file.
+   - Select the loaded track in the tracks list to activate it.
+4. **Interact**:
+   - Hover or tap any word. Observe that the player pauses and the popup appears.
+   - Switch between candidate tabs for multi-word phrases.
+   - Move mouse away to resume playing.
 
 ---
 
 ## Dictionary SQLite Schema
 
-If you want to import your own custom dictionaries, prepare your SQLite `.db` database using the following schemas:
+To import custom offline dictionaries, ensure your SQLite database matches the schemas below:
 
 ### Monolingual (Definition) Dictionary
 ```sql
@@ -72,26 +67,49 @@ CREATE TABLE entries (
   word TEXT PRIMARY KEY,
   html_definition TEXT -- JSON string containing parts of speech, definitions, and examples
 );
+CREATE INDEX idx_entries_word ON entries(word);
+```
+
+*Example JSON for `html_definition`:*
+```json
+{
+  "part_of_speech": "adjective",
+  "definitions": [
+    {
+      "meaning": "Physically strong and healthy.",
+      "translation": "تندرست و قوی هیکل",
+      "example": "An able-bodied young man."
+    }
+  ]
+}
 ```
 
 ### Bilingual (Translation) Dictionary
 ```sql
 CREATE TABLE entries (
   word TEXT PRIMARY KEY,
-  localized_text TEXT -- Translation text string
+  localized_text TEXT -- Native language translation string
 );
+CREATE INDEX idx_entries_word ON entries(word);
 ```
 
 ---
 
-## Command Cheat Sheet
+## Command Reference
 
-| Task | Command |
+| Command | Action |
 | :--- | :--- |
-| **Install packages** | `flutter pub get` |
-| **Run app (Debug)** | `flutter run` |
-| **Run app (Release)** | `flutter run --release` |
-| **Run static analysis** | `flutter analyze` |
-| **Run unit tests** | `flutter test` |
-| **Build macOS App** | `flutter build macos --release` |
-| **Build Windows App** | `flutter build windows --release` |
+| `flutter pub get` | Installs project dependencies |
+| `flutter run` | Runs application in debug mode |
+| `flutter run --release` | Runs application in release mode |
+| `flutter analyze` | Checks for code analysis warnings and linting errors |
+| `flutter test` | Executes unit tests |
+| `flutter build macos --release` | Generates a production macOS build |
+| `flutter build windows --release` | Generates a production Windows build |
+
+---
+
+## License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+Copyright (c) 2026 LexoPlayer.
