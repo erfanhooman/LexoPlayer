@@ -102,5 +102,44 @@ Actual subtitle
         expect(blocks[0].text, equals('Actual subtitle'));
       });
     });
+
+    group('cleanSubtitleText', () {
+      test('replaces html br tags with spaces', () {
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive<br>under'),
+          equals('thrive under'),
+        );
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive<br/>under'),
+          equals('thrive under'),
+        );
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive<br />under'),
+          equals('thrive under'),
+        );
+      });
+
+      test('replaces ASS linebreaks and style tags with spaces', () {
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive\\Nunder'),
+          equals('thrive under'),
+        );
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive{\\an8}\\Nunder'),
+          equals('thrive under'),
+        );
+        expect(
+          SubtitleParser.cleanSubtitleText('thrive\\nunder'),
+          equals('thrive under'),
+        );
+      });
+
+      test('collapses multiple whitespace characters', () {
+        expect(
+          SubtitleParser.cleanSubtitleText('  thrive   \n\t  under  '),
+          equals('thrive under'),
+        );
+      });
+    });
   });
 }

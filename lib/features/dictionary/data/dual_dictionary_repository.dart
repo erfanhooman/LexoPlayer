@@ -150,27 +150,130 @@ class DualDictionaryRepository {
       );
     }
 
-    // Phase 2: Stemming fallback – try the root form (only for single words without spaces or hyphens).
+    // Phase 2: Stemming / Lemmatization fallback – try root candidates.
     if (cleaned.contains(' ') || cleaned.contains('-')) {
       return DictionaryResult(word: cleaned);
     }
 
-    final stemmed = StemmerUtils.stem(cleaned);
-    if (stemmed == cleaned || stemmed.isEmpty) {
-      return DictionaryResult(word: cleaned);
+    // Build ordered list of candidate lemmas to try against the dictionary
+    final candidates = <String>[];
+
+    // 1. Specific morphological transformations (highest priority):
+    
+    // Past tense -ied / Plural -ies -> -y (e.g. gussied -> gussy, plied -> ply, sculleries -> scullery)
+    if (cleaned.endsWith('ied')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 3)}y'); // gussied -> gussy, plied -> ply
+    }
+    if (cleaned.endsWith('ies')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 3)}y'); // sculleries -> scullery, stories -> story
     }
 
-    final stemResults = await Future.wait([
-      _queryMonolingual(stemmed),
-      _queryBilingual(stemmed),
-    ]);
+    // Agent / Passive -ee -> -ate / -er (e.g. exoneree -> exonerate)
+    if (cleaned.endsWith('ee')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 2)}ate'); // exoneree -> exonerate
+      candidates.add('${cleaned.substring(0, cleaned.length - 2)}er');
+    }
 
-    return DictionaryResult(
-      word: stemmed,
-      htmlDefinition: stemResults[0],
-      localizedText: stemResults[1],
-      wasStemmed: true,
-    );
+    // Superlative -est / -iest (e.g. basest -> base, happiest -> happy)
+    if (cleaned.endsWith('iest')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 4)}y'); // happiest -> happy
+    } else if (cleaned.endsWith('est')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 2)); // fastest -> fast
+      candidates.add(cleaned.substring(0, cleaned.length - 3)); // basest -> base (drops 'est', tries 'base')
+      candidates.add('${cleaned.substring(0, cleaned.length - 2)}e'); // basest -> base
+    }
+
+    // Verb endings -ed / -teered (e.g. volunteered -> volunteer, indulged -> indulge)
+    if (cleaned.endsWith('teered')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 2)}r'); // volunteered -> volunteer
+    } else if (cleaned.endsWith('ed')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1)); // indulged -> indulge
+      candidates.add(cleaned.substring(0, cleaned.length - 2)); // walked -> walk
+    }
+
+    // Gerund / Participle -ing (e.g. countenancing -> countenance, persuading -> persuade)
+    if (cleaned.endsWith('cing') || cleaned.endsWith('sing') || cleaned.endsWith('zing') || cleaned.endsWith('ding') || cleaned.endsWith('ging')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 3)}e'); // countenancing -> countenance
+    }
+    if (cleaned.endsWith('ing')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 3)}e'); // persuading -> persuade
+      candidates.add(cleaned.substring(0, cleaned.length - 3)); // walking -> walk
+    }
+
+    // Plurals ending in -ces, -nces, -ances, -ences (e.g. condolences -> condolence, appliances -> appliance)
+    if (cleaned.endsWith('ces') || cleaned.endsWith('ses') || cleaned.endsWith('zes')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1)); // condolences -> condolence, appliances -> appliance
+    }
+
+    // Nominalizations -ations, -ation (e.g. irritations -> irritation -> irritate)
+    if (cleaned.endsWith('ations')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1)); // irritations -> irritation
+      candidates.add('${cleaned.substring(0, cleaned.length - 5)}e'); // irritations -> irritate
+    } else if (cleaned.endsWith('ation')) {
+      candidates.add('${cleaned.substring(0, cleaned.length - 4)}e'); // irritation -> irritate
+    } else if (cleaned.endsWith('ions')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1));
+      candidates.add('${cleaned.substring(0, cleaned.length - 3)}e');
+    }
+
+    // General plural -s (e.g. intruders -> intruder)
+    if (cleaned.endsWith('s') && !cleaned.endsWith('ss')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1)); // intruders -> intruder
+    }
+
+    // Agent nouns / Comparatives -ers, -er
+    if (cleaned.endsWith('ers')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1));
+      candidates.add(cleaned.substring(0, cleaned.length - 2));
+    } else if (cleaned.endsWith('er')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 1));
+      candidates.add(cleaned.substring(0, cleaned.length - 2));
+    }
+
+    // Adverb -ly / -ily
+    if (cleaned.endsWith('ly')) {
+      candidates.add(cleaned.substring(0, cleaned.length - 2));
+      if (cleaned.endsWith('ily')) {
+        candidates.add('${cleaned.substring(0, cleaned.length - 3)}y');
+      }
+    }
+
+    // 2. Porter 2 stemmer candidate fallback
+    final stemmed = StemmerUtils.stem(cleaned);
+    if (stemmed.isNotEmpty && stemmed != cleaned) {
+      // Reconstruct valid word endings for raw stems (e.g. volunt -> volunteer, condol -> condolence)
+      candidates.add('${stemmed}eer');
+      candidates.add('${stemmed}ence');
+      candidates.add('${stemmed}ance');
+      candidates.add('${stemmed}e');
+      candidates.add('${stemmed}ate');
+      candidates.add('${stemmed}y');
+      candidates.add(stemmed);
+    }
+
+    // Try each candidate against both dictionaries.
+    // CRITICAL: Only accept a candidate if it actually yields a definition or translation!
+    for (final candidate in candidates.toSet()) {
+      if (candidate == cleaned || candidate.length < 2) continue;
+
+      final stemResults = await Future.wait([
+        _queryMonolingual(candidate),
+        _queryBilingual(candidate),
+      ]);
+
+      if (stemResults[0] != null || stemResults[1] != null) {
+        return DictionaryResult(
+          word: candidate,
+          htmlDefinition: stemResults[0],
+          localizedText: stemResults[1],
+          wasStemmed: true,
+        );
+      }
+    }
+
+    // If no candidate returned a dictionary entry, preserve the original word!
+    // Never show raw algorithmic truncations like "cordi", "nippl", or "polycul" when there's no match.
+    return DictionaryResult(word: cleaned);
   }
 
   /// Look up multiple candidates and return all matches.

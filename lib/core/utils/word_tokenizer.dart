@@ -50,9 +50,12 @@ class WordTokenizer {
   static List<TokenSpan> tokenize(String input) {
     if (input.isEmpty) return const [];
 
+    // Replace ASS break tags (\N, \n, \h) and raw line breaks/tabs with spaces
+    final sanitizedInput = input.replaceAll(RegExp(r'(\\N|\\n|\\h|[\r\n\t])'), ' ');
+
     final List<TokenSpan> spans = [];
 
-    for (final match in _pattern.allMatches(input)) {
+    for (final match in _pattern.allMatches(sanitizedInput)) {
       if (match.group(1) != null) {
         spans.add(TokenSpan(text: match.group(1)!, isWord: true));
       } else if (match.group(2) != null) {

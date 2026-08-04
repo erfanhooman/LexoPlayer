@@ -4,9 +4,7 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
     self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
@@ -21,6 +19,14 @@ class MainFlutterWindow: NSWindow {
     // Match window background color with the app's premium dark slate color (#121214)
     self.backgroundColor = NSColor(red: 0x12/255.0, green: 0x12/255.0, blue: 0x14/255.0, alpha: 1.0)
 
+    self.minSize = NSSize(width: 960, height: 600)
+
     super.awakeFromNib()
+
+    // Dispatch frame setting on main thread so it reliably overrides XIB restoration
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self, let screen = NSScreen.main else { return }
+      self.setFrame(screen.visibleFrame, display: true, animate: false)
+    }
   }
 }

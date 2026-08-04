@@ -6,6 +6,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
+import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
+import 'package:lexo_player/core/models/subtitle_block.dart';
 
 /// GlobalKey for accessing the [VideoState] to trigger fullscreen natively.
 final videoKeyProvider = Provider.autoDispose<GlobalKey<VideoState>>((ref) {
@@ -19,7 +21,16 @@ final videoKeyProvider = Provider.autoDispose<GlobalKey<VideoState>>((ref) {
 /// The core media_kit [Player] instance, kept alive for the app's lifetime.
 final playerProvider = Provider.autoDispose<Player>((ref) {
   developer.log('Creating new native Player instance', name: 'playerProvider');
-  final player = Player();
+  final player = Player(
+    configuration: const PlayerConfiguration(
+      title: 'LexoPlayer',
+    ),
+  );
+
+  try {
+    final dynamic nativePlayer = player.platform;
+    nativePlayer.setProperty('volume-max', '200');
+  } catch (_) {}
 
   String? lastSavedUri;
   int lastSavedSecs = 0;
@@ -205,6 +216,25 @@ final isMutedProvider = StateProvider.autoDispose<bool>((ref) => false);
 /// Previous volume before muting (for restore).
 final preMuteVolumeProvider = StateProvider.autoDispose<double>((ref) => 100.0);
 
+/// Toggle state for time label: false = elapsed time, true = remaining time (-).
+final showRemainingTimeProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Data model for the Volume HUD indicator overlay.
+class VolumeHudData {
+  final double volume;
+  final bool isMuted;
+  final int id;
+
+  const VolumeHudData({
+    required this.volume,
+    required this.isMuted,
+    required this.id,
+  });
+}
+
+/// Volume HUD state provider for smooth on-screen percentage toast.
+final volumeHudProvider = StateProvider.autoDispose<VolumeHudData?>((ref) => null);
+
 /// Aspect ratio mode enumeration.
 enum AspectRatioMode { fit, fill, stretch, ratio16x9, ratio4x3 }
 
@@ -244,40 +274,45 @@ class PlayerActions {
       developer.log('Failed to save previous video state: $e', name: 'PlayerActions');
     }
 
-    String finalUri = uri;
-    // If it's a local file path and doesn't have a URI scheme, convert it.
-    if (!uri.startsWith('http://') &&
-        !uri.startsWith('https://') &&
-        !uri.startsWith('rtsp://') &&
-        !uri.startsWith('rtmp://')) {
-      finalUri = Uri.file(uri).toString();
+    String mediaPathOrUri = uri;
+    if (uri.startsWith('file://')) {
+      try {
+        mediaPathOrUri = Uri.parse(uri).toFilePath();
+      } catch (_) {}
     }
+
     // Load the saved position BEFORE opening the media to prevent race conditions
     // with the position stream listener.
-    final savedPosition = await _loadPlaybackPosition(finalUri);
+    final savedPosition = await _loadPlaybackPosition(mediaPathOrUri);
 
-    developer.log('Opening media: $finalUri', name: 'PlayerActions');
-    await player.open(Media(finalUri), play: false);
+    developer.log('Opening media: $mediaPathOrUri', name: 'PlayerActions');
+    await player.open(Media(mediaPathOrUri), play: true);
     // Suppress native subtitle track – we render our own overlay.
     await player.setSubtitleTrack(SubtitleTrack.no());
+
     if (savedPosition != null && savedPosition.inSeconds > 0) {
       developer.log('Resuming playback at: ${savedPosition.inSeconds}s', name: 'PlayerActions');
       try {
-        if (player.state.duration > Duration.zero) {
-          developer.log('Duration is already resolved: ${player.state.duration}', name: 'PlayerActions');
-          await Future.delayed(const Duration(milliseconds: 300));
-          await player.seek(savedPosition);
+        Duration dur = player.state.duration;
+        if (dur <= Duration.zero) {
+          try {
+            dur = await player.stream.duration
+                .firstWhere((d) => d > Duration.zero)
+                .timeout(const Duration(seconds: 4));
+          } catch (_) {}
+        }
+
+        // If saved position is near the end (within 5 seconds), reset to start instead of jumping to end.
+        if (dur > Duration.zero && (dur - savedPosition).inSeconds < 5) {
+          developer.log('Saved position is near end of video. Resuming from start.', name: 'PlayerActions');
+          await player.seek(Duration.zero);
         } else {
-          developer.log('Waiting for duration stream...', name: 'PlayerActions');
-          await player.stream.duration.firstWhere((d) => d > Duration.zero).timeout(const Duration(seconds: 4));
-          await Future.delayed(const Duration(milliseconds: 300));
+          await Future.delayed(const Duration(milliseconds: 200));
           await player.seek(savedPosition);
         }
-        await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
         developer.log('Error/Timeout during seek: $e', name: 'PlayerActions');
         await player.seek(savedPosition);
-        await Future.delayed(const Duration(milliseconds: 100));
       }
     }
     
@@ -305,25 +340,209 @@ class PlayerActions {
     }
   }
 
-  /// Seek to an absolute position.
-  static Future<void> seek(Player player, Duration position) =>
-      player.seek(position);
+  static Duration? _pendingSeekPosition;
+  static DateTime? _pendingSeekTime;
 
-  /// Seek forward/backward by a relative [delta].
+  static Duration _getEffectivePosition(Player player) {
+    if (_pendingSeekPosition != null && _pendingSeekTime != null) {
+      if (DateTime.now().difference(_pendingSeekTime!) < const Duration(milliseconds: 500)) {
+        return _pendingSeekPosition!;
+      }
+    }
+    return player.state.position;
+  }
+
+  /// Seek to an absolute position.
+  static Future<void> seek(Player player, Duration position) {
+    _pendingSeekPosition = position;
+    _pendingSeekTime = DateTime.now();
+    return player.seek(position);
+  }
+
+  /// Seek forward by a relative [delta].
   static Future<void> seekRelative(Player player, Duration delta) async {
-    final current = player.state.position;
+    final current = _getEffectivePosition(player);
     final target = current + delta;
     final clamped = target < Duration.zero ? Duration.zero : target;
+    _pendingSeekPosition = clamped;
+    _pendingSeekTime = DateTime.now();
     await player.seek(clamped);
+  }
+
+  /// Seeks to the start timestamp of the NEXT subtitle sentence if smart seeking is enabled.
+  /// If smart seeking is disabled or no upcoming subtitle exists,
+  /// falls back to standard +10s relative seeking based on time.
+  static Future<void> seekNextSubtitle(
+    dynamic ref,
+    Player player, {
+    Duration fallbackDelta = const Duration(seconds: 10),
+  }) async {
+    final smartSeekEnabled = ref.read(smartSubtitleSeekProvider);
+    if (!smartSeekEnabled) {
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    final selected = ref.read(selectedSubtitleProvider);
+    if (selected == null || selected.id == 'none') {
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    final initialPos = _getEffectivePosition(player);
+
+    final rawBlocks = selected.externalBlocks ?? ref.read(subtitleListProvider);
+    if (rawBlocks.isNotEmpty) {
+      // Guarantee strictly sorted list of blocks to prevent random jumps with Persian/custom SRTs
+      final blocks = List<SubtitleBlock>.from(rawBlocks)
+        ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+      final upcoming = blocks.where(
+        (b) => b.startTime > initialPos + const Duration(milliseconds: 200),
+      );
+
+      if (upcoming.isNotEmpty) {
+        final target = upcoming.first.startTime;
+        if (target - initialPos <= fallbackDelta) {
+          _pendingSeekPosition = target;
+          _pendingSeekTime = DateTime.now();
+          await player.seek(target);
+          return;
+        }
+      }
+
+      // No upcoming subtitle within 10s — fallback to time-based seek
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    // Embedded softsub track – use native MPV sub-seek command
+    try {
+      final dynamic nativePlayer = player.platform;
+      await nativePlayer.command(['sub-seek', '1']);
+      await Future.delayed(const Duration(milliseconds: 60));
+      final newPos = player.state.position;
+
+      // If MPV did not move or jumped too far, fallback to time seek
+      if ((newPos - initialPos).abs() < const Duration(milliseconds: 200) ||
+          (newPos - initialPos) > fallbackDelta) {
+        await seek(player, initialPos + fallbackDelta);
+      } else {
+        _pendingSeekPosition = newPos;
+        _pendingSeekTime = DateTime.now();
+      }
+    } catch (_) {
+      await seekRelative(player, fallbackDelta);
+    }
+  }
+
+  /// Seeks to the start timestamp of the PREVIOUS subtitle sentence if smart seeking is enabled.
+  /// If smart seeking is disabled or no previous subtitle exists,
+  /// falls back to standard -10s relative seeking based on time.
+  static Future<void> seekPreviousSubtitle(
+    dynamic ref,
+    Player player, {
+    Duration fallbackDelta = const Duration(seconds: -10),
+  }) async {
+    final smartSeekEnabled = ref.read(smartSubtitleSeekProvider);
+    if (!smartSeekEnabled) {
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    final selected = ref.read(selectedSubtitleProvider);
+    if (selected == null || selected.id == 'none') {
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    final initialPos = _getEffectivePosition(player);
+
+    final rawBlocks = selected.externalBlocks ?? ref.read(subtitleListProvider);
+    if (rawBlocks.isNotEmpty) {
+      // Guarantee strictly sorted list of blocks to prevent random jumps with Persian/custom SRTs
+      final blocks = List<SubtitleBlock>.from(rawBlocks)
+        ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+      final prevBlocks = blocks.where(
+        (b) => b.startTime < initialPos - const Duration(milliseconds: 200),
+      );
+
+      if (prevBlocks.isNotEmpty) {
+        final target = prevBlocks.last.startTime;
+        if (initialPos - target <= fallbackDelta.abs()) {
+          _pendingSeekPosition = target;
+          _pendingSeekTime = DateTime.now();
+          await player.seek(target);
+          return;
+        }
+      }
+
+      // No previous subtitle within 10s — fallback to time-based seek
+      await seekRelative(player, fallbackDelta);
+      return;
+    }
+
+    // Embedded softsub track – use native MPV sub-seek command
+    try {
+      final dynamic nativePlayer = player.platform;
+      await nativePlayer.command(['sub-seek', '-1']);
+      await Future.delayed(const Duration(milliseconds: 60));
+      final newPos = player.state.position;
+
+      // If MPV did not move or jumped too far, fallback to time seek
+      if ((initialPos - newPos).abs() < const Duration(milliseconds: 200) ||
+          (initialPos - newPos) > fallbackDelta.abs()) {
+        final target = initialPos + fallbackDelta;
+        final clamped = target < Duration.zero ? Duration.zero : target;
+        await seek(player, clamped);
+      } else {
+        _pendingSeekPosition = newPos;
+        _pendingSeekTime = DateTime.now();
+      }
+    } catch (_) {
+      await seekRelative(player, fallbackDelta);
+    }
   }
 
   /// Set playback speed.
   static Future<void> setSpeed(Player player, double speed) =>
       player.setRate(speed);
 
-  /// Set volume (0 – 100).
-  static Future<void> setVolume(Player player, double volume) =>
-      player.setVolume(volume);
+  /// Set volume (0 – 200%) and trigger on-screen HUD indicator.
+  static Future<void> setVolume(Player player, double volume, WidgetRef ref) async {
+    final clamped = volume.clamp(0.0, 200.0);
+    await player.setVolume(clamped);
+    if (clamped > 0 && ref.read(isMutedProvider)) {
+      ref.read(isMutedProvider.notifier).state = false;
+    }
+    triggerVolumeHud(ref, clamped, clamped == 0 || ref.read(isMutedProvider));
+  }
+
+  /// Relative volume adjustment (e.g. +5% or -5%) for keyboard shortcuts.
+  static Future<void> adjustVolumeRelative(Player player, double delta, WidgetRef ref) async {
+    final isMuted = ref.read(isMutedProvider);
+    double current = player.state.volume;
+
+    if (isMuted && delta > 0) {
+      final preVol = ref.read(preMuteVolumeProvider);
+      current = preVol > 0 ? preVol : 50.0;
+      ref.read(isMutedProvider.notifier).state = false;
+    }
+
+    final target = (current + delta).clamp(0.0, 200.0);
+    await player.setVolume(target);
+    triggerVolumeHud(ref, target, target == 0 || ref.read(isMutedProvider));
+  }
+
+  /// Triggers the floating Volume HUD overlay display on screen.
+  static void triggerVolumeHud(WidgetRef ref, double volume, bool isMuted) {
+    ref.read(volumeHudProvider.notifier).state = VolumeHudData(
+      volume: volume,
+      isMuted: isMuted,
+      id: DateTime.now().microsecondsSinceEpoch,
+    );
+  }
 
   /// Toggle mute on/off, storing the previous volume level.
   static Future<void> toggleMute(
@@ -332,14 +551,18 @@ class PlayerActions {
     required double preMuteVolume,
     required void Function(bool) setMuted,
     required void Function(double) setPreMuteVolume,
+    required WidgetRef ref,
   }) async {
     if (currentlyMuted) {
-      await player.setVolume(preMuteVolume);
+      final target = preMuteVolume > 0 ? preMuteVolume : 50.0;
+      await player.setVolume(target);
       setMuted(false);
+      triggerVolumeHud(ref, target, false);
     } else {
       setPreMuteVolume(player.state.volume);
       await player.setVolume(0);
       setMuted(true);
+      triggerVolumeHud(ref, 0, true);
     }
   }
 

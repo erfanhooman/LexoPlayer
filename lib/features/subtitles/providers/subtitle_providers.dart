@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lexo_player/core/models/subtitle_block.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/features/subtitles/logic/binary_search_sync.dart';
+import 'package:lexo_player/features/subtitles/logic/subtitle_parser.dart';
 
 /// Represents an option for a subtitle track (either embedded or external)
 class SubtitleTrackOption {
@@ -157,8 +158,17 @@ final playerSubtitleSyncProvider = Provider.autoDispose<void>((ref) {
   // 2. Listen to media_kit embedded subtitle updates.
   ref.listen<AsyncValue<List<String>>>(softsubListenerProvider, (prev, next) {
     next.whenData((lines) {
-      final text = lines.isEmpty ? null : lines.join(' ').trim();
-      ref.read(softsubSubtitleTextProvider.notifier).state = text;
+      if (lines.isEmpty) {
+        ref.read(softsubSubtitleTextProvider.notifier).state = null;
+      } else {
+        final cleanedLines = lines
+            .map((line) => SubtitleParser.cleanSubtitleText(line))
+            .where((l) => l.isNotEmpty)
+            .join(' ');
+        final cleanedText = SubtitleParser.cleanSubtitleText(cleanedLines);
+        ref.read(softsubSubtitleTextProvider.notifier).state =
+            cleanedText.isEmpty ? null : cleanedText;
+      }
     });
   });
 
@@ -176,6 +186,17 @@ final playerSubtitleSyncProvider = Provider.autoDispose<void>((ref) {
       }
     });
   });
+
+  // 4. Auto-select first available subtitle track when discovered if currently unselected or off.
+  ref.listen<List<SubtitleTrackOption>>(availableSubtitlesProvider, (prev, next) {
+    final currentSelected = ref.read(selectedSubtitleProvider);
+    if (currentSelected == null || currentSelected.id == 'none') {
+      final validTracks = next.where((opt) => opt.id != 'none').toList();
+      if (validTracks.isNotEmpty) {
+        ref.read(selectedSubtitleProvider.notifier).state = validTracks.first;
+      }
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +209,7 @@ const String _kSubtitleColorKey = 'subtitle_color';
 const String _kSubtitleBgColorKey = 'subtitle_bg_color';
 const String _kSubtitleOutlineWidthKey = 'subtitle_outline_width';
 const String _kSubtitleFontKey = 'subtitle_font';
+const String _kSmartSubtitleSeekKey = 'smart_subtitle_seek';
 
 /// Size of the subtitle text. Defaults to `22.0` (Medium).
 final subtitleSizeProvider = StateProvider<double>((ref) => 22.0);
@@ -204,6 +226,10 @@ final subtitleOutlineWidthProvider = StateProvider<double>((ref) => 1.2);
 /// Font family. Defaults to `'System'`.
 final subtitleFontFamilyProvider = StateProvider<String>((ref) => 'System');
 
+/// Controls whether forward/backward seeking targets subtitle lines (smart seek)
+/// or performs fixed time-based seeking (±10s). Defaults to `true`.
+final smartSubtitleSeekProvider = StateProvider<bool>((ref) => true);
+
 /// Loads all subtitle customization options from local device persistent storage.
 Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
   try {
@@ -213,12 +239,14 @@ Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
     final bg = prefs.getInt(_kSubtitleBgColorKey);
     final outline = prefs.getDouble(_kSubtitleOutlineWidthKey);
     final font = prefs.getString(_kSubtitleFontKey);
+    final smartSeek = prefs.getBool(_kSmartSubtitleSeekKey);
 
     if (size != null) ref.read(subtitleSizeProvider.notifier).state = size;
     if (color != null) ref.read(subtitleColorProvider.notifier).state = color;
     if (bg != null) ref.read(subtitleBgColorProvider.notifier).state = bg;
     if (outline != null) ref.read(subtitleOutlineWidthProvider.notifier).state = outline;
     if (font != null) ref.read(subtitleFontFamilyProvider.notifier).state = font;
+    if (smartSeek != null) ref.read(smartSubtitleSeekProvider.notifier).state = smartSeek;
   } catch (e) {
     // Fail silently in case preferences are uninitialised
   }
@@ -247,4 +275,9 @@ Future<void> saveSubtitleOutlineWidth(double width) async {
 Future<void> saveSubtitleFontFamily(String font) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_kSubtitleFontKey, font);
+}
+
+Future<void> saveSmartSubtitleSeek(bool enabled) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_kSmartSubtitleSeekKey, enabled);
 }

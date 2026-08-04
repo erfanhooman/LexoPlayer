@@ -1,0 +1,238 @@
+name: Multi-Platform Automated Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g. v1.0.0-beta.2)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS Application & DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build macOS Release
+        run: flutter build macos --release
+
+      - name: Create macOS Zip & DMG Artifacts
+        run: |
+          mkdir -p output
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../output/LexoPlayer-macOS-Portable.zip Lexo.app
+          cd ../../../../../
+          hdiutil create -volname "LexoPlayer" -srcfolder "build/macos/Build/Products/Release/Lexo.app" -ov -format UDZO "output/LexoPlayer-macOS-Installer.dmg"
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-artifacts
+          path: output/*
+
+  build-windows:
+    name: Build Windows Application & Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Build Inno Setup Installer
+        run: |
+          iscc installer.iss
+
+      - name: Create Windows Portable Zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path output
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "output\LexoPlayer-Windows-x64-Portable.zip"
+          Copy-Item "build\windows\installer\LexoPlayer-Setup-x64.exe" -Destination "output\"
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-artifacts
+          path: output/*
+
+  build-linux:
+    name: Build Linux Packages (.deb, .AppImage, .tar.gz)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev wget fuse
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Linux Release
+        run: flutter build linux --release
+
+      - name: Create Linux .deb Package (Ubuntu / Debian / Mint / Pop!_OS)
+        run: |
+          mkdir -p deb_dist/DEBIAN
+          mkdir -p deb_dist/usr/bin
+          mkdir -p deb_dist/usr/lib/lexoplayer
+          mkdir -p deb_dist/usr/share/applications
+          mkdir -p deb_dist/usr/share/icons/hicolor/512x512/apps
+
+          # Copy compiled bundle to /usr/lib/lexoplayer
+          cp -r build/linux/x64/release/bundle/* deb_dist/usr/lib/lexoplayer/
+
+          # Copy desktop entry and icon
+          cp linux/lexoplayer.desktop deb_dist/usr/share/applications/
+          if [ -f "assests/icon/icon.png" ]; then
+            cp assests/icon/icon.png deb_dist/usr/share/icons/hicolor/512x512/apps/lexoplayer.png
+          fi
+
+          # Create executable launcher script in /usr/bin/lexoplayer
+          cat << 'EOF' > deb_dist/usr/bin/lexoplayer
+          #!/bin/sh
+          exec /usr/lib/lexoplayer/lexo_player "$@"
+          EOF
+          chmod +x deb_dist/usr/bin/lexoplayer
+
+          # Create DEBIAN/control file
+          cat << 'EOF' > deb_dist/DEBIAN/control
+          Package: lexoplayer
+          Version: 1.0.0
+          Architecture: amd64
+          Maintainer: Erfan Hooman <erfan.hooman@gmail.com>
+          Section: utils
+          Priority: optional
+          Depends: libgtk-3-0, libmpv2 | libmpv1 | libmpv-dev, libsqlite3-0
+          Description: Interactive Video Player for Language Acquisition
+           LexoPlayer is an interactive media player optimized for vocabulary acquisition
+           with dual-tier dictionary lookups and subtitle-smart sentence seeking.
+          EOF
+
+          # Build .deb package
+          mkdir -p output
+          dpkg-deb --build deb_dist output/LexoPlayer-Linux-amd64.deb
+
+      - name: Create Universal AppImage (Fedora, Arch, Manjaro, openSUSE)
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib/lexoplayer
+
+          cp -r build/linux/x64/release/bundle/* AppDir/usr/lib/lexoplayer/
+          cp linux/lexoplayer.desktop AppDir/lexoplayer.desktop
+          cp linux/lexoplayer.desktop AppDir/
+          if [ -f "assests/icon/icon.png" ]; then
+            cp assests/icon/icon.png AppDir/lexoplayer.png
+            cp assests/icon/icon.png AppDir/.DirIcon
+          fi
+
+          cat << 'EOF' > AppDir/AppRun
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "${HERE}/usr/lib/lexoplayer/lexo_player" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          # Download appimagetool and generate AppImage
+          wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir output/LexoPlayer-x86_64.AppImage || true
+
+      - name: Create Linux Tarball Archive
+        run: |
+          mkdir -p output
+          tar -czvf output/LexoPlayer-Linux-x64.tar.gz -C build/linux/x64/release/bundle .
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-artifacts
+          path: output/*
+
+  publish-release:
+    name: Create GitHub Release & Attach Binaries
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-release-artifacts
+          path: release-files
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release-artifacts
+          path: release-files
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release-artifacts
+          path: release-files
+
+      - name: Determine Release Tag
+        id: tag_name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ github.event.inputs.release_version }}" >> $GITHUB_ENV
+          else
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.TAG }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            release-files/*

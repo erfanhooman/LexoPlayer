@@ -207,6 +207,53 @@ class SubtitleSettingsOverlay extends ConsumerWidget {
                         }
                       },
                     ),
+                    const SizedBox(height: 16),
+
+                    // ── Smart Subtitle Seek Toggle ─────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _kScaffoldBg,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _kBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Smart Subtitle Seek',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Jump to subtitle lines vs fixed 10s',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: ref.watch(smartSubtitleSeekProvider),
+                            activeColor: _kAccent,
+                            onChanged: (val) {
+                              ref.read(smartSubtitleSeekProvider.notifier).state = val;
+                              saveSmartSubtitleSeek(val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),

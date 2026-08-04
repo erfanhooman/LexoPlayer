@@ -95,7 +95,8 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
 
     // Non-word tokens (punctuation, whitespace) — plain text, no interaction.
     if (!token.isWord) {
-      return Text(token.text, style: baseStyle);
+      final text = token.text.replaceAll(RegExp(r'[\r\n\t]'), ' ');
+      return Text(text, style: baseStyle);
     }
 
     // Word tokens — interactive, with hover/tap feedback.

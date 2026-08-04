@@ -11,6 +11,8 @@ import 'package:lexo_player/features/dictionary/data/dict_selection_providers.da
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
+import 'package:lexo_player/features/dictionary/domain/word_candidate_generator.dart';
+import 'package:lexo_player/features/dictionary/domain/dictionary_lookup_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Database service singleton
@@ -78,6 +80,25 @@ final dictionarySwitcherProvider = FutureProvider<void>((ref) async {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Candidate generator & Lookup domain service singletons
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Provider for [IWordCandidateGenerator].
+final wordCandidateGeneratorProvider = Provider<IWordCandidateGenerator>((ref) {
+  return const WordCandidateGenerator(maxWords: 8);
+});
+
+/// Provider for [DictionaryLookupService].
+final dictionaryLookupServiceProvider = Provider<DictionaryLookupService>((ref) {
+  final repo = ref.watch(dictionaryRepositoryProvider);
+  final candidateGen = ref.watch(wordCandidateGeneratorProvider);
+  return DictionaryLookupService(
+    repository: repo,
+    candidateGenerator: candidateGen,
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // User interaction state
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -105,40 +126,6 @@ final selectedTokenContextProvider =
 // Lookup result provider (async)
 // ─────────────────────────────────────────────────────────────────────────────
 
-List<String> _generateCandidatePhrases(List<TokenSpan> lineTokens, int targetIndex, int maxWords) {
-  final wordIndices = <int>[];
-  for (int i = 0; i < lineTokens.length; i++) {
-    if (lineTokens[i].isWord) {
-      wordIndices.add(i);
-    }
-  }
-  
-  final targetWordPos = wordIndices.indexOf(targetIndex);
-  if (targetWordPos == -1) {
-    return [];
-  }
-  
-  final candidates = <String>{};
-  
-  for (int len = 1; len <= maxWords; len++) {
-    for (int startPos = targetWordPos - len + 1; startPos <= targetWordPos; startPos++) {
-      int endPos = startPos + len - 1;
-      if (startPos >= 0 && endPos < wordIndices.length) {
-        final phraseWords = <String>[];
-        for (int i = startPos; i <= endPos; i++) {
-          phraseWords.add(lineTokens[wordIndices[i]].text);
-        }
-        candidates.add(phraseWords.join(' '));
-      }
-    }
-  }
-  
-  // Sort longest candidates first
-  final list = candidates.toList();
-  list.sort((a, b) => b.length.compareTo(a.length));
-  return list;
-}
-
 /// Performs the dictionary lookup when [selectedTokenProvider] changes.
 ///
 /// Returns an empty list when no token is selected or no dictionaries are loaded;
@@ -151,13 +138,11 @@ final lookupResultProvider =
   // Ensure the switcher has completed so DBs are ready.
   await ref.watch(dictionarySwitcherProvider.future);
 
-  final repo = ref.read(dictionaryRepositoryProvider);
-  if (!repo.isReady) return [];
-
-  final candidates = _generateCandidatePhrases(data.lineTokens, data.tokenIndex, 8);
-  if (candidates.isEmpty) return [];
-
-  return repo.lookupMultiple(candidates);
+  final lookupService = ref.read(dictionaryLookupServiceProvider);
+  return lookupService.lookupToken(
+    lineTokens: data.lineTokens,
+    targetIndex: data.tokenIndex,
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

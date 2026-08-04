@@ -96,7 +96,7 @@ class SubtitleParser {
       // Text lines follow the timestamp line.
       final textLines = lines
           .sublist(tsLineIndex + 1)
-          .map((l) => _stripHtmlTags(l.trim()))
+          .map((l) => cleanSubtitleText(l))
           .where((l) => l.isNotEmpty)
           .toList();
       if (textLines.isEmpty) continue;
@@ -104,7 +104,7 @@ class SubtitleParser {
       blocks.add(SubtitleBlock(
         startTime: startTime,
         endTime: endTime,
-        text: textLines.join(' '),
+        text: cleanSubtitleText(textLines.join(' ')),
       ));
     }
 
@@ -156,7 +156,7 @@ class SubtitleParser {
       // Text lines follow the timestamp line.
       final textLines = lines
           .sublist(tsLineIndex + 1)
-          .map((l) => _stripHtmlTags(l.trim()))
+          .map((l) => cleanSubtitleText(l))
           .where((l) => l.isNotEmpty)
           .toList();
       if (textLines.isEmpty) continue;
@@ -164,7 +164,7 @@ class SubtitleParser {
       blocks.add(SubtitleBlock(
         startTime: startTime,
         endTime: endTime,
-        text: textLines.join(' '),
+        text: cleanSubtitleText(textLines.join(' ')),
       ));
     }
 
@@ -207,9 +207,26 @@ class SubtitleParser {
     );
   }
 
-  /// Removes all HTML / styling tags (e.g. `<b>`, `<i>`, `<font ...>`) from
-  /// [text], returning plain content only.
-  static String _stripHtmlTags(String text) {
-    return text.replaceAll(_htmlTagRegex, '').trim();
+  /// Cleans raw subtitle text by:
+  /// 1. Replacing ASS tags (`{\...}`) and ASS line breaks (`\N`, `\n`, `\h`) with spaces.
+  /// 2. Replacing HTML `<br>` variants with spaces.
+  /// 3. Stripping remaining HTML tags (`<...>`).
+  /// 4. Replacing newlines, tabs, and control whitespace with spaces.
+  /// 5. Collapsing multiple spaces into a single space and trimming.
+  static String cleanSubtitleText(String text) {
+    if (text.isEmpty) return '';
+
+    return text
+        // Remove ASS override tags e.g. {\an8}, {\b1}, {\c&H...&}
+        .replaceAll(RegExp(r'\{[^}]*\}'), '')
+        // Replace HTML line break tags (<br>, <br/>, <br />) with a space
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), ' ')
+        // Strip remaining HTML formatting tags (e.g. <b>, <i>, <font...>)
+        .replaceAll(_htmlTagRegex, '')
+        // Replace ASS line breaks (\N, \n, \h) and literal linebreaks/tabs with spaces
+        .replaceAll(RegExp(r'(\\N|\\n|\\h|[\r\n\t])'), ' ')
+        // Collapse multiple whitespace characters into a single space
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 }

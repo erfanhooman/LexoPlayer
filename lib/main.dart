@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'dart:io';
+import 'package:window_manager/window_manager.dart';
+
+import 'package:lexo_player/core/theme/app_colors.dart';
+
 import 'package:lexo_player/core/database/database_service.dart';
 import 'package:lexo_player/features/dictionary/data/dictionary_providers.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
@@ -10,29 +15,62 @@ import 'package:lexo_player/features/main_menu/presentation/main_menu_screen.dar
 
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 
-Future<void> main() async {
+import 'package:lexo_player/core/services/now_playing_service.dart';
+import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
+
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── 1. Initialize media_kit native engine ──────────────────────────────
+  // ── 1. Initialize media_kit native engine & window manager ──────────────────────────────
   MediaKit.ensureInitialized();
+  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    await windowManager.ensureInitialized();
+    const windowOptions = WindowOptions(
+      size: Size(1200, 800),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   // ── 2. Initialize cross-platform SQLite ────────────────────────────────
   await DatabaseService.initialize();
 
-  // ── 3. Launch the application ──────────────────────────────────────────
-  // Dictionary databases are no longer bootstrapped from assets.
-  // Instead, they are downloaded on-demand via the manifest system and
-  // initialized reactively by the dictionarySwitcherProvider.
+  // ── 3. Detect video file passed via OS file association / Open With ──
+  String? initialVideoUri;
+  for (final arg in args) {
+    final lower = arg.toLowerCase();
+    if (lower.endsWith('.mp4') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.flv') ||
+        lower.endsWith('.m4v') ||
+        lower.endsWith('.3gp') ||
+        lower.endsWith('.ts')) {
+      initialVideoUri = arg;
+      break;
+    }
+  }
+
+  // ── 4. Launch the application ──────────────────────────────────────────
   runApp(
     ProviderScope(
-      child: const LexoPlayerApp(),
+      child: LexoPlayerApp(initialVideoUri: initialVideoUri),
     ),
   );
 }
 
 /// Root application widget.
 class LexoPlayerApp extends ConsumerStatefulWidget {
-  const LexoPlayerApp({super.key});
+  final String? initialVideoUri;
+  const LexoPlayerApp({super.key, this.initialVideoUri});
 
   @override
   ConsumerState<LexoPlayerApp> createState() => _LexoPlayerAppState();
@@ -56,10 +94,6 @@ class _LexoPlayerAppState extends ConsumerState<LexoPlayerApp> {
 
     // Load persisted subtitle settings.
     await hydrateSubtitleSettings(ref);
-
-    // The dictionarySwitcherProvider is watched in build(), which will
-    // automatically open the selected databases once the above state
-    // providers are populated.
   }
 
   @override
@@ -68,13 +102,15 @@ class _LexoPlayerAppState extends ConsumerState<LexoPlayerApp> {
     ref.watch(dictionarySwitcherProvider);
     // Watch the subtitle sync globally so it runs across all routes (including native fullscreen).
     ref.watch(playerSubtitleSyncProvider);
+    // Watch OS Now Playing sync globally (macOS Menu Bar / Control Center / Background Media Keys).
+    ref.watch(nowPlayingSyncProvider);
 
     return MaterialApp(
       title: 'LexoPlayer',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true).copyWith(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF5500), // Burnt Tangerine
+          seedColor: AppColors.primary,
           brightness: Brightness.dark,
         ),
         tooltipTheme: TooltipThemeData(
@@ -87,7 +123,9 @@ class _LexoPlayerAppState extends ConsumerState<LexoPlayerApp> {
           waitDuration: const Duration(milliseconds: 500),
         ),
       ),
-      home: const MainMenuScreen(),
+      home: widget.initialVideoUri != null
+          ? VideoScreen(videoUri: widget.initialVideoUri)
+          : const MainMenuScreen(),
     );
   }
 }

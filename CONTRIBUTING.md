@@ -26,16 +26,43 @@ Before creating bug reports, please check existing issues. When creating a bug r
 - Explain why this enhancement would be useful
 - Consider how it fits with the project's goals
 
+### Git Branching Strategy & Workflow
+
+We follow a structured **Git Flow** tailored for cross-platform desktop application delivery:
+
+- **`main`**: Production release branch. Code here must always be stable.
+  - Tagging `main` with a release tag (e.g., `git tag v1.0.0 && git push origin v1.0.0`) triggers the **Automated Multi-Platform Release Pipeline**.
+- **`develop`**: Integration branch for active development. All feature PRs target `develop`.
+- **`feature/<name>`**: Short-lived feature branches created off `develop` (e.g., `feature/custom-subtitle-styling`).
+- **`fix/<name>`**: Bugfix branches created off `develop` (e.g., `fix/dictionary-lookup-crash`).
+- **`hotfix/<name>`**: Emergency bugfix branches created directly off `main`.
+
+### Automated GitHub Actions Workflows
+
+You no longer need to perform full release builds locally for every operating system!
+
+1. **Continuous Integration (`ci.yml`)**:
+   - Runs automatically on every push or Pull Request targeting `develop` or `main`.
+   - Runs `dart format`, `flutter analyze`, `flutter test`, and multi-platform compilation checks across macOS, Windows, and Linux.
+   - Builds artifacts available for download under the Actions workflow run summary.
+
+2. **Automated Release Pipeline (`release.yml`)**:
+   - Triggered when pushing a version tag (e.g. `v1.0.0`) or manually via GitHub's "Run workflow" button.
+   - Automatically builds:
+     - **macOS**: Bundle + Installer DMG (`LexoPlayer-macOS-Installer.dmg`)
+     - **Windows**: Portable ZIP + Inno Setup Executable (`LexoPlayer-Setup-x64.exe`)
+     - **Linux**: Release tarball (`LexoPlayer-Linux-x64.tar.gz`)
+   - Packages and attaches all release assets to a newly published GitHub Release with release notes!
+
 ### Pull Requests
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+1. Fork or clone the repository
+2. Create your branch off `develop` (`git checkout -b feature/amazing-feature develop`)
 3. Make your changes
-4. Run tests (`flutter test`)
-5. Run linter (`flutter analyze`)
-6. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+4. Run local sanity tests (`flutter test` and `flutter analyze`)
+5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+6. Push to your branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request targeting `develop`
 
 ### Commit Message Guidelines
 

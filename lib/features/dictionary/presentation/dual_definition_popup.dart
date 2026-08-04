@@ -9,6 +9,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
 import 'package:lexo_player/core/models/dictionary_result.dart';
 import 'package:lexo_player/features/dictionary/data/dictionary_providers.dart';
+import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 
 /// Desktop overlay for displaying dual-tier dictionary definitions.
@@ -506,19 +507,10 @@ class _DefinitionContent extends StatelessWidget {
             if (result.hasTranslation)
               Expanded(
                 flex: 6,
-                child: Directionality(
-                  textDirection: _isRtl(result.localizedText!)
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
-                  child: Text(
-                    result.localizedText!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF5500), // Tangerine orange
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.end,
-                  ),
+                child: SpoilerTranslationWidget(
+                  rawTranslation: result.localizedText!,
+                  compactHeaderMode: true,
+                  initialMaxItems: 3,
                 ),
               ),
           ],
@@ -595,20 +587,9 @@ class _DefinitionContent extends StatelessWidget {
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 14),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  meaning.translation!,
-                  style: const TextStyle(
-                    color: Color(0xFFE4E4E7), // Lighter white-gray
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                  ),
-                ),
-              ),
+            child: SpoilerTranslationWidget(
+              rawTranslation: meaning.translation!,
+              initialMaxItems: 3,
             ),
           ),
         ],
@@ -684,19 +665,10 @@ class _DefinitionContent extends StatelessWidget {
         if (result.hasTranslation)
           Expanded(
             flex: 6,
-            child: Directionality(
-              textDirection: _isRtl(result.localizedText!)
-                  ? TextDirection.rtl
-                  : TextDirection.ltr,
-              child: Text(
-                result.localizedText!,
-                style: const TextStyle(
-                  color: Color(0xFFFF5500), // Tangerine orange
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.end,
-              ),
+            child: SpoilerTranslationWidget(
+              rawTranslation: result.localizedText!,
+              compactHeaderMode: true,
+              initialMaxItems: 3,
             ),
           ),
       ],

@@ -5,8 +5,8 @@ AppVersion=1.0.0-beta.1
 AppPublisher=Erfan Hooman
 DefaultDirName={autopf}\LexoPlayer
 DefaultGroupName=LexoPlayer
-; Where to drop the finished single installation wizard .exe
-OutputDir=C:\src\LexoPlayer\build\windows\installer
+; Output directory for installer executable
+OutputDir=build\windows\installer
 OutputBaseFilename=LexoPlayer-Setup-x64
 ; High-efficiency LZMA2 compression configurations
 Compression=lzma2/max
@@ -15,17 +15,17 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 
 ; --- FORCE LOGO ON THE INSTALLER WIZARD FILE ---
-SetupIconFile=C:\src\LexoPlayer\windows\runner\resources\app_icon.ico
+SetupIconFile=windows\runner\resources\app_icon.ico
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 ; 1. Main execution binary mapped directly to the x64 build Release directory
-Source: "C:\src\LexoPlayer\build\windows\x64\runner\Release\lexo_player.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build\windows\x64\runner\Release\lexo_player.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 2. All companion .dll links and asset data folders bundled right alongside it
-Source: "C:\src\LexoPlayer\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; --- FORCE LOGO ON START MENU AND DESKTOP SHORTCUTS ---
@@ -34,3 +34,14 @@ Name: "{autodesktop}\LexoPlayer"; Filename: "{app}\lexo_player.exe"; Tasks: desk
 
 [Run]
 Filename: "{app}\lexo_player.exe"; Description: "{cm:LaunchProgram,LexoPlayer}"; Flags: nowait postinstall skipifsilent
+
+[Registry]
+Root: HKLM; Subkey: "Software\Classes\.mp4\OpenWithProgids"; ValueType: string; ValueName: "LexoPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mkv\OpenWithProgids"; ValueType: string; ValueName: "LexoPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.avi\OpenWithProgids"; ValueType: string; ValueName: "LexoPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mov\OpenWithProgids"; ValueType: string; ValueName: "LexoPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.webm\OpenWithProgids"; ValueType: string; ValueName: "LexoPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+
+Root: HKLM; Subkey: "Software\Classes\LexoPlayer.Video"; ValueType: string; ValueName: ""; ValueData: "Video File"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\LexoPlayer.Video\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\document_icon.ico"
+Root: HKLM; Subkey: "Software\Classes\LexoPlayer.Video\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\lexo_player.exe"" ""%1"""
