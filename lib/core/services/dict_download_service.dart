@@ -197,38 +197,49 @@ class DictDownloadService {
       );
 
       // ------------------------------------------------------------------
-      // 3. Decode ZIP and locate the .db file
-      // ------------------------------------------------------------------
-      final archive = ZipDecoder().decodeBytes(bytes);
-
-      final dbFile = archive.files.cast<ArchiveFile?>().firstWhere(
-            (f) => f != null && f.name.endsWith('.db') && f.isFile,
-            orElse: () => null,
-          );
-
-      if (dbFile == null) {
-        await _safeDelete(tempFile);
-        throw Exception(
-          'Archive for "${entry.id}" does not contain a .db file.',
-        );
-      }
-
-      developer.log(
-        'Found database file "${dbFile.name}" '
-        '(${dbFile.size} bytes) in archive.',
-        name: 'DictDownloadService',
-      );
-
-      // ------------------------------------------------------------------
-      // 4. Write the extracted .db to its final path
+      // 3. Decode ZIP or process direct DB file
       // ------------------------------------------------------------------
       final outputFile = File(finalDbPath);
-      await outputFile.writeAsBytes(dbFile.content as List<int>, flush: true);
+      final isDirectDb = entry.remoteUrl.toLowerCase().endsWith('.db') ||
+          (bytes.length >= 16 &&
+              bytes[0] == 0x53 &&
+              bytes[1] == 0x51 &&
+              bytes[2] == 0x4c &&
+              bytes[3] == 0x69); // SQLite format header ("SQLite format 3")
 
-      developer.log(
-        'Extracted database to $finalDbPath.',
-        name: 'DictDownloadService',
-      );
+      if (isDirectDb) {
+        await outputFile.writeAsBytes(bytes, flush: true);
+        developer.log(
+          'Saved direct database file to $finalDbPath.',
+          name: 'DictDownloadService',
+        );
+      } else {
+        final archive = ZipDecoder().decodeBytes(bytes);
+
+        final dbFile = archive.files.cast<ArchiveFile?>().firstWhere(
+              (f) => f != null && f.name.endsWith('.db') && f.isFile,
+              orElse: () => null,
+            );
+
+        if (dbFile == null) {
+          await _safeDelete(tempFile);
+          throw Exception(
+            'Archive for "${entry.id}" does not contain a .db file.',
+          );
+        }
+
+        developer.log(
+          'Found database file "${dbFile.name}" '
+          '(${dbFile.size} bytes) in archive.',
+          name: 'DictDownloadService',
+        );
+
+        await outputFile.writeAsBytes(dbFile.content as List<int>, flush: true);
+        developer.log(
+          'Extracted database to $finalDbPath.',
+          name: 'DictDownloadService',
+        );
+      }
 
       // ------------------------------------------------------------------
       // 5. Clean up the temporary ZIP

@@ -43,7 +43,7 @@ class DictSelectionOverlay extends ConsumerWidget {
 
   /// Presents the settings panel using the appropriate platform-native surface.
   static void show(BuildContext context) {
-    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
       showModalBottomSheet(
@@ -307,31 +307,38 @@ class _MobileSheetWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: const BoxDecoration(
         color: _kOverlayBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle.
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle.
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 4),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
+              // Re-use the overlay body but remove its own rounded container.
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: child,
+              ),
+            ],
           ),
-          // Re-use the overlay body but remove its own rounded container.
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: child,
-          ),
-        ],
+        ),
       ),
     );
   }

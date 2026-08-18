@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
 
@@ -8,11 +9,13 @@ void main() {
       const rawText = 'دوست داشتن, مایل بودن, دل خواستن';
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SpoilerTranslationWidget(
-              rawTranslation: rawText,
-              initialMaxItems: 5,
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SpoilerTranslationWidget(
+                rawTranslation: rawText,
+                initialMaxItems: 5,
+              ),
             ),
           ),
         ),
@@ -31,11 +34,13 @@ void main() {
       const rawText = 'item1, item2, item3, item4, item5, item6';
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SpoilerTranslationWidget(
-              rawTranslation: rawText,
-              initialMaxItems: 3,
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SpoilerTranslationWidget(
+                rawTranslation: rawText,
+                initialMaxItems: 3,
+              ),
             ),
           ),
         ),
@@ -65,11 +70,13 @@ void main() {
       const rawText = 'دوست داشتن, مایل بودن';
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SpoilerTranslationWidget(
-              rawTranslation: rawText,
-              initialMaxItems: 3,
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SpoilerTranslationWidget(
+                rawTranslation: rawText,
+                initialMaxItems: 3,
+              ),
             ),
           ),
         ),

@@ -42,7 +42,17 @@ class WordTokenizer {
   /// Pattern that alternates between word tokens (group 1) and separator
   /// tokens (group 2). Every character in the input is covered by exactly one
   /// of the two groups.
-  static final RegExp _pattern = RegExp(r"([\w'-]+)|([^\w'-]+)");
+  ///
+  /// Includes Persian / Arabic Unicode blocks:
+  ///   \u0600-\u06FF  Arabic & Persian main block
+  ///   \u0750-\u077F  Arabic Supplement
+  ///   \uFB50-\uFDFF  Arabic Presentation Forms-A
+  ///   \uFE70-\uFEFF  Arabic Presentation Forms-B
+  ///   \u200C         Zero-Width Non-Joiner (used between Persian morphemes)
+  static final RegExp _pattern = RegExp(
+    r"([\w\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u200C'\-]+)"
+    r"|([^\w\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u200C'\-]+)",
+  );
 
   /// Tokenizes [input] into a list of [TokenSpan]s.
   ///

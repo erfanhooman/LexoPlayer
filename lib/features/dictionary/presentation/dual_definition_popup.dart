@@ -41,8 +41,8 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
 
   @override
   Widget build(BuildContext context) {
-    // On mobile, we use a bottom sheet instead (see MobileBottomSheet).
-    if (Platform.isAndroid || Platform.isIOS) {
+    // On mobile or narrow windows, we use a bottom sheet instead.
+    if (Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600) {
       return _MobileLookupListener();
     }
 
@@ -51,7 +51,7 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
         (prev, next) {
       next.whenData((results) {
         _removeOverlay();
-        if (results.isEmpty) return;
+        if (results.isEmpty || results.every((r) => r.isEmpty)) return;
 
         final layerLink = ref.read(selectedTokenLayerLinkProvider);
         final tokenContext = ref.read(selectedTokenContextProvider);
@@ -161,7 +161,7 @@ class _MobileLookupListener extends ConsumerWidget {
     ref.listen<AsyncValue<List<DictionaryResult>>>(lookupResultProvider,
         (prev, next) {
       next.whenData((results) {
-        if (results.isEmpty) return;
+        if (results.isEmpty || results.every((r) => r.isEmpty)) return;
         _showMobileBottomSheet(context, ref, results);
       });
     });

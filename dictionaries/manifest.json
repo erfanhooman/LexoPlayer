@@ -1,47 +1,19 @@
 {
-  "last_updated": "2026-05-23T15:00:00Z",
-  "version": 1,
+  "last_updated": "2026-08-18T17:20:00Z",
+  "version": 2,
   "dictionaries": {
-    "monolingual": [
+    "monolingual": [],
+    "bilingual": [],
+    "unified": [
       {
-        "id": "eng_monolingual",
-        "source_language": "en",
-        "display_name": "English Monolingual Dictionary",
-        "description": "English definitions and meanings.",
-        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_monolingual.db.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": "3119e21f99a4ac1e970b3589e3fcf846"
-      },
-      {
-        "id": "ger_monolingual",
-        "source_language": "de",
-        "display_name": "German Monolingual Dictionary",
-        "description": "German definitions and meanings.",
-        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_monolingual.db.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": "eb1213e077393a59ba3f9488d389ab38"
-      }
-    ],
-    "bilingual": [
-      {
-        "id": "eng_to_pes",
+        "id": "lexo_unified_en_fa",
         "source_language": "en",
         "native_language": "fa",
-        "display_name": "English to Persian Dictionary",
-        "description": "English translations for Persian speakers.",
-        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/english_to_persian_bilangual.db.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": "02ee17437163bf3db200d0191de1ebb9"
-      },
-      {
-        "id": "ger_to_eng",
-        "source_language": "de",
-        "native_language": "en",
-        "display_name": "German to English Dictionary",
-        "description": "German translations for English speakers.",
-        "remote_url": "https://erfanhooman.github.io/LexoPlayer/dictionaries/german_to_english_bilangual.db.zip",
-        "file_size_bytes": 0,
-        "md5_checksum": "c238afa1ee4ef54883aa0401039408d0"
+        "display_name": "LexoEngine Unified Dictionary (EN-FA)",
+        "description": "Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.",
+        "remote_url": "https://github.com/erfanhooman/LexoPlayer/releases/download/beta-2/dictionary.db.zip",
+        "file_size_bytes": 239221480,
+        "md5_checksum": "d862fb14c5477f9900b0f4535d50500c"
       }
     ]
   }

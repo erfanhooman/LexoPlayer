@@ -13,6 +13,10 @@ enum DictionaryType {
 
   /// Target-to-native translations (e.g. English-Persian, German-English).
   bilingual,
+
+  /// Unified dictionary with words, senses, idioms, and pre-computed vectors.
+  /// Used by the LexoEngine inference pipeline.
+  unified,
 }
 
 /// A single dictionary entry from the remote manifest.
@@ -131,15 +135,19 @@ class ManifestData {
   /// Available bilingual (target-to-native) dictionaries.
   final List<DictionaryEntry> bilingual;
 
+  /// Available unified engine dictionaries.
+  final List<DictionaryEntry> unified;
+
   const ManifestData({
     required this.lastUpdated,
     required this.version,
     required this.monolingual,
     required this.bilingual,
+    this.unified = const [],
   });
 
   /// All dictionaries combined into a single flat list.
-  List<DictionaryEntry> get all => [...monolingual, ...bilingual];
+  List<DictionaryEntry> get all => [...monolingual, ...bilingual, ...unified];
 
   /// Finds a dictionary entry by its [id], or `null` if not found.
   DictionaryEntry? findById(String id) {
@@ -167,11 +175,19 @@ class ManifestData {
             ))
         .toList();
 
+    final unifiedList = (dictionaries['unified'] as List<dynamic>? ?? [])
+        .map((e) => DictionaryEntry.fromJson(
+              e as Map<String, dynamic>,
+              DictionaryType.unified,
+            ))
+        .toList();
+
     return ManifestData(
       lastUpdated: DateTime.parse(json['last_updated'] as String),
       version: json['version'] as int,
       monolingual: monoList,
       bilingual: biList,
+      unified: unifiedList,
     );
   }
 
@@ -183,6 +199,7 @@ class ManifestData {
       'dictionaries': {
         'monolingual': monolingual.map((e) => e.toJson()).toList(),
         'bilingual': bilingual.map((e) => e.toJson()).toList(),
+        'unified': unified.map((e) => e.toJson()).toList(),
       },
     };
   }

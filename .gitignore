@@ -1,9 +1,15 @@
-# Miscellaneous
+# Miscellaneous & OS
 *.class
 *.log
 *.pyc
 *.swp
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trashes
+ehthumbs.db
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -11,17 +17,19 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+*.tmp
+*.bak
 
-# IntelliJ related
+# IntelliJ & Android Studio
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# VS Code related
+# VS Code
 .vscode/
 
-# Flutter/Dart related
+# Flutter & Dart build artifacts
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -30,33 +38,46 @@ migrate_working_dir/
 .packages
 .pub-cache/
 .pub/
+build/
 /build/
-pubspec.lock
 
-# Platform build outputs
-/android/.gradle/
-/android/captures/
-/android/gradlew
-/android/gradlew.bat
-/android/local.properties
-/android/GeneratedPluginRegistrant.java
-/ios/Flutter/App.framework
-/ios/Flutter/Flutter.framework
-/ios/Flutter/Flutter.podspec
-/ios/Flutter/Generated.xcconfig
-/ios/Flutter/app.flx
-/ios/Flutter/app.zip
-/ios/Flutter/flutter_assets/
-/ios/Flutter/flutter_export_environment.sh
-/ios/ServiceDefinitions.json
-/ios/Runner/GeneratedPluginRegistrant.*
+# Android build outputs & local config
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/app/build/
+**/android/app/release/
+**/android/app/debug/
+**/android/GeneratedPluginRegistrant.java
+**/android/.cxx/
+
+# iOS build outputs & ephemeral files
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# Desktop Ephemeral Files
 /linux/flutter/ephemeral/
 /macos/Flutter/ephemeral/
 /windows/flutter/ephemeral/
 
-# Test
+# Xcode User Data & Derived Data
+**/xcuserdata/
+**/xcdebugger/
+**/DerivedData/
+
+# Test & Coverage
 coverage/
 
-# Dictionary files
+# Databases & Local Dynamic Assets
 *.db
-dictionaries/*.db
+*.sqlite
+*.sqlite3
+dictionaries/*.zip

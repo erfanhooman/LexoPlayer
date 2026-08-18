@@ -3,19 +3,58 @@ name: Multi-Platform Automated Release
 on:
   push:
     tags:
-      - 'v*.*.*'
       - 'v*'
+      - 'beta*'
+      - '*beta*'
+      - '*.*.*'
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version (e.g. v1.0.0-beta.2)'
+        description: 'Release version (e.g. beta-2 or v1.0.0-beta.2)'
         required: true
-        default: 'v1.0.0'
+        default: 'beta-2'
 
 permissions:
   contents: write
 
 jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK Release
+        run: flutter build apk --release
+
+      - name: Prepare Android Artifact
+        run: |
+          mkdir -p output
+          cp build/app/outputs/flutter-apk/app-release.apk output/LexoPlayer-Android.apk
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-artifacts
+          path: output/*
+
   build-macos:
     name: Build macOS Application & DMG
     runs-on: macos-latest
@@ -192,12 +231,18 @@ jobs:
 
   publish-release:
     name: Create GitHub Release & Attach Binaries
-    needs: [build-macos, build-windows, build-linux]
+    needs: [build-android, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Download Android Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-artifacts
+          path: release-files
 
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4

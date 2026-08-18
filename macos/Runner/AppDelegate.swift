@@ -5,6 +5,23 @@ import MediaPlayer
 @main
 class AppDelegate: FlutterAppDelegate {
   private var methodChannel: FlutterMethodChannel?
+  private var openFileChannel: FlutterMethodChannel?
+  private var initialOpenFile: String?
+
+  override func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+    if let channel = openFileChannel {
+      channel.invokeMethod("onFileOpened", arguments: filename)
+    } else {
+      initialOpenFile = filename
+    }
+    return true
+  }
+
+  override func application(_ sender: NSApplication, openFiles filenames: [String]) {
+    if let first = filenames.first {
+      _ = application(sender, openFile: first)
+    }
+  }
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
     super.applicationDidFinishLaunching(notification)
@@ -26,6 +43,20 @@ class AppDelegate: FlutterAppDelegate {
           self?.clearNowPlayingInfo()
           result(nil)
         default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+
+      openFileChannel = FlutterMethodChannel(
+        name: "com.lexoplayer/open_file",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+
+      openFileChannel?.setMethodCallHandler { [weak self] (call, result) in
+        if call.method == "getInitialFile" {
+          result(self?.initialOpenFile)
+          self?.initialOpenFile = nil
+        } else {
           result(FlutterMethodNotImplemented)
         }
       }

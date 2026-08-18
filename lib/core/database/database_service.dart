@@ -16,9 +16,10 @@ import 'package:path/path.dart' as p;
 /// Supports runtime database switching via [getDatabaseByPath] and
 /// [closeDatabase] for the dynamic dictionary selection system.
 class DatabaseService {
-  /// Internal cache of open [Database] instances, keyed by cache key
-  /// (either a filename or absolute path).
-  final Map<String, Database> _databases = {};
+  /// Static cache of open [Database] instances, keyed by cache key
+  /// (either a filename or absolute path). Shared across all instances
+  /// so that closeDatabase works regardless of which instance opened the DB.
+  static final Map<String, Database> _databases = {};
 
   /// Initializes the SQLite backend for the current platform.
   ///

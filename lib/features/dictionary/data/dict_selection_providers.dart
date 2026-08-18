@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/dict_storage_manager.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
@@ -130,6 +131,7 @@ Future<void> hydrateSelections(WidgetRef ref) async {
 
   final monoId = await storage.getSelectedMonolingualId();
   final biId = await storage.getSelectedBilingualId();
+  final unifiedId = await storage.getSelectedUnifiedId();
 
   if (monoId != null) {
     ref.read(selectedMonolingualIdProvider.notifier).state = monoId;
@@ -137,10 +139,13 @@ Future<void> hydrateSelections(WidgetRef ref) async {
   if (biId != null) {
     ref.read(selectedBilingualIdProvider.notifier).state = biId;
   }
+  if (unifiedId != null) {
+    ref.read(selectedUnifiedDictIdProvider.notifier).state = unifiedId;
+  }
 
   developer.log(
     'DictSelectionProviders: Hydrated selections — '
-    'mono=$monoId, bi=$biId',
+    'mono=$monoId, bi=$biId, unified=$unifiedId',
     name: 'DictSelection',
   );
 }
@@ -150,7 +155,9 @@ Future<void> saveSelections(WidgetRef ref) async {
   final storage = ref.read(dictStorageManagerProvider);
   final monoId = ref.read(selectedMonolingualIdProvider);
   final biId = ref.read(selectedBilingualIdProvider);
+  final unifiedId = ref.read(selectedUnifiedDictIdProvider);
   
   await storage.setSelectedMonolingualId(monoId == 'none' ? null : monoId);
   await storage.setSelectedBilingualId(biId == 'none' ? null : biId);
+  await storage.setSelectedUnifiedId(unifiedId == 'none' ? null : unifiedId);
 }

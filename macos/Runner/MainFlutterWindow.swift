@@ -19,7 +19,7 @@ class MainFlutterWindow: NSWindow {
     // Match window background color with the app's premium dark slate color (#121214)
     self.backgroundColor = NSColor(red: 0x12/255.0, green: 0x12/255.0, blue: 0x14/255.0, alpha: 1.0)
 
-    self.minSize = NSSize(width: 960, height: 600)
+    self.minSize = NSSize(width: 360, height: 480)
 
     super.awakeFromNib()
 

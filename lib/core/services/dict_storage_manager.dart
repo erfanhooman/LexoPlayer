@@ -24,6 +24,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lexo_player/core/database/database_service.dart';
 import 'package:lexo_player/core/models/manifest_models.dart';
 
 /// Tracks downloaded dictionaries and user selections.
@@ -43,6 +44,9 @@ class DictStorageManager {
 
   /// Key for the currently selected bilingual dictionary ID.
   static const String _selectedBiKey = 'selected_bilingual_id';
+
+  /// Key for the currently selected unified engine dictionary ID.
+  static const String _selectedUnifiedKey = 'selected_unified_id';
 
   // ---------------------------------------------------------------------------
   // Filesystem constants
@@ -69,30 +73,6 @@ class DictStorageManager {
         'Created dictionaries directory at ${dictsDir.path}.',
         name: 'DictStorageManager',
       );
-    }
-
-    // Auto-migrate from old Documents directory
-    try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final oldDictsDir = Directory(p.join(docsDir.path, _dictSubdir));
-      if (oldDictsDir.existsSync()) {
-        final files = oldDictsDir.listSync();
-        bool movedAny = false;
-        for (final entity in files) {
-          if (entity is File && entity.path.endsWith('.db')) {
-            final newPath = p.join(dictsDir.path, p.basename(entity.path));
-            if (!File(newPath).existsSync()) {
-              await entity.copy(newPath);
-              movedAny = true;
-            }
-          }
-        }
-        if (movedAny) {
-          developer.log('Migrated dictionary databases from Documents to ApplicationSupport.', name: 'DictStorageManager');
-        }
-      }
-    } catch (e) {
-      developer.log('Failed to migrate old dictionaries: $e', name: 'DictStorageManager');
     }
 
     return dictsDir.path;
@@ -200,36 +180,31 @@ class DictStorageManager {
   /// Returns the full list of dictionary IDs currently registered as
   /// downloaded.
   ///
-  /// **Note:** This reflects the shared_preferences state and may include
-  /// stale entries if files were removed externally.  Use [isDictDownloaded]
-  /// for a verified check.
+  /// Reads from SharedPreferences only. No filesystem scanning —
+  /// deletions are authoritative via [deleteDict].
   Future<List<String>> getDownloadedIds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final ids = prefs.getStringList(_prefsKey) ?? <String>[];
-      
-      // Auto-recover any existing .db files not in prefs
+
+      // Prune any IDs whose .db file no longer exists on disk
       final dictsPath = await getDictsDirectory();
-      final dir = Directory(dictsPath);
-      if (dir.existsSync()) {
-        final files = dir.listSync();
-        bool changed = false;
-        for (final entity in files) {
-          if (entity is File && entity.path.endsWith('.db')) {
-            final id = p.basenameWithoutExtension(entity.path);
-            if (!ids.contains(id)) {
-              ids.add(id);
-              changed = true;
-            }
-          }
-        }
-        if (changed) {
-          await prefs.setStringList(_prefsKey, ids);
-          developer.log('Auto-recovered orphaned dictionary files into downloaded list.', name: 'DictStorageManager');
+      final pruned = <String>[];
+      for (final id in ids) {
+        final filePath = p.join(dictsPath, '$id.db');
+        if (File(filePath).existsSync()) {
+          pruned.add(id);
         }
       }
-      
-      return ids;
+      if (pruned.length != ids.length) {
+        await prefs.setStringList(_prefsKey, pruned);
+        developer.log(
+          'Pruned ${ids.length - pruned.length} stale IDs from prefs.',
+          name: 'DictStorageManager',
+        );
+      }
+
+      return pruned;
     } catch (e) {
       developer.log(
         'Failed to read downloaded IDs: $e',
@@ -253,18 +228,30 @@ class DictStorageManager {
       final filePath = await getDictPath(dictId);
       final file = File(filePath);
 
+      // Force-close any open database handle so the OS releases the file lock
+      await DatabaseService().closeDatabase(filePath);
+
+      // Delete with retry in case the OS hasn't released the lock yet
+      for (int attempt = 0; attempt < 3; attempt++) {
+        if (!file.existsSync()) break;
+        try {
+          await file.delete();
+          break;
+        } catch (_) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      }
+
       if (file.existsSync()) {
-        await file.delete();
         developer.log(
-          'Deleted dictionary file at $filePath.',
+          'WARNING: Could not delete $filePath after retries.',
           name: 'DictStorageManager',
+          level: 1000,
         );
       } else {
         developer.log(
-          'Dictionary file for "$dictId" not found on disk – '
-          'cleaning prefs only.',
+          'Deleted dictionary file at $filePath.',
           name: 'DictStorageManager',
-          level: 900,
         );
       }
 
@@ -282,10 +269,6 @@ class DictStorageManager {
       });
       if (list.length != originalLength) {
         await prefs.setStringList(_manualDictsKey, list);
-        developer.log(
-          'Removed manual dictionary metadata for $dictId.',
-          name: 'DictStorageManager',
-        );
       }
 
       await markRemoved(dictId);
@@ -382,6 +365,51 @@ class DictStorageManager {
     } catch (e) {
       developer.log(
         'Failed to set selected bilingual ID: $e',
+        name: 'DictStorageManager',
+        level: 1000,
+      );
+      rethrow;
+    }
+  }
+
+  // ── Unified dictionary selection ────────────────────────────────────────
+
+  /// Returns the ID of the currently selected unified engine dictionary, or
+  /// `null` if none is selected.
+  Future<String?> getSelectedUnifiedId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_selectedUnifiedKey);
+    } catch (e) {
+      developer.log(
+        'Failed to read selected unified ID: $e',
+        name: 'DictStorageManager',
+        level: 1000,
+      );
+      return null;
+    }
+  }
+
+  /// Persists [id] as the currently selected unified engine dictionary.
+  ///
+  /// Pass `null` to clear the selection.
+  Future<void> setSelectedUnifiedId(String? id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (id == null) {
+        await prefs.remove(_selectedUnifiedKey);
+      } else {
+        await prefs.setString(_selectedUnifiedKey, id);
+      }
+
+      developer.log(
+        'Selected unified dictionary set to ${id ?? '(none)'}.',
+        name: 'DictStorageManager',
+      );
+    } catch (e) {
+      developer.log(
+        'Failed to set selected unified ID: $e',
         name: 'DictStorageManager',
         level: 1000,
       );

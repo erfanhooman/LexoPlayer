@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/core/models/subtitle_block.dart';
+import 'package:lexo_player/main.dart';
 
 /// GlobalKey for accessing the [VideoState] to trigger fullscreen natively.
 final videoKeyProvider = Provider.autoDispose<GlobalKey<VideoState>>((ref) {
@@ -274,12 +275,7 @@ class PlayerActions {
       developer.log('Failed to save previous video state: $e', name: 'PlayerActions');
     }
 
-    String mediaPathOrUri = uri;
-    if (uri.startsWith('file://')) {
-      try {
-        mediaPathOrUri = Uri.parse(uri).toFilePath();
-      } catch (_) {}
-    }
+    final mediaPathOrUri = cleanVideoPathOrUri(uri) ?? uri;
 
     // Load the saved position BEFORE opening the media to prevent race conditions
     // with the position stream listener.
@@ -345,7 +341,7 @@ class PlayerActions {
 
   static Duration _getEffectivePosition(Player player) {
     if (_pendingSeekPosition != null && _pendingSeekTime != null) {
-      if (DateTime.now().difference(_pendingSeekTime!) < const Duration(milliseconds: 500)) {
+      if (DateTime.now().difference(_pendingSeekTime!) < const Duration(milliseconds: 1200)) {
         return _pendingSeekPosition!;
       }
     }
@@ -398,20 +394,18 @@ class PlayerActions {
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
       final upcoming = blocks.where(
-        (b) => b.startTime > initialPos + const Duration(milliseconds: 200),
+        (b) => b.startTime > initialPos + const Duration(milliseconds: 150),
       );
 
       if (upcoming.isNotEmpty) {
         final target = upcoming.first.startTime;
-        if (target - initialPos <= fallbackDelta) {
-          _pendingSeekPosition = target;
-          _pendingSeekTime = DateTime.now();
-          await player.seek(target);
-          return;
-        }
+        _pendingSeekPosition = target;
+        _pendingSeekTime = DateTime.now();
+        await player.seek(target);
+        return;
       }
 
-      // No upcoming subtitle within 10s — fallback to time-based seek
+      // No upcoming subtitle remaining — fallback to time-based seek
       await seekRelative(player, fallbackDelta);
       return;
     }
@@ -420,17 +414,12 @@ class PlayerActions {
     try {
       final dynamic nativePlayer = player.platform;
       await nativePlayer.command(['sub-seek', '1']);
-      await Future.delayed(const Duration(milliseconds: 60));
+      await Future.delayed(const Duration(milliseconds: 40));
       final newPos = player.state.position;
 
-      // If MPV did not move or jumped too far, fallback to time seek
-      if ((newPos - initialPos).abs() < const Duration(milliseconds: 200) ||
-          (newPos - initialPos) > fallbackDelta) {
-        await seek(player, initialPos + fallbackDelta);
-      } else {
-        _pendingSeekPosition = newPos;
-        _pendingSeekTime = DateTime.now();
-      }
+      // Update pending seek position to new MPV position
+      _pendingSeekPosition = newPos;
+      _pendingSeekTime = DateTime.now();
     } catch (_) {
       await seekRelative(player, fallbackDelta);
     }
@@ -465,20 +454,18 @@ class PlayerActions {
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
       final prevBlocks = blocks.where(
-        (b) => b.startTime < initialPos - const Duration(milliseconds: 200),
+        (b) => b.startTime < initialPos - const Duration(milliseconds: 150),
       );
 
       if (prevBlocks.isNotEmpty) {
         final target = prevBlocks.last.startTime;
-        if (initialPos - target <= fallbackDelta.abs()) {
-          _pendingSeekPosition = target;
-          _pendingSeekTime = DateTime.now();
-          await player.seek(target);
-          return;
-        }
+        _pendingSeekPosition = target;
+        _pendingSeekTime = DateTime.now();
+        await player.seek(target);
+        return;
       }
 
-      // No previous subtitle within 10s — fallback to time-based seek
+      // No previous subtitle remaining — fallback to time-based seek
       await seekRelative(player, fallbackDelta);
       return;
     }
@@ -487,19 +474,12 @@ class PlayerActions {
     try {
       final dynamic nativePlayer = player.platform;
       await nativePlayer.command(['sub-seek', '-1']);
-      await Future.delayed(const Duration(milliseconds: 60));
+      await Future.delayed(const Duration(milliseconds: 40));
       final newPos = player.state.position;
 
-      // If MPV did not move or jumped too far, fallback to time seek
-      if ((initialPos - newPos).abs() < const Duration(milliseconds: 200) ||
-          (initialPos - newPos) > fallbackDelta.abs()) {
-        final target = initialPos + fallbackDelta;
-        final clamped = target < Duration.zero ? Duration.zero : target;
-        await seek(player, clamped);
-      } else {
-        _pendingSeekPosition = newPos;
-        _pendingSeekTime = DateTime.now();
-      }
+      // Update pending seek position to new MPV position
+      _pendingSeekPosition = newPos;
+      _pendingSeekTime = DateTime.now();
     } catch (_) {
       await seekRelative(player, fallbackDelta);
     }

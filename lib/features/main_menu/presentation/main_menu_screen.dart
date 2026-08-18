@@ -6,24 +6,59 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:lexo_player/core/widgets/glass_container.dart';
 import 'package:lexo_player/core/services/history_service.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
-import 'package:lexo_player/features/dictionary/presentation/download_hub_screen.dart';
+import 'package:lexo_player/features/dictionary/presentation/dictionary_panel.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
-import 'package:lexo_player/features/subtitles/presentation/subtitle_settings_overlay.dart';
+import 'package:lexo_player/features/settings/presentation/app_settings_overlay.dart';
 
+import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/theme/app_colors.dart';
+import 'package:lexo_player/main.dart';
 
 // ── Centralized Palette Tokens (Linked to AppColors.primary) ───────────────
 Color get kNeutralAccent => AppColors.primary;
 Color get kNeutralAccentDark => AppColors.primaryDark;
 Color get kNeutralAccentSoft => AppColors.primaryLight;
 
+/// Helper function to return Parastoo font for Persian and Mulish font for English.
+TextStyle appStyle({
+  required bool isPersian,
+  double fontSize = 14,
+  FontWeight fontWeight = FontWeight.normal,
+  Color color = Colors.white,
+  double? letterSpacing,
+  double? height,
+}) {
+  if (isPersian) {
+    return TextStyle(
+      fontFamily: 'Parastoo',
+      fontFamilyFallback: const ['Vazirmatn', 'IRANSans', 'Tahoma', 'sans-serif'],
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height ?? 1.3,
+    );
+  } else {
+    return GoogleFonts.mulish(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+    );
+  }
+}
+
 class MainMenuScreen extends ConsumerStatefulWidget {
-  const MainMenuScreen({super.key});
+  final String? initialVideoUri;
+  const MainMenuScreen({super.key, this.initialVideoUri});
 
   @override
   ConsumerState<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -35,12 +70,35 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   String _activeNav = 'Home';
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialVideoUri != null && widget.initialVideoUri!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openVideoScreen(widget.initialVideoUri!);
+      });
+    }
+
+    if (Platform.isMacOS) {
+      const MethodChannel('com.lexoplayer/open_file').setMethodCallHandler((call) async {
+        if (call.method == 'onFileOpened' && call.arguments is String) {
+          final rawPath = call.arguments as String;
+          final cleaned = cleanVideoPathOrUri(rawPath);
+          if (cleaned != null && mounted) {
+            _openVideoScreen(cleaned);
+          }
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _urlController.dispose();
     super.dispose();
   }
 
   void _openVideoScreen(String uri) {
+    if (!mounted) return;
     ref.read(recentVideosProvider.notifier).addMedia(uri);
 
     // Reset subtitles
@@ -49,10 +107,22 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       name: 'Off',
       isExternal: false,
     );
+    ref.read(selectedSecondarySubtitleProvider.notifier).state =
+        const SubtitleTrackOption(
+      id: 'none',
+      name: 'Off',
+      isExternal: false,
+    );
+    ref.read(secondarySubtitleListProvider.notifier).state = const [];
+    ref.read(activeSecondarySubtitleIndexProvider.notifier).state = null;
+    ref.read(isSecondarySubtitleVisibleProvider.notifier).state = true;
     ref.read(externalSubtitleOptionsProvider.notifier).state = const [];
     ref.read(isVideoLoadedProvider.notifier).state = true;
 
-    Navigator.of(context).push(
+    final nav = Navigator.of(context);
+    nav.popUntil((route) => route.isFirst);
+
+    nav.push(
       MaterialPageRoute(
         builder: (_) => VideoScreen(videoUri: uri),
       ),
@@ -106,74 +176,90 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF16151E).withValues(alpha: 0.9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.link_rounded, color: kNeutralAccent),
-              const SizedBox(width: 10),
-              const Text(
-                'Stream from Link',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: TextField(
-            controller: _urlController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Paste video stream URL (http, https, hls)...',
-              hintStyle: const TextStyle(color: Color(0xFF8E8D94)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: kNeutralAccent),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF8E8D94))),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final url = _urlController.text.trim();
-                if (url.isNotEmpty) {
-                  Navigator.of(context).pop();
-                  _openVideoScreen(url);
-                  _urlController.clear();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kNeutralAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Stream', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
+        return _StreamLinkModalDialog(
+          controller: _urlController,
+          onStream: (url) {
+            Navigator.of(context).pop();
+            _openVideoScreen(url);
+            _urlController.clear();
+          },
         );
       },
+    );
+  }
+
+  Widget _buildDashboard(List<String> recentVideos) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Featured Continue Watching Hero Card
+          _HeroContinueWatchingCard(
+            recentVideos: recentVideos,
+            onResume: (uri) => _openVideoScreen(uri),
+          ),
+
+          const SizedBox(height: 24),
+          _QuickActionsGrid(
+            onOpenFile: _pickLocalFile,
+            onOpenFolder: _pickLocalFolder,
+            onStreamLink: _showStreamUrlDialog,
+          ),
+
+          const SizedBox(height: 32),
+
+          // Recent Files Section Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                ref.watch(appLanguageProvider) == 'fa' ? 'فایل‌های اخیر' : 'Recent Files',
+                style: appStyle(
+                  isPersian: ref.watch(appLanguageProvider) == 'fa',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              if (recentVideos.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    ref.read(recentVideosProvider.notifier).clearHistory();
+                  },
+                  child: Text(
+                    ref.watch(appLanguageProvider) == 'fa' ? 'پاک‌سازی همه' : 'Clear All',
+                    style: appStyle(
+                      isPersian: ref.watch(appLanguageProvider) == 'fa',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: kNeutralAccent,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _RecentFilesList(
+            recentVideos: recentVideos,
+            onPlay: (uri) => _openVideoScreen(uri),
+            onDelete: (uri) {
+              ref.read(recentVideosProvider.notifier).removeMedia(uri);
+            },
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final recentVideos = ref.watch(recentVideosProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobileLayout = screenWidth < 880 || Platform.isAndroid || Platform.isIOS;
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
 
     return DropTarget(
       onDragEntered: (_) => setState(() => _isDraggingFile = true),
@@ -199,6 +285,46 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF0F0F12),
+        bottomNavigationBar: isMobileLayout
+            ? Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF141418),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFF25252B), width: 1.0),
+                  ),
+                ),
+                child: BottomNavigationBar(
+                  currentIndex: _activeNav == 'Dictionaries' ? 1 : 0,
+                  onTap: (index) {
+                    if (index == 0) {
+                      setState(() => _activeNav = 'Home');
+                    } else if (index == 1) {
+                      setState(() => _activeNav = 'Dictionaries');
+                    } else if (index == 2) {
+                      AppSettingsOverlay.show(context);
+                    }
+                  },
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  selectedItemColor: kNeutralAccent,
+                  unselectedItemColor: const Color(0xFF9E9D9F),
+                  items: [
+                    BottomNavigationBarItem(
+                      icon: const Icon(Icons.home_rounded),
+                      label: isPersian ? 'خانه' : 'Home',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: const Icon(Icons.menu_book_rounded),
+                      label: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: const Icon(Icons.tune_rounded),
+                      label: isPersian ? 'تنظیمات' : 'Settings',
+                    ),
+                  ],
+                ),
+              )
+            : null,
         body: Stack(
           children: [
             // ── Layer 1: Subtle Non-Glowing Canvas Background Light ────────────
@@ -224,26 +350,23 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             // ── Layer 2: Floating Glass UI ──────────────────────────────────────
             Row(
               children: [
-                // Floating Left Navigation Sidebar
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: _SidebarWidget(
-                    activeNav: _activeNav,
-                    onNavSelect: (nav) {
-                      setState(() => _activeNav = nav);
-                      if (nav == 'Dictionaries') {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const DownloadHubScreen()),
-                        );
-                      } else if (nav == 'Settings') {
-                        SubtitleSettingsOverlay.show(context);
-                      }
-                    },
-                    onOpenFile: _pickLocalFile,
-                    onOpenFolder: _pickLocalFolder,
-                    onStreamLink: _showStreamUrlDialog,
+                // Floating Left Navigation Sidebar (Desktop only)
+                if (!isMobileLayout)
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: _SidebarWidget(
+                      activeNav: _activeNav,
+                      onNavSelect: (nav) {
+                        setState(() => _activeNav = nav);
+                        if (nav == 'Settings') {
+                          AppSettingsOverlay.show(context);
+                        }
+                      },
+                      onOpenFile: _pickLocalFile,
+                      onOpenFolder: _pickLocalFolder,
+                      onStreamLink: _showStreamUrlDialog,
+                    ),
                   ),
-                ),
 
                 // Main Right Workspace
                 Expanded(
@@ -251,84 +374,15 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     children: [
                       // Header Navigation Bar
                       _MainHeaderWidget(
-                        onOpenSettings: () => SubtitleSettingsOverlay.show(context),
+                        activeNav: _activeNav,
+                        onOpenSettings: () => AppSettingsOverlay.show(context),
                       ),
 
                       // Main Scrollable Dashboard Area
                       Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 0, 24, 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Featured Continue Watching Hero Card
-                              _HeroContinueWatchingCard(
-                                recentVideos: recentVideos,
-                                onResume: (uri) => _openVideoScreen(uri),
-                              ),
-
-                              const SizedBox(height: 28),
-
-                              // Quick Actions Section Header
-                              const Text(
-                                'Quick Actions',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _QuickActionsGrid(
-                                onOpenFile: _pickLocalFile,
-                                onOpenFolder: _pickLocalFolder,
-                                onStreamLink: _showStreamUrlDialog,
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // Recent Files Section Header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Recent Files',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                  if (recentVideos.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        ref.read(recentVideosProvider.notifier).clearHistory();
-                                      },
-                                      child: Text(
-                                        'Clear All',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: kNeutralAccent,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _RecentFilesList(
-                                recentVideos: recentVideos,
-                                onPlay: (uri) => _openVideoScreen(uri),
-                                onDelete: (uri) {
-                                  ref.read(recentVideosProvider.notifier).removeMedia(uri);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                        child: _activeNav == 'Dictionaries'
+                            ? const DictionaryPanel()
+                            : _buildDashboard(recentVideos),
                       ),
                     ],
                   ),
@@ -382,9 +436,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-                            const Text(
-                              'Drop Video File to Play',
-                              style: TextStyle(
+                            Text(
+                              ref.watch(appLanguageProvider) == 'fa'
+                                  ? 'فایل ویدیویی را اینجا رها کنید'
+                                  : 'Drop Video File to Play',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -397,9 +453,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                                 color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text(
-                                'Supports MP4, MKV, AVI, WEBM, MOV, FLV',
-                                style: TextStyle(
+                              child: Text(
+                                ref.watch(appLanguageProvider) == 'fa'
+                                    ? 'پشتیبانی از فرمت‌های MP4, MKV, AVI, WEBM, MOV, FLV'
+                                    : 'Supports MP4, MKV, AVI, WEBM, MOV, FLV',
+                                style: const TextStyle(
                                   color: Color(0xFF9E9D9F),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
@@ -424,7 +482,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
 // 1. Floating Sidebar Navigation Widget
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _SidebarWidget extends StatelessWidget {
+class _SidebarWidget extends ConsumerWidget {
   final String activeNav;
   final ValueChanged<String> onNavSelect;
   final VoidCallback onOpenFile;
@@ -440,7 +498,10 @@ class _SidebarWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(appLanguageProvider);
+    final isPersian = lang == 'fa';
+
     return GlassContainer(
       width: 250,
       borderRadius: BorderRadius.circular(24),
@@ -497,7 +558,7 @@ class _SidebarWidget extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Primary Navigation Links
+          // Primary Navigation Links (Only Home and Dictionaries)
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -505,129 +566,27 @@ class _SidebarWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SidebarNavItem(
-                    title: 'Home',
+                    title: isPersian ? 'خانه' : 'Home',
                     icon: Icons.home_rounded,
                     isActive: activeNav == 'Home',
                     onTap: () => onNavSelect('Home'),
                   ),
+                  const SizedBox(height: 4),
                   _SidebarNavItem(
-                    title: 'Dictionaries',
+                    title: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
                     icon: Icons.menu_book_rounded,
                     isActive: activeNav == 'Dictionaries',
                     onTap: () => onNavSelect('Dictionaries'),
                   ),
+                  const SizedBox(height: 4),
                   _SidebarNavItem(
-                    title: 'Library',
-                    icon: Icons.folder_copy_outlined,
-                    isActive: activeNav == 'Library',
-                    onTap: () => onNavSelect('Library'),
-                  ),
-                  _SidebarNavItem(
-                    title: 'Continue Watching',
-                    icon: Icons.access_time_rounded,
-                    isActive: activeNav == 'Continue Watching',
-                    onTap: () => onNavSelect('Continue Watching'),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Section: PLAYBACK
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Text(
-                      'PLAYBACK',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: kNeutralAccent,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  _SidebarSubItem(
-                    title: 'Open File',
-                    icon: Icons.folder_open_outlined,
-                    onTap: onOpenFile,
-                  ),
-                  _SidebarSubItem(
-                    title: 'Open Folder',
-                    icon: Icons.folder_outlined,
-                    onTap: onOpenFolder,
-                  ),
-                  _SidebarSubItem(
-                    title: 'Stream from Link',
-                    icon: Icons.link_rounded,
-                    onTap: onStreamLink,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Section: TOOLS
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Text(
-                      'TOOLS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: kNeutralAccent,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  _SidebarSubItem(
-                    title: 'Settings',
-                    icon: Icons.settings_outlined,
+                    title: isPersian ? 'تنظیمات' : 'Settings',
+                    icon: Icons.tune_rounded,
+                    isActive: activeNav == 'Settings',
                     onTap: () => onNavSelect('Settings'),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // User Profile Bar at bottom
-          Container(
-            margin: const EdgeInsets.all(14),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: kNeutralAccent,
-                  child: const Text(
-                    'E',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'erfanhooman',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(
-                  Icons.unfold_more_rounded,
-                  color: Color(0xFF9E9D9F),
-                  size: 18,
-                ),
-              ],
             ),
           ),
         ],
@@ -743,77 +702,74 @@ class _SidebarSubItem extends StatelessWidget {
 // 2. Main Header Bar
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _MainHeaderWidget extends StatelessWidget {
+class _MainHeaderWidget extends ConsumerWidget {
+  final String activeNav;
   final VoidCallback onOpenSettings;
 
   const _MainHeaderWidget({
+    required this.activeNav,
     required this.onOpenSettings,
   });
 
+  String _getTimeBasedGreeting(bool isPersian) {
+    final hour = DateTime.now().hour;
+    if (isPersian) {
+      if (hour >= 5 && hour < 12) return 'صبح بخیر';
+      if (hour >= 12 && hour < 17) return 'ظهر بخیر';
+      if (hour >= 17 && hour < 21) return 'عصر بخیر';
+      return 'شب بخیر';
+    } else {
+      if (hour >= 5 && hour < 12) return 'Good morning';
+      if (hour >= 12 && hour < 17) return 'Good afternoon';
+      if (hour >= 17 && hour < 21) return 'Good evening';
+      return 'Good night';
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(appLanguageProvider);
+    final isPersian = lang == 'fa';
+
     return DragToMoveArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 24, 24),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Greeting & Subtitle
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Good evening, erfanhooman',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+            // Greeting & Subtitle (hidden on Dictionaries page)
+            if (activeNav != 'Dictionaries')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getTimeBasedGreeting(isPersian),
+                    style: appStyle(
+                      isPersian: isPersian,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: isPersian ? 0.0 : -0.5,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "Let's continue watching",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9E9D9F),
+                  const SizedBox(height: 4),
+                  Text(
+                    isPersian ? 'ادامه تماشا' : "Let's continue watching",
+                    style: appStyle(
+                      isPersian: isPersian,
+                      fontSize: 14,
+                      color: const Color(0xFF9E9D9F),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+
+            const Spacer(),
 
             // Header Right Action Controls
             Row(
               children: [
-                // Language Selector Pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'EN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF9E9D9F),
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
+                // Inline Dark Glass Language Dropdown Button
+                const _LanguageDropdownButton(),
 
                 const SizedBox(width: 12),
 
@@ -887,7 +843,7 @@ class _MainHeaderWidget extends StatelessWidget {
 // 3. Featured Hero Continue Watching Banner
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _HeroContinueWatchingCard extends StatelessWidget {
+class _HeroContinueWatchingCard extends ConsumerWidget {
   final List<String> recentVideos;
   final ValueChanged<String> onResume;
 
@@ -897,7 +853,8 @@ class _HeroContinueWatchingCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final String heroUri = recentVideos.isNotEmpty
         ? recentVideos.first
         : '/Users/erfanhooman/Videos/House.of.the.Dragon.S02E05.mp4';
@@ -974,11 +931,12 @@ class _HeroContinueWatchingCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        '42 min left',
-                        style: TextStyle(
+                      Text(
+                        isPersian ? '۴۲ دقیقه باقی‌مانده' : '42 min left',
+                        style: appStyle(
+                          isPersian: isPersian,
                           fontSize: 14,
-                          color: Color(0xFF9E9D9F),
+                          color: const Color(0xFF9E9D9F),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1022,16 +980,17 @@ class _HeroContinueWatchingCard extends StatelessWidget {
                               child: InkWell(
                                 onTap: () => onResume(heroUri),
                                 borderRadius: BorderRadius.circular(20),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                                      SizedBox(width: 6),
+                                      const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                                      const SizedBox(width: 6),
                                       Text(
-                                        'Resume',
-                                        style: TextStyle(
+                                        isPersian ? 'ادامه پخش' : 'Resume',
+                                        style: appStyle(
+                                          isPersian: isPersian,
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
@@ -1040,32 +999,6 @@ class _HeroContinueWatchingCard extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          // Translucent Details Button
-                          OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.info_outline_rounded, size: 18),
-                            label: const Text(
-                              'Details',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: Colors.white.withValues(alpha: 0.08),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
                           ),
@@ -1238,7 +1171,7 @@ class _HeroCardGlowPainter extends CustomPainter {
 // 4. Quick Actions Grid
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _QuickActionsGrid extends StatelessWidget {
+class _QuickActionsGrid extends ConsumerWidget {
   final VoidCallback onOpenFile;
   final VoidCallback onOpenFolder;
   final VoidCallback onStreamLink;
@@ -1250,13 +1183,43 @@ class _QuickActionsGrid extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final isNarrow = MediaQuery.of(context).size.width < 600;
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          _QuickActionCard(
+            title: isPersian ? 'باز کردن فایل' : 'Open File',
+            subtitle: isPersian ? 'انتخاب فایل ویدیویی' : 'Play a video file',
+            icon: Icons.folder_open_rounded,
+            onTap: onOpenFile,
+          ),
+          const SizedBox(height: 12),
+          _QuickActionCard(
+            title: isPersian ? 'باز کردن پوشه' : 'Open Folder',
+            subtitle: isPersian ? 'انتخاب پوشه ویدیوها' : 'Play from a folder',
+            icon: Icons.folder_rounded,
+            onTap: onOpenFolder,
+          ),
+          const SizedBox(height: 12),
+          _QuickActionCard(
+            title: isPersian ? 'پخش آنلاین' : 'Stream from Link',
+            subtitle: isPersian ? 'پخش از آدرس اینترنتی' : 'Play from a URL',
+            icon: Icons.link_rounded,
+            onTap: onStreamLink,
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           child: _QuickActionCard(
-            title: 'Open File',
-            subtitle: 'Play a video file',
+            title: isPersian ? 'باز کردن فایل' : 'Open File',
+            subtitle: isPersian ? 'انتخاب فایل ویدیویی' : 'Play a video file',
             icon: Icons.folder_open_rounded,
             onTap: onOpenFile,
           ),
@@ -1264,8 +1227,8 @@ class _QuickActionsGrid extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: _QuickActionCard(
-            title: 'Open Folder',
-            subtitle: 'Play from a folder',
+            title: isPersian ? 'باز کردن پوشه' : 'Open Folder',
+            subtitle: isPersian ? 'انتخاب پوشه ویدیوها' : 'Play from a folder',
             icon: Icons.folder_rounded,
             onTap: onOpenFolder,
           ),
@@ -1273,8 +1236,8 @@ class _QuickActionsGrid extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: _QuickActionCard(
-            title: 'Stream from Link',
-            subtitle: 'Play from a URL',
+            title: isPersian ? 'پخش آنلاین' : 'Stream from Link',
+            subtitle: isPersian ? 'پخش از آدرس اینترنتی' : 'Play from a URL',
             icon: Icons.link_rounded,
             onTap: onStreamLink,
           ),
@@ -1284,7 +1247,7 @@ class _QuickActionsGrid extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
+class _QuickActionCard extends ConsumerWidget {
   final String title;
   final String subtitle;
   final IconData icon;
@@ -1298,7 +1261,9 @@ class _QuickActionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1338,7 +1303,8 @@ class _QuickActionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: appStyle(
+                        isPersian: isPersian,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -1347,17 +1313,18 @@ class _QuickActionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: appStyle(
+                        isPersian: isPersian,
                         fontSize: 12,
-                        color: Color(0xFF9E9D9F),
+                        color: const Color(0xFF9E9D9F),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF75747C),
+              Icon(
+                isPersian ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                color: const Color(0xFF75747C),
                 size: 20,
               ),
             ],
@@ -1372,7 +1339,7 @@ class _QuickActionCard extends StatelessWidget {
 // 5. Recent Files List
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _RecentFilesList extends StatelessWidget {
+class _RecentFilesList extends ConsumerWidget {
   final List<String> recentVideos;
   final ValueChanged<String> onPlay;
   final ValueChanged<String> onDelete;
@@ -1384,13 +1351,14 @@ class _RecentFilesList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
     if (recentVideos.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          'No recent files',
-          style: TextStyle(
+          isPersian ? 'هیچ فایل اخیری وجود ندارد' : 'No recent files',
+          style: const TextStyle(
             color: Color(0xFF8E8D94),
             fontSize: 14,
             fontWeight: FontWeight.w400,
@@ -1519,12 +1487,321 @@ class _RecentFilesList extends StatelessWidget {
   }
 
   String _generateMockSpecs(String uri) {
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return 'STREAM • LIVE';
+    }
     final lower = uri.toLowerCase();
     String ext = 'MKV';
     if (lower.endsWith('.mp4')) ext = 'MP4';
     if (lower.endsWith('.avi')) ext = 'AVI';
     if (lower.endsWith('.mov')) ext = 'MOV';
     return '$ext • 1080p • 1.2 GB';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Stream from Link Modal Dialog (Fixed width, Glassmorphic, Brand aligned)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _StreamLinkModalDialog extends ConsumerStatefulWidget {
+  final TextEditingController controller;
+  final Function(String url) onStream;
+
+  const _StreamLinkModalDialog({
+    required this.controller,
+    required this.onStream,
+  });
+
+  @override
+  ConsumerState<_StreamLinkModalDialog> createState() => _StreamLinkModalDialogState();
+}
+
+class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          decoration: BoxDecoration(
+            color: const Color(0xE6141416),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 36,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header Row ──────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: kNeutralAccent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: kNeutralAccent.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.link_rounded,
+                            color: kNeutralAccent,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          isPersian ? 'پخش آنلاین ویدیو' : 'Stream Video from Link',
+                          style: appStyle(
+                            isPersian: isPersian,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF9E9D9F),
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFF2C2C35), height: 1),
+                const SizedBox(height: 16),
+
+                // ── Instruction Subtitle ────────────────────────────────
+                Text(
+                  isPersian
+                      ? 'آدرس اینترنتی مستقیم فایل یا استریم (HTTP / HTTPS / HLS) را وارد کنید:'
+                      : 'Enter a direct HTTP, HTTPS, or HLS video stream URL:',
+                  style: appStyle(
+                    isPersian: isPersian,
+                    fontSize: 13,
+                    color: const Color(0xFF9E9D9F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ── Text Input Field (Fixed size, Clipboard Paste & Clear) ──
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B1923),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF2C2C35), width: 1),
+                  ),
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: widget.controller,
+                    builder: (context, value, child) {
+                      return TextField(
+                        controller: widget.controller,
+                        style: appStyle(
+                          isPersian: false,
+                          fontSize: 13,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: isPersian
+                              ? 'https://example.com/video.mp4 یا .m3u8...'
+                              : 'https://example.com/video.mp4 or .m3u8...',
+                          hintStyle: appStyle(
+                            isPersian: isPersian,
+                            fontSize: 12,
+                            color: const Color(0xFF6E6D74),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.language_rounded,
+                            color: kNeutralAccent,
+                            size: 18,
+                          ),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (value.text.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.cancel_rounded,
+                                    color: Color(0xFF8E8D94),
+                                    size: 18,
+                                  ),
+                                  onPressed: () => widget.controller.clear(),
+                                ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.content_paste_rounded,
+                                  color: Color(0xFF8E8D94),
+                                  size: 18,
+                                ),
+                                tooltip: isPersian ? 'جای‌گذاری از حافظه' : 'Paste from Clipboard',
+                                onPressed: () async {
+                                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                  if (data != null && data.text != null) {
+                                    widget.controller.text = data.text!.trim();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ── Format Badges Row ──────────────────────────────────
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildProtocolBadge('HTTP / HTTPS'),
+                    _buildProtocolBadge('HLS (.m3u8)'),
+                    _buildProtocolBadge('MP4 / MKV'),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Action Buttons ──────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Cancel button
+                    OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF9E9D9F),
+                        side: const BorderSide(color: Color(0xFF2C2C35)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        isPersian ? 'انصراف' : 'Cancel',
+                        style: appStyle(
+                          isPersian: isPersian,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF9E9D9F),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    // Stream button
+                    GestureDetector(
+                      onTap: () {
+                        final url = widget.controller.text.trim();
+                        if (url.isNotEmpty) {
+                          widget.onStream(url);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [kNeutralAccent, kNeutralAccentDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kNeutralAccent.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isPersian ? 'شروع پخش' : 'Start Streaming',
+                              style: appStyle(
+                                isPersian: isPersian,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProtocolBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF8A8A93),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }
 
@@ -1591,4 +1868,237 @@ String formatMediaTitle(String uri) {
   title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
 
   return title.isNotEmpty ? title : fileName;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 7. Inline Language Dropdown Button & Overlay Widget
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _LanguageDropdownButton extends ConsumerStatefulWidget {
+  const _LanguageDropdownButton();
+
+  @override
+  ConsumerState<_LanguageDropdownButton> createState() => _LanguageDropdownButtonState();
+}
+
+class _LanguageDropdownButtonState extends ConsumerState<_LanguageDropdownButton> {
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  bool _isOpen = false;
+
+  void _toggleDropdown() {
+    if (_isOpen) {
+      _closeDropdown();
+    } else {
+      _openDropdown();
+    }
+  }
+
+  void _openDropdown() {
+    _overlayEntry = _createOverlayEntry();
+    Overlay.of(context).insert(_overlayEntry!);
+    setState(() {
+      _isOpen = true;
+    });
+  }
+
+  void _closeDropdown() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    if (mounted) {
+      setState(() {
+        _isOpen = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    super.dispose();
+  }
+
+  OverlayEntry _createOverlayEntry() {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final isPersian = ref.read(appLanguageProvider) == 'fa';
+
+    return OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Dismiss backdrop tap listener
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _closeDropdown,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            width: 170,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: Offset(isPersian ? 0 : size.width - 170, size.height + 6),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B1923),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF2C2C35),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _DropdownItem(
+                        flag: '🇺🇸',
+                        label: 'EN (English)',
+                        isSelected: !isPersian,
+                        onTap: () {
+                          ref.read(appLanguageProvider.notifier).state = 'en';
+                          _closeDropdown();
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      _DropdownItem(
+                        flag: '🇮🇷',
+                        label: 'FA (فارسی)',
+                        isSelected: isPersian,
+                        onTap: () {
+                          ref.read(appLanguageProvider.notifier).state = 'fa';
+                          _closeDropdown();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: GestureDetector(
+        onTap: _toggleDropdown,
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: _isOpen ? kNeutralAccent.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(19),
+            border: Border.all(
+              color: _isOpen ? kNeutralAccent.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isPersian ? 'فارسی' : 'EN',
+                style: appStyle(
+                  isPersian: isPersian,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                _isOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                color: _isOpen ? kNeutralAccent : const Color(0xFF9E9D9F),
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownItem extends StatefulWidget {
+  final String flag;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DropdownItem({
+    required this.flag,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_DropdownItem> createState() => _DropdownItemState();
+}
+
+class _DropdownItemState extends State<_DropdownItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? kNeutralAccent.withValues(alpha: 0.15)
+                : (_isHovered ? Colors.white.withValues(alpha: 0.06) : Colors.transparent),
+            borderRadius: BorderRadius.circular(10),
+            border: widget.isSelected
+                ? Border.all(color: kNeutralAccent.withValues(alpha: 0.35), width: 1)
+                : Border.all(color: Colors.transparent, width: 1),
+          ),
+          child: Row(
+            children: [
+              Text(widget.flag, style: const TextStyle(fontSize: 15)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: widget.isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (widget.isSelected)
+                Icon(
+                  Icons.check_rounded,
+                  color: kNeutralAccent,
+                  size: 16,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

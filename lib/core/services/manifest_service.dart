@@ -149,12 +149,34 @@ class ManifestService {
       return cached;
     }
 
-    // Neither network nor cache is available.
-    throw Exception(
-      'Unable to load the dictionary manifest. '
-      'Please check your internet connection and try again.',
+    // Neither network nor cache is available — return default embedded manifest.
+    developer.log(
+      'Using default embedded manifest fallback.',
+      name: 'ManifestService',
     );
+    return defaultManifest;
   }
+
+  /// Default embedded manifest fallback containing the unified dictionary.
+  static final ManifestData defaultManifest = ManifestData(
+    lastUpdated: DateTime(2026, 8, 18),
+    version: 2,
+    monolingual: const [],
+    bilingual: const [],
+    unified: const [
+      DictionaryEntry(
+        id: 'lexo_unified_en_fa',
+        sourceLanguage: 'en',
+        nativeLanguage: 'fa',
+        displayName: 'LexoEngine Unified Dictionary (EN-FA)',
+        description: 'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.',
+        remoteUrl: 'https://erfanhooman.github.io/LexoPlayer/dictionaries/dictionary.db.zip',
+        fileSizeBytes: 239221480,
+        md5Checksum: 'd862fb14c5477f9900b0f4535d50500c',
+        type: DictionaryType.unified,
+      ),
+    ],
+  );
 
   /// Loads a previously cached manifest from disk.
   ///

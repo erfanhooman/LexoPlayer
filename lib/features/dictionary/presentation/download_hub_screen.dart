@@ -297,6 +297,17 @@ class _DownloadMarketplace extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (manifest.unified.isNotEmpty) ...[
+              Text(
+                'Unified AI Dictionary',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              for (final entry in manifest.unified) _MarketItem(entry: entry),
+              const SizedBox(height: 32),
+            ],
             if (manifest.monolingual.isNotEmpty) ...[
               Text(
                 'Monolingual',

@@ -1,10 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lexo_player/core/engine/engine_providers.dart';
 
 /// A widget that parses comma/newline-separated bilingual translation text
 /// into individual interactive chips/pills, hiding them behind a spoiler blur
 /// effect until clicked by the user.
-class SpoilerTranslationWidget extends StatefulWidget {
+class SpoilerTranslationWidget extends ConsumerStatefulWidget {
   /// The raw translation string (e.g. comma-separated words/phrases).
   final String rawTranslation;
 
@@ -22,10 +24,10 @@ class SpoilerTranslationWidget extends StatefulWidget {
   });
 
   @override
-  State<SpoilerTranslationWidget> createState() => _SpoilerTranslationWidgetState();
+  ConsumerState<SpoilerTranslationWidget> createState() => _SpoilerTranslationWidgetState();
 }
 
-class _SpoilerTranslationWidgetState extends State<SpoilerTranslationWidget> {
+class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWidget> {
   final Set<int> _revealedIndices = {};
   bool _revealAll = false;
   bool _isExpanded = false;
@@ -41,6 +43,7 @@ class _SpoilerTranslationWidgetState extends State<SpoilerTranslationWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final items = _parseItems(widget.rawTranslation);
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -85,7 +88,9 @@ class _SpoilerTranslationWidgetState extends State<SpoilerTranslationWidget> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _revealAll ? 'Hide translation' : 'Reveal translation',
+                      _revealAll
+                          ? (isPersian ? 'مخفی کردن ترجمه' : 'Hide translation')
+                          : (isPersian ? 'نمایش ترجمه' : 'Reveal translation'),
                       style: const TextStyle(
                         color: Color(0xFFFF5500),
                         fontSize: 11,
@@ -134,7 +139,7 @@ class _SpoilerTranslationWidgetState extends State<SpoilerTranslationWidget> {
                       border: Border.all(color: const Color(0xFF3F3F4C)),
                     ),
                     child: Text(
-                      '+$remainingCount more',
+                      isPersian ? '+$remainingCount مورد دیگر' : '+$remainingCount more',
                       style: const TextStyle(
                         color: Color(0xFFA1A1AA),
                         fontSize: 11.5,
@@ -153,9 +158,9 @@ class _SpoilerTranslationWidgetState extends State<SpoilerTranslationWidget> {
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: const Color(0xFF3F3F4C)),
                     ),
-                    child: const Text(
-                      'Show less',
-                      style: TextStyle(
+                    child: Text(
+                      isPersian ? 'نمایش کمتر' : 'Show less',
+                      style: const TextStyle(
                         color: Color(0xFFA1A1AA),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,

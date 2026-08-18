@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/features/video_player/presentation/control_bar.dart';
@@ -18,10 +19,11 @@ import 'package:lexo_player/features/video_player/presentation/volume_hud_overla
 import 'package:lexo_player/features/subtitles/presentation/interactive_subtitle_overlay.dart';
 import 'package:lexo_player/features/subtitles/logic/subtitle_parser.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
-import 'package:lexo_player/features/dictionary/presentation/dual_definition_popup.dart';
-import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
+import 'package:lexo_player/features/dictionary/presentation/engine_definition_popup.dart';
 import 'package:lexo_player/features/main_menu/presentation/main_menu_screen.dart';
+import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/widgets/glass_container.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 
 /// The main screen housing the video player.
 class VideoScreen extends ConsumerStatefulWidget {
@@ -47,16 +49,35 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
 
   @override
   void dispose() {
-    final player = ref.read(playerProvider);
-    player.pause();
-    PlayerActions.stop(player);
-    Future.microtask(() {
+    // Pause and stop the player before the widget tree is torn down.
+    // Use ref.read synchronously — microtask runs too late.
+    try {
+      final player = ref.read(playerProvider);
+      player.pause();
+      PlayerActions.stop(player);
       ref.read(isVideoLoadedProvider.notifier).state = false;
-    });
+    } catch (_) {
+      // Provider may already be disposed — ignore.
+    }
     super.dispose();
   }
 
-  Future<void> _loadInitialVideo(String uri) async {
+  Future<void> _loadInitialVideo(String rawUri) async {
+    String uri = rawUri.trim();
+    if (uri.startsWith('file://')) {
+      try {
+        uri = Uri.parse(uri).toFilePath();
+      } catch (_) {
+        try {
+          uri = Uri.decodeFull(uri.replaceFirst('file://', ''));
+        } catch (_) {}
+      }
+    } else {
+      try {
+        uri = Uri.decodeFull(uri);
+      } catch (_) {}
+    }
+
     try {
       // Reset subtitle selection when loading media
       ref.read(selectedSubtitleProvider.notifier).state = const SubtitleTrackOption(
@@ -64,6 +85,15 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
         name: 'Off',
         isExternal: false,
       );
+      ref.read(selectedSecondarySubtitleProvider.notifier).state =
+          const SubtitleTrackOption(
+        id: 'none',
+        name: 'Off',
+        isExternal: false,
+      );
+      ref.read(secondarySubtitleListProvider.notifier).state = const [];
+      ref.read(activeSecondarySubtitleIndexProvider.notifier).state = null;
+      ref.read(isSecondarySubtitleVisibleProvider.notifier).state = true;
       ref.read(externalSubtitleOptionsProvider.notifier).state = const [];
 
       final player = ref.read(playerProvider);
@@ -87,43 +117,86 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
 
   Future<void> _autoDiscoverNearbySubtitles(String videoUri) async {
     try {
-      final file = File(videoUri);
-      if (!await file.exists()) return;
-
-      final dir = file.parent;
+      String localPath = videoUri;
+      if (localPath.startsWith('file://')) {
+        try {
+          localPath = Uri.parse(localPath).toFilePath();
+        } catch (_) {
+          try {
+            localPath = Uri.decodeFull(localPath.replaceFirst('file://', ''));
+          } catch (_) {}
+        }
+      }
+      final file = File(localPath);
       final videoNameWithoutExt = path.basenameWithoutExtension(file.path).toLowerCase();
 
-      final entities = await dir.list().toList();
-      final externalOptions = <SubtitleTrackOption>[];
+      final searchDirs = <Directory>[];
+      if (await file.exists()) {
+        searchDirs.add(file.parent);
+      }
 
-      for (final entity in entities) {
-        if (entity is File) {
-          final ext = path.extension(entity.path).toLowerCase();
-          if (ext == '.srt' || ext == '.vtt') {
-            final subName = path.basenameWithoutExtension(entity.path).toLowerCase();
-            if (subName.startsWith(videoNameWithoutExt)) {
-              try {
-                final blocks = await SubtitleParser.parseFile(entity.path);
-                if (blocks.isNotEmpty) {
-                  final filename = path.basename(entity.path);
-                  externalOptions.add(
-                    SubtitleTrackOption(
-                      id: 'external_${entity.path.hashCode}',
-                      name: '$filename (Auto)',
-                      isExternal: true,
-                      filePath: entity.path,
-                      externalBlocks: blocks,
-                    ),
-                  );
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        searchDirs.add(Directory(path.join(appDir.path, 'LexoPlayer', 'Subtitles')));
+      } catch (_) {}
+
+      try {
+        final home = Platform.environment['HOME'];
+        if (home != null && home.isNotEmpty) {
+          searchDirs.add(Directory(path.join(home, 'Documents', 'LexoPlayer', 'Subtitles')));
+        }
+      } catch (_) {}
+
+      final externalOptions = <SubtitleTrackOption>[];
+      final seenPaths = <String>{};
+
+      for (final searchDir in searchDirs) {
+        if (!await searchDir.exists()) continue;
+        try {
+          final entities = await searchDir.list().toList();
+          for (final entity in entities) {
+            if (entity is File && !seenPaths.contains(entity.path)) {
+              if (SubtitleParser.isSupportedSubtitleFile(entity.path)) {
+                final subNameWithoutExt =
+                    path.basenameWithoutExtension(entity.path).toLowerCase();
+                if (subNameWithoutExt.contains(videoNameWithoutExt) ||
+                    videoNameWithoutExt.contains(subNameWithoutExt) ||
+                    subNameWithoutExt.replaceAll('_', '.').contains(videoNameWithoutExt.replaceAll('_', '.')) ||
+                    videoNameWithoutExt.replaceAll('_', '.').contains(subNameWithoutExt.replaceAll('_', '.'))) {
+                  seenPaths.add(entity.path);
+                  try {
+                    final blocks = await SubtitleParser.parseFile(entity.path);
+                    if (blocks.isNotEmpty) {
+                      final filename = path.basename(entity.path);
+                      externalOptions.add(
+                        SubtitleTrackOption(
+                          id: 'external_${entity.path.hashCode}',
+                          name: filename,
+                          isExternal: true,
+                          filePath: entity.path,
+                          externalBlocks: blocks,
+                        ),
+                      );
+                    }
+                  } catch (_) {}
                 }
-              } catch (_) {}
+              }
             }
           }
-        }
+        } catch (_) {}
       }
 
       if (externalOptions.isNotEmpty && mounted) {
         ref.read(externalSubtitleOptionsProvider.notifier).state = externalOptions;
+      }
+
+      if (mounted) {
+        final available = ref.read(availableSubtitlesProvider);
+        await restoreMediaSubtitleSelection(
+          videoUri: videoUri,
+          ref: ref,
+          availableOptions: available,
+        );
       }
     } catch (_) {}
   }
@@ -164,12 +237,24 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['srt', 'vtt'],
+        allowedExtensions: ['srt', 'vtt', 'ass', 'ssa'],
         dialogTitle: 'Select Subtitle File',
       );
       if (result != null && result.files.single.path != null) {
         final path = result.files.single.path!;
         final blocks = await SubtitleParser.parseFile(path);
+        if (blocks.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('No subtitle cues found in this file.'),
+                backgroundColor: Colors.amber.shade900,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
         final filename = path.split(Platform.pathSeparator).last;
         final newOption = SubtitleTrackOption(
           id: 'external_${path.hashCode}',
@@ -206,7 +291,6 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
   @override
   Widget build(BuildContext context) {
     final videoController = ref.watch(videoControllerProvider);
-    final theme = Theme.of(context);
     return DropTarget(
       onDragEntered: (_) => setState(() => _isDraggingFile = true),
       onDragExited: (_) => setState(() => _isDraggingFile = false),
@@ -256,28 +340,28 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                   child: Container(
-                    color: theme.colorScheme.surface.withValues(alpha: 0.88),
+                    color: Colors.black.withValues(alpha: 0.85),
                     child: Center(
                       child: Container(
                         margin: const EdgeInsets.all(32),
                         constraints: const BoxConstraints(maxWidth: 520, maxHeight: 320),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.9),
+                          color: const Color(0xFF1B1923),
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                            width: 2,
+                            color: AppColors.primary.withValues(alpha: 0.6),
+                            width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.25),
-                              blurRadius: 40,
-                              spreadRadius: 4,
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              blurRadius: 36,
+                              spreadRadius: 2,
                             ),
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.6),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
                             ),
                           ],
                         ),
@@ -287,41 +371,56 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                color: AppColors.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                                  color: AppColors.primary.withValues(alpha: 0.35),
                                   width: 1.5,
                                 ),
                               ),
                               child: Icon(
                                 Icons.video_library_rounded,
                                 size: 48,
-                                color: theme.colorScheme.primary,
+                                color: AppColors.primary,
                               ),
                             ),
                             const SizedBox(height: 24),
-                            Text(
-                              'Drop Video File to Play',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final isPersian = ref.watch(appLanguageProvider) == 'fa';
+                                return Text(
+                                  isPersian ? 'فایل ویدیویی را اینجا رها کنید' : 'Drop Video File to Play',
+                                  style: appStyle(
+                                    isPersian: isPersian,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 10),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                                color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Text(
-                                'Supports MP4, MKV, AVI, WEBM, MOV',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: Consumer(
+                                builder: (context, ref, child) {
+                                  final isPersian = ref.watch(appLanguageProvider) == 'fa';
+                                  return Text(
+                                    isPersian
+                                        ? 'پشتیبانی از فرمت‌های MP4, MKV, AVI, WEBM, MOV, FLV'
+                                        : 'Supports MP4, MKV, AVI, WEBM, MOV, FLV',
+                                    style: appStyle(
+                                      isPersian: isPersian,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF9E9D9F),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -512,7 +611,7 @@ class _LexoVideoControlsState extends ConsumerState<LexoVideoControls> {
             const InteractiveSubtitleOverlay(),
 
             // ── Desktop Dictionary Popup Overlay ──
-            const DualDefinitionPopup(),
+            const EngineDefinitionPopup(),
 
             // ── Floating Volume HUD Overlay ──
             const VolumeHudOverlay(),

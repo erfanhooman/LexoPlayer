@@ -1,0 +1,343 @@
+{
+  "subtitle_id": 1,
+  "timestamp": "00:00:00,000 --> 00:00:05,000",
+  "target_sentence": "John decided to bite the proverbial bullet yesterday.",
+  "sliding_context_window": "John decided to bite the proverbial bullet yesterday.",
+  "execution_time_ms": 121.91,
+  "hierarchical_spans": [
+    {
+      "span_id": "span_02",
+      "type": "SINGLE_WORD",
+      "text": "John",
+      "lemma": "john",
+      "pos": "NOUN",
+      "start_char": 0,
+      "end_char": 4,
+      "primary_translation_fa": null,
+      "secondary_translation_fa": null,
+      "tertiary_translation_fa": null,
+      "other_translation_fa": [],
+      "children_sub_tokens": [],
+      "wsd": [
+        {
+          "rank": 1,
+          "score": 0.464,
+          "definition_en": "Alternative letter-case form of john (“a toilet, lavatory, outhouse, chamber pot”).",
+          "translation_fa": null
+        },
+        {
+          "rank": 2,
+          "score": 0.164,
+          "definition_en": "A Western man traveling in East Asia.",
+          "translation_fa": null
+        },
+        {
+          "rank": 3,
+          "score": 0.16,
+          "definition_en": "A male mule.",
+          "translation_fa": null
+        },
+        {
+          "rank": 4,
+          "score": 0.136,
+          "definition_en": "A new recruit at Royal Military Academy Sandhurst.",
+          "translation_fa": null
+        },
+        {
+          "rank": 5,
+          "score": 0.048,
+          "definition_en": "A prostitute's client.",
+          "translation_fa": null
+        }
+      ]
+    },
+    {
+      "span_id": "span_03",
+      "type": "SINGLE_WORD",
+      "text": "decided",
+      "lemma": "decide",
+      "pos": "VERB",
+      "start_char": 5,
+      "end_char": 12,
+      "primary_translation_fa": "تصمیم گرفتن",
+      "secondary_translation_fa": null,
+      "tertiary_translation_fa": null,
+      "other_translation_fa": [],
+      "children_sub_tokens": [],
+      "wsd": [
+        {
+          "rank": 1,
+          "score": 0.339,
+          "definition_en": "To cause someone to come to a decision.",
+          "translation_fa": null
+        },
+        {
+          "rank": 2,
+          "score": 0.297,
+          "definition_en": "To make a judgment, especially after deliberation.",
+          "translation_fa": "تصمیم گرفتن"
+        },
+        {
+          "rank": 3,
+          "score": 0.247,
+          "definition_en": "To resolve (a contest, problem, dispute, etc.); to choose, determine, or settle.",
+          "translation_fa": "تصمیم گرفتن"
+        },
+        {
+          "rank": 4,
+          "score": 0.215,
+          "definition_en": "To cut off; to separate.",
+          "translation_fa": null
+        },
+        {
+          "rank": 5,
+          "score": 0.079,
+          "definition_en": "Of a Turing machine: to return a correct answer (for some yes-or-no problem) on every possible input.",
+          "translation_fa": null
+        }
+      ]
+    },
+    {
+      "span_id": "span_04",
+      "type": "SINGLE_WORD",
+      "text": "to",
+      "lemma": "to",
+      "pos": "PART",
+      "start_char": 13,
+      "end_char": 15,
+      "primary_translation_fa": "ـدن",
+      "secondary_translation_fa": "ـتن",
+      "tertiary_translation_fa": null,
+      "other_translation_fa": [],
+      "children_sub_tokens": [],
+      "wsd": [
+        {
+          "rank": 1,
+          "score": 0.2,
+          "definition_en": "A particle used for marking the following verb as an infinitive.",
+          "translation_fa": "ـدن, ـتن"
+        },
+        {
+          "rank": 2,
+          "score": 0.146,
+          "definition_en": "As above, with the verb implied.",
+          "translation_fa": null
+        },
+        {
+          "rank": 3,
+          "score": 0.137,
+          "definition_en": "Used to indicate an obligation on the part of, or a directive given to, the subject.",
+          "translation_fa": null
+        },
+        {
+          "rank": 4,
+          "score": 0.0,
+          "definition_en": "A filler word common amongst urban Indians.",
+          "translation_fa": null
+        }
+      ]
+    },
+    {
+      "span_id": "span_01",
+      "type": "MULTI_WORD_SPAN",
+      "category": "IDIOM",
+      "text": "bite the proverbial bullet",
+      "canonical_form": "bite the bullet",
+      "start_char": 16,
+      "end_char": 42,
+      "parent_meaning": {
+        "definition_en": "To accept a negative aspect of a situation in order to proceed.",
+        "translation_fa": "سختی را به جان خریدن، تن به کار دادن",
+        "primary_translation_fa": "سختی را به جان خریدن، تن به کار دادن",
+        "secondary_translation_fa": null,
+        "tertiary_translation_fa": null,
+        "other_translation_fa": [],
+        "confidence": 0.95
+      },
+      "children_sub_tokens": [
+        {
+          "token": "bite",
+          "lemma": "bite",
+          "pos": "VERB",
+          "primary_translation_fa": "گاز گرفتن",
+          "secondary_translation_fa": "گاز زدن",
+          "tertiary_translation_fa": "به دندان گرفتن",
+          "other_translation_fa": [
+            "گزیدن"
+          ],
+          "wsd": [
+            {
+              "rank": 1,
+              "score": 0.41,
+              "definition_en": "To bite a baited hook or other lure and thus be caught.",
+              "translation_fa": null
+            },
+            {
+              "rank": 2,
+              "score": 0.246,
+              "definition_en": "To attack with the teeth.",
+              "translation_fa": "گاز گرفتن"
+            },
+            {
+              "rank": 3,
+              "score": 0.235,
+              "definition_en": "To cause sharp pain or damage to; to hurt or injure.",
+              "translation_fa": null
+            },
+            {
+              "rank": 4,
+              "score": 0.23,
+              "definition_en": "To cut into something by clamping the teeth.",
+              "translation_fa": "گاز زدن"
+            },
+            {
+              "rank": 5,
+              "score": 0.206,
+              "definition_en": "To hold something by clamping one's teeth.",
+              "translation_fa": "به دندان گرفتن, گزیدن"
+            }
+          ]
+        },
+        {
+          "token": "the",
+          "lemma": "the",
+          "pos": "DET",
+          "primary_translation_fa": "را for definite direct object",
+          "secondary_translation_fa": "این",
+          "tertiary_translation_fa": null,
+          "other_translation_fa": [],
+          "wsd": [
+            {
+              "rank": 1,
+              "score": 0.342,
+              "definition_en": "Used in many idiomatic expressions and proverbs to refer to common objects, roles, or situations connected with something definite, in the manner of an analogy",
+              "translation_fa": "را for definite direct object, این"
+            },
+            {
+              "rank": 2,
+              "score": 0.207,
+              "definition_en": "The definite grammatical article that shows that the noun phrase that immediately follows it is definitely identifiable...",
+              "translation_fa": "را for definite direct object, این"
+            },
+            {
+              "rank": 3,
+              "score": 0.207,
+              "definition_en": "The definite grammatical article that shows that the noun phrase that immediately follows it is definitely identifiable...",
+              "translation_fa": "را for definite direct object, این"
+            },
+            {
+              "rank": 4,
+              "score": 0.207,
+              "definition_en": "The definite grammatical article that shows that the noun phrase that immediately follows it is definitely identifiable...",
+              "translation_fa": "را for definite direct object, این"
+            },
+            {
+              "rank": 5,
+              "score": 0.207,
+              "definition_en": "The definite grammatical article that shows that the noun phrase that immediately follows it is definitely identifiable...",
+              "translation_fa": "را for definite direct object, این"
+            }
+          ]
+        },
+        {
+          "token": "proverbial",
+          "lemma": "proverbial",
+          "pos": "ADJ",
+          "primary_translation_fa": null,
+          "secondary_translation_fa": null,
+          "tertiary_translation_fa": null,
+          "other_translation_fa": [],
+          "wsd": [
+            {
+              "rank": 1,
+              "score": 0.46,
+              "definition_en": "Of, resembling, or expressed as a proverb, cliché, fable, or fairy tale.",
+              "translation_fa": null
+            },
+            {
+              "rank": 2,
+              "score": 0.431,
+              "definition_en": "Optionally placed before an element of a well-known proverb or metaphor to emphasize that the element is not being used in a literal sense (see Usage notes below)",
+              "translation_fa": null
+            },
+            {
+              "rank": 3,
+              "score": 0.086,
+              "definition_en": "Widely known; famous; stereotypical.",
+              "translation_fa": null
+            }
+          ]
+        },
+        {
+          "token": "bullet",
+          "lemma": "bullet",
+          "pos": "NOUN",
+          "primary_translation_fa": "گُلُولَه",
+          "secondary_translation_fa": "تِیر",
+          "tertiary_translation_fa": null,
+          "other_translation_fa": [],
+          "wsd": [
+            {
+              "rank": 1,
+              "score": 0.327,
+              "definition_en": "Ellipsis of bullet vibrator.",
+              "translation_fa": null
+            },
+            {
+              "rank": 2,
+              "score": 0.322,
+              "definition_en": "A projectile, usually of metal, shot from a gun at high speed.",
+              "translation_fa": "گُلُولَه, تِیر"
+            },
+            {
+              "rank": 3,
+              "score": 0.32,
+              "definition_en": "Ellipsis of bullet chess.",
+              "translation_fa": null
+            },
+            {
+              "rank": 4,
+              "score": 0.28,
+              "definition_en": "An entire round of unfired ammunition for a firearm, including the projectile, the cartridge casing, the propellant charge, etc.",
+              "translation_fa": null
+            },
+            {
+              "rank": 5,
+              "score": 0.278,
+              "definition_en": "Ammunition for a sling or slingshot which has been manufactured for such use.",
+              "translation_fa": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "span_id": "span_05",
+      "type": "SINGLE_WORD",
+      "text": "yesterday",
+      "lemma": "yesterday",
+      "pos": "NOUN",
+      "start_char": 43,
+      "end_char": 52,
+      "primary_translation_fa": "دیروز",
+      "secondary_translation_fa": null,
+      "tertiary_translation_fa": null,
+      "other_translation_fa": [],
+      "children_sub_tokens": [],
+      "wsd": [
+        {
+          "rank": 1,
+          "score": 0.568,
+          "definition_en": "The day immediately before today; one day ago.",
+          "translation_fa": "دیروز"
+        },
+        {
+          "rank": 2,
+          "score": 0.228,
+          "definition_en": "The past, often in terms of being outdated.",
+          "translation_fa": null
+        }
+      ]
+    }
+  ]
+}
