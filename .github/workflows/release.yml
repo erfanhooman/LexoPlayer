@@ -79,11 +79,10 @@ jobs:
 
       - name: Create macOS Zip & DMG Artifacts
         run: |
-          mkdir -p output
+          mkdir -p "$GITHUB_WORKSPACE/output"
           cd build/macos/Build/Products/Release
-          zip -r ../../../../output/LexoPlayer-macOS-Portable.zip Lexo.app
-          cd ../../../../../
-          hdiutil create -volname "LexoPlayer" -srcfolder "build/macos/Build/Products/Release/Lexo.app" -ov -format UDZO "output/LexoPlayer-macOS-Installer.dmg"
+          zip -r "$GITHUB_WORKSPACE/output/LexoPlayer-macOS-Portable.zip" Lexo.app
+          hdiutil create -volname "LexoPlayer" -srcfolder Lexo.app -ov -format UDZO "$GITHUB_WORKSPACE/output/LexoPlayer-macOS-Installer.dmg"
 
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
