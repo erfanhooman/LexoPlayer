@@ -11,9 +11,9 @@
         "native_language": "fa",
         "display_name": "LexoEngine Unified Dictionary (EN-FA)",
         "description": "Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.",
-        "remote_url": "https://github.com/erfanhooman/LexoPlayer/releases/download/beta-2/dictionary.db.zip",
-        "file_size_bytes": 239221480,
-        "md5_checksum": "d862fb14c5477f9900b0f4535d50500c"
+        "remote_url": "https://raw.githubusercontent.com/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip",
+        "file_size_bytes": 30303799,
+        "md5_checksum": "761061128742a65087ebb71239f2369c"
       }
     ]
   }

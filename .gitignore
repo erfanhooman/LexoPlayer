@@ -80,4 +80,4 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
-dictionaries/*.zip
+!dictionaries/dictionary.db.zip
