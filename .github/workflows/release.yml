@@ -3,16 +3,18 @@ name: Multi-Platform Automated Release
 on:
   push:
     tags:
+      - 'beta-2'
       - 'v*'
-      - 'beta*'
-      - '*beta*'
-      - '*.*.*'
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (e.g. beta-2 or v1.0.0-beta.2)'
         required: true
         default: 'beta-2'
+
+concurrency:
+  group: release-workflow-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
