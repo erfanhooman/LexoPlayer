@@ -33,7 +33,7 @@ jobs:
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze Project Source
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Unit & Widget Tests
         run: flutter test

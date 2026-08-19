@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/engine_output.dart';
-import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/dictionary/data/span_providers.dart';
-import 'package:lexo_player/features/dictionary/data/unified_dictionary_repository.dart';
 import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 

@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'dart:developer' as developer;
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:onnxruntime/onnxruntime.dart';
@@ -19,6 +17,9 @@ class OnnxResult {
 /// (produced by the HuggingFace tokenizer) and returns token embeddings.
 abstract class OnnxService {
   bool get isInitialized;
+
+  /// Initializes the ONNX session.
+  Future<void> initialize();
 
   /// Encodes pre-tokenized input and returns L2-normalized token embeddings.
   Future<OnnxResult?> runInference(List<int> inputIds, List<int> attentionMask);
@@ -99,7 +100,7 @@ class RealOnnxService implements OnnxService {
 
       // Reshape: rawValues is [1, seq_len * 384] flattened
       // We need [seq_len, 384]
-      final embedDim = 384;
+      const embedDim = 384;
       final tokenEmbeddings = <List<double>>[];
 
       for (int i = 0; i < seqLen; i++) {

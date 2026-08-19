@@ -84,8 +84,6 @@ class _GlassContainerState extends State<GlassContainer> {
           ),
         ];
 
-    final cornerRadiusValue = effectiveRadius.topLeft.x;
-
     return Container(
       width: widget.width,
       height: widget.height,
@@ -102,32 +100,20 @@ class _GlassContainerState extends State<GlassContainer> {
             borderRadius: effectiveRadius,
             borderColor: effectiveBorderColor,
           ),
-          child:
-              ui.ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur) !=
-                      null
-                  ? BackdropFilter(
-                      filter: ui.ImageFilter.blur(
-                          sigmaX: widget.blur, sigmaY: widget.blur),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: widget.padding,
-                        decoration: BoxDecoration(
-                          color: effectiveColor,
-                          borderRadius: effectiveRadius,
-                          border: effectiveBorder,
-                        ),
-                        child: widget.child,
-                      ),
-                    )
-                  : Container(
-                      padding: widget.padding,
-                      decoration: BoxDecoration(
-                        color: effectiveColor,
-                        borderRadius: effectiveRadius,
-                        border: effectiveBorder,
-                      ),
-                      child: widget.child,
-                    ),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(
+                sigmaX: widget.blur, sigmaY: widget.blur),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: widget.padding,
+              decoration: BoxDecoration(
+                color: effectiveColor,
+                borderRadius: effectiveRadius,
+                border: effectiveBorder,
+              ),
+              child: widget.child,
+            ),
+          ),
         ),
       ),
     );

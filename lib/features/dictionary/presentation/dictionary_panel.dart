@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +6,7 @@ import 'package:file_picker/file_picker.dart';
 
 import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/widgets/glass_container.dart';
-import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
-import 'package:lexo_player/features/dictionary/data/unified_dictionary_repository.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';

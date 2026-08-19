@@ -3,8 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:lexo_player/core/models/manifest_models.dart';
-import 'package:lexo_player/core/services/dict_storage_manager.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 

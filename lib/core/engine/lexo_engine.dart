@@ -37,6 +37,9 @@ class EngineConfig {
 class LexoEngine {
   final UnifiedDictionaryRepository _db;
   final HfTokenizer _hfTokenizer;
+
+  UnifiedDictionaryRepository get db => _db;
+  HfTokenizer get hfTokenizer => _hfTokenizer;
   late final EngineTokenizer _tokenizer;
   late final OnnxService _onnxService;
   late final FastMweDetector _fastMwe;

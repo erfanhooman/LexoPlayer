@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 /// Engine output for a processed subtitle line.
 class EngineOutput {
   final int subtitleId;

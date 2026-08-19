@@ -121,8 +121,6 @@ final engineInitProvider = FutureProvider<void>((ref) async {
   }
 });
 
-int _vocabSize(HfTokenizer t) => 0; // placeholder — vocab size is internal
-
 /// Holds the initialized HfTokenizer after startup.
 final _hfTokenizerHolderProvider = StateProvider<HfTokenizer?>((ref) => null);
 

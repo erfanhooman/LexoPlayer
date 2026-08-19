@@ -20,7 +20,6 @@ import 'package:lexo_player/features/main_menu/presentation/main_menu_screen.dar
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/services/now_playing_service.dart';
-import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
 
 Future<void> main(List<String> args) async {
