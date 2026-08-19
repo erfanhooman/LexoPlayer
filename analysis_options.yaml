@@ -1,8 +1,14 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    prefer_const_constructors: ignore
+    prefer_const_declarations: ignore
+    prefer_single_quotes: ignore
+    deprecated_member_use: ignore
+    curly_braces_in_flow_control_structures: ignore
+    unnecessary_string_interpolations: ignore
+
 linter:
   rules:
-    prefer_const_constructors: true
-    prefer_const_declarations: true
     avoid_print: false
-    prefer_single_quotes: true

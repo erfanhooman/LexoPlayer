@@ -697,15 +697,4 @@ class _DefinitionContent extends StatelessWidget {
       ],
     );
   }
-
-  static bool _isRtl(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return false;
-    final firstChar = trimmed.codeUnitAt(0);
-    return (firstChar >= 0x0590 && firstChar <= 0x05FF) || // Hebrew
-        (firstChar >= 0x0600 && firstChar <= 0x06FF) || // Arabic
-        (firstChar >= 0x0750 && firstChar <= 0x077F) || // Arabic Ext
-        (firstChar >= 0xFB50 && firstChar <= 0xFDFF) || // Arabic Pres A
-        (firstChar >= 0xFE70 && firstChar <= 0xFEFF); // Arabic Pres B
-  }
 }

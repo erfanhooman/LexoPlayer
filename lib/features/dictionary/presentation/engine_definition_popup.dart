@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/engine_output.dart';
+import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/dictionary/data/span_providers.dart';
 import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
@@ -1155,35 +1156,6 @@ class _WordHeaderRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Category badge (e.g. IDIOM, PHRASAL_VERB).
-class _CategoryBadge extends StatelessWidget {
-  final String label;
-  const _CategoryBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF5500).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: const Color(0xFFFF5500).withOpacity(0.4),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFFFF5500),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }

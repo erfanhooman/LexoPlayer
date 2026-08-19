@@ -586,11 +586,6 @@ class SimplePosTagger {
     'this',
     'these',
     'those',
-    'myself',
-    'yourself',
-    'himself',
-    'herself',
-    'itself',
   };
 
   static final Set<String> _prepositions = {
