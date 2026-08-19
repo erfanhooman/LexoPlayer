@@ -101,8 +101,8 @@ class _GlassContainerState extends State<GlassContainer> {
             borderColor: effectiveBorderColor,
           ),
           child: BackdropFilter(
-            filter: ui.ImageFilter.blur(
-                sigmaX: widget.blur, sigmaY: widget.blur),
+            filter:
+                ui.ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: widget.padding,
