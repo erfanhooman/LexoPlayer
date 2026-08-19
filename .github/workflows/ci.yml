@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -40,7 +40,6 @@ jobs:
 
   build-check:
     name: Build Check (${{ matrix.os }})
-    needs: lint-and-test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -63,7 +62,6 @@ jobs:
       - name: Install Linux Dependencies
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev
 
       - name: Setup Flutter

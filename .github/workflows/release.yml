@@ -77,12 +77,11 @@ jobs:
       - name: Build macOS Release
         run: flutter build macos --release
 
-      - name: Create macOS Zip & DMG Artifacts
+      - name: Create macOS DMG Artifact
         run: |
           mkdir -p "$GITHUB_WORKSPACE/output"
           cd build/macos/Build/Products/Release
-          zip -r "$GITHUB_WORKSPACE/output/LexoPlayer-macOS-Portable.zip" Lexo.app
-          hdiutil create -volname "LexoPlayer" -srcfolder Lexo.app -ov -format UDZO "$GITHUB_WORKSPACE/output/LexoPlayer-macOS-Installer.dmg"
+          hdiutil create -volname "LexoPlayer" -srcfolder Lexo.app -ov -format UDZO "$GITHUB_WORKSPACE/output/LexoPlayer-macOS.dmg"
 
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
@@ -114,11 +113,10 @@ jobs:
         run: |
           iscc installer.iss
 
-      - name: Create Windows Portable Zip
+      - name: Prepare Windows Installer Artifact
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path output
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "output\LexoPlayer-Windows-x64-Portable.zip"
           Copy-Item "build\windows\installer\LexoPlayer-Setup-x64.exe" -Destination "output\"
 
       - name: Upload Windows Artifacts
@@ -128,7 +126,7 @@ jobs:
           path: output/*
 
   build-linux:
-    name: Build Linux Packages (.deb, .AppImage, .tar.gz)
+    name: Build Linux Universal AppImage
     runs-on: ubuntu-latest
 
     steps:
@@ -137,7 +135,6 @@ jobs:
 
       - name: Install Linux Build Dependencies
         run: |
-          sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev wget fuse
 
       - name: Setup Flutter
@@ -152,50 +149,9 @@ jobs:
       - name: Build Linux Release
         run: flutter build linux --release
 
-      - name: Create Linux .deb Package (Ubuntu / Debian / Mint / Pop!_OS)
+      - name: Create Universal AppImage
         run: |
-          mkdir -p deb_dist/DEBIAN
-          mkdir -p deb_dist/usr/bin
-          mkdir -p deb_dist/usr/lib/lexoplayer
-          mkdir -p deb_dist/usr/share/applications
-          mkdir -p deb_dist/usr/share/icons/hicolor/512x512/apps
-
-          # Copy compiled bundle to /usr/lib/lexoplayer
-          cp -r build/linux/x64/release/bundle/* deb_dist/usr/lib/lexoplayer/
-
-          # Copy desktop entry and icon
-          cp linux/lexoplayer.desktop deb_dist/usr/share/applications/
-          if [ -f "assests/icon/icon.png" ]; then
-            cp assests/icon/icon.png deb_dist/usr/share/icons/hicolor/512x512/apps/lexoplayer.png
-          fi
-
-          # Create executable launcher script in /usr/bin/lexoplayer
-          cat << 'EOF' > deb_dist/usr/bin/lexoplayer
-          #!/bin/sh
-          exec /usr/lib/lexoplayer/lexo_player "$@"
-          EOF
-          chmod +x deb_dist/usr/bin/lexoplayer
-
-          # Create DEBIAN/control file
-          cat << 'EOF' > deb_dist/DEBIAN/control
-          Package: lexoplayer
-          Version: 1.0.0
-          Architecture: amd64
-          Maintainer: Erfan Hooman <erfan.hooman@gmail.com>
-          Section: utils
-          Priority: optional
-          Depends: libgtk-3-0, libmpv2 | libmpv1 | libmpv-dev, libsqlite3-0
-          Description: Interactive Video Player for Language Acquisition
-           LexoPlayer is an interactive media player optimized for vocabulary acquisition
-           with dual-tier dictionary lookups and subtitle-smart sentence seeking.
-          EOF
-
-          # Build .deb package
           mkdir -p output
-          dpkg-deb --build deb_dist output/LexoPlayer-Linux-amd64.deb
-
-      - name: Create Universal AppImage (Fedora, Arch, Manjaro, openSUSE)
-        run: |
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/lib/lexoplayer
 
@@ -214,17 +170,11 @@ jobs:
           EOF
           chmod +x AppDir/AppRun
 
-          # Download appimagetool and generate AppImage
           wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool || wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool || true
           if [ -f appimagetool ]; then
             chmod +x appimagetool
-            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir output/LexoPlayer-x86_64.AppImage || true
+            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir output/LexoPlayer-Linux.AppImage || true
           fi
-
-      - name: Create Linux Tarball Archive
-        run: |
-          mkdir -p output
-          tar -czvf output/LexoPlayer-Linux-x64.tar.gz -C build/linux/x64/release/bundle .
 
       - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
