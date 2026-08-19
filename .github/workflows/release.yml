@@ -224,6 +224,12 @@ jobs:
             echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
+      - name: Clean Previous Release Assets
+        run: |
+          gh release delete "${{ env.TAG }}" --yes --cleanup-tag=false || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
