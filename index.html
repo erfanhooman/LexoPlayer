@@ -70,14 +70,14 @@
             gap: 12px;
         }
 
-        /* Language Toggle Switch */
+        /* Simple Language Toggle Switcher (FA | EN) */
         .lang-toggle-btn {
             background: rgba(255, 255, 255, 0.08);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
-            padding: 0.6rem 1rem;
+            padding: 0.55rem 0.95rem;
             border-radius: 8px;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.85rem;
             cursor: pointer;
             display: flex;
@@ -85,6 +85,7 @@
             gap: 6px;
             transition: all 0.2s ease;
             backdrop-filter: blur(10px);
+            letter-spacing: 0.5px;
         }
 
         .lang-toggle-btn:hover {
@@ -135,11 +136,6 @@
             transition: all 0.3s ease;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             overflow: hidden;
-        }
-
-        [dir="rtl"] .dropdown-content {
-            right: auto;
-            left: 0;
         }
 
         .dropdown-content.show {
@@ -196,7 +192,7 @@
             transform: scale(1.015);
         }
 
-        /* Overlay Content - Reforged Glass Card */
+        /* Overlay Content Glass Card — ALWAYS ANCHORED ON THE LEFT */
         .overlay-content {
             position: absolute;
             z-index: 2;
@@ -207,18 +203,17 @@
             width: 460px;
             max-width: 90vw;
             
-            background: rgba(12, 12, 16, 0.78);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(12, 12, 16, 0.82);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
             border: 1px solid rgba(255, 255, 255, 0.12);
             padding: 2.2rem;
             border-radius: 20px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
         }
 
+        /* In Persian mode, keep box on left, only right-align text inside card */
         [dir="rtl"] .overlay-content {
-            left: auto;
-            right: 6%;
             text-align: right;
         }
 
@@ -241,7 +236,7 @@
             font-weight: 800;
             letter-spacing: -0.5px;
             margin-bottom: 1rem;
-            line-height: 1.25;
+            line-height: 1.3;
         }
 
         .gradient-text {
@@ -252,10 +247,10 @@
         }
 
         .overlay-content p.hero-desc {
-            font-size: 1rem;
+            font-size: 0.98rem;
             color: #d0d0d0;
             font-weight: 300;
-            line-height: 1.6;
+            line-height: 1.65;
             margin-bottom: 1.2rem;
         }
 
@@ -285,12 +280,12 @@
             flex-shrink: 0;
         }
 
-        /* Small Disclaimer Note */
+        /* Small Dictionary Note */
         .dictionary-note {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.45);
-            line-height: 1.45;
-            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+            font-size: 0.73rem;
+            color: rgba(255, 255, 255, 0.48);
+            line-height: 1.5;
+            border-top: 1px dashed rgba(255, 255, 255, 0.12);
             padding-top: 0.8rem;
         }
 
@@ -337,11 +332,6 @@
             border-radius: 2px;
         }
 
-        [dir="rtl"] .progress-filled {
-            left: auto;
-            right: 0;
-        }
-
         /* Feedback / Info Modal */
         .info-modal {
             position: absolute;
@@ -359,12 +349,6 @@
             transition: all 0.3s ease;
             z-index: 20;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
-        }
-
-        [dir="rtl"] .info-modal {
-            right: auto;
-            left: 3rem;
-            text-align: right;
         }
 
         .info-modal.show {
@@ -427,7 +411,6 @@
             .overlay-content { 
                 position: relative;
                 left: 0 !important;
-                right: 0 !important;
                 top: 0; 
                 transform: none;
                 margin: 1.5rem auto;
@@ -449,9 +432,9 @@
         </div>
         
         <div class="header-controls">
-            <!-- Language Switcher Toggle Button -->
-            <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()" title="Switch Language / تغییر زبان">
-                🌐 <span id="lang-label">فارسی</span>
+            <!-- Language Switcher Toggle Button (FA | EN) -->
+            <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()" title="Switch Language">
+                <span id="lang-label">FA | EN</span>
             </button>
 
             <!-- Download Dropdown -->
@@ -485,6 +468,7 @@
     <main class="player-viewport">
         <img src="screenshot.png" alt="LexoPlayer Interface" class="hero-image" onerror="this.src='https://via.placeholder.com/1200x700/121212/333333?text=Add+hero-screenshot.png'">
         
+        <!-- Overlay Card ALWAYS Anchored Left -->
         <div class="overlay-content">
             <span class="beta-tag" id="txt-beta-tag">Public Beta</span>
             <h1 id="txt-hero-title">Learn languages through <span class="gradient-text">context.</span></h1>
@@ -548,7 +532,6 @@
     <script>
         const translations = {
             en: {
-                langLabel: "فارسی",
                 downloadBtn: "Download Beta",
                 betaTag: "Public Beta",
                 heroTitle: 'Learn languages through <span class="gradient-text">context.</span>',
@@ -560,14 +543,13 @@
                 modalDesc: "Your insights will help shape the future of this framework. I deeply appreciate your feedback, bug reports, and ideas to make it even better."
             },
             fa: {
-                langLabel: "English",
                 downloadBtn: "دانلود نسخه آزمایشی",
                 betaTag: "نسخه آزمایشی عمومی",
-                heroTitle: 'یادگیری زبان از طریق <span class="gradient-text">بستر و بافت متن.</span>',
-                heroDesc: "کلمات جدید را به صورت طبیعی فرا بگیرید. با لمس یا کلیک روی هر کلمه در زیرنویس، معانی و ترجمه‌های دقیق فوراً نمایش داده می‌شوند.",
-                featureSearch: "جستجو و دانلود خودکار زیرنویس درون برنامه",
-                featureDual: "نمایش همزمان دو زیرنویس با هم",
-                dictNote: "توجه: دیتابیس دیکشنری ما در حال تکمیل و توسعه مداوم است. با گذشت زمان واژه‌ها، معانی و زبان‌های بیشتری افزوده خواهد شد. از هرگونه مشارکت شما برای تکمیل دیتابیس صمیمانه استقبال می‌کنیم!",
+                heroTitle: 'یادگیری زبان در دلِ <span class="gradient-text">متن و بافت واقعی</span>',
+                heroDesc: "کلمات جدید را در بستر واقعی یاد بگیرید. کافیه روی هر کلمه در زیرنویس کلیک یا لمس کنید تا معنی و ترجمه آن را ببینید.",
+                featureSearch: "جستجو و دانلود خودکار زیرنویسها در برنامه",
+                featureDual: "نمایش همزمان دو زیرنویس",
+                dictNote: "توجه: فرهنگ لغت ما همچنان در حال تکمیل و توسعه است و به‌مرور زمان، واژه‌ها، معانی و زبان‌های بیشتری به آن اضافه می‌شود. اگر پیشنهادی برای بهبود یا تکمیل فرهنگ لغت دارید، خوشحال می‌شیم که آن را با ما در میان بگذارید.",
                 modalTitle: "نسخه آزمایشی عمومی",
                 modalDesc: "نظرات شما نقش مهمی در بهبود این برنامه دارد. از بازخوردها، گزارش مشکلات و ایده‌های شما صمیمانه سپاسگزارم."
             }
@@ -582,7 +564,6 @@
             document.documentElement.lang = currentLang;
             document.documentElement.dir = currentLang === 'fa' ? 'rtl' : 'ltr';
 
-            document.getElementById('lang-label').innerText = t.langLabel;
             document.getElementById('txt-download-btn').innerText = t.downloadBtn;
             document.getElementById('txt-beta-tag').innerText = t.betaTag;
             document.getElementById('txt-hero-title').innerHTML = t.heroTitle;
