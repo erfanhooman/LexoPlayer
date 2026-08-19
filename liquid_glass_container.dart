@@ -168,7 +168,8 @@ class _LiquidGlassContainerState extends State<LiquidGlassContainer>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: widget.lightSource,
-                    end: Alignment(-widget.lightSource.x, -widget.lightSource.y),
+                    end:
+                        Alignment(-widget.lightSource.x, -widget.lightSource.y),
                     colors: [
                       effectiveColor.withValues(
                         alpha: (0.16 + pressT * 0.02).clamp(0.0, 1.0),
@@ -289,10 +290,26 @@ List<double> _saturationMatrix(double saturation) {
   final g = invSat * lumG;
   final b = invSat * lumB;
   return <double>[
-    r + saturation, g, b, 0, 0,
-    r, g + saturation, b, 0, 0,
-    r, g, b + saturation, 0, 0,
-    0, 0, 0, 1, 0,
+    r + saturation,
+    g,
+    b,
+    0,
+    0,
+    r,
+    g + saturation,
+    b,
+    0,
+    0,
+    r,
+    g,
+    b + saturation,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 

@@ -26,7 +26,9 @@ class AppSettingsOverlay extends ConsumerWidget {
 
   /// Presents the application settings panel adaptively.
   static void show(BuildContext context) {
-    final isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
       showModalBottomSheet(
@@ -118,7 +120,8 @@ class AppSettingsOverlay extends ConsumerWidget {
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70, size: 20),
+                      icon: const Icon(Icons.close,
+                          color: Colors.white70, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
                       splashRadius: 20,
                     ),
@@ -133,12 +136,15 @@ class AppSettingsOverlay extends ConsumerWidget {
                       children: [
                         // ── 1. General & Language Section ───────────────────
                         _buildSectionHeader(
-                          isPersian ? 'زبان و رابط کاربری' : 'Language & Interface',
+                          isPersian
+                              ? 'زبان و رابط کاربری'
+                              : 'Language & Interface',
                           Icons.language_rounded,
                         ),
                         const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: _kScaffoldBg,
                             borderRadius: BorderRadius.circular(12),
@@ -160,7 +166,9 @@ class AppSettingsOverlay extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    isPersian ? 'زبان نمایش منوها و رابط کاربری' : 'Interface language for menus and labels',
+                                    isPersian
+                                        ? 'زبان نمایش منوها و رابط کاربری'
+                                        : 'Interface language for menus and labels',
                                     style: const TextStyle(
                                       color: Colors.white54,
                                       fontSize: 11,
@@ -183,7 +191,9 @@ class AppSettingsOverlay extends ConsumerWidget {
                                       flag: '🇺🇸',
                                       isSelected: !isPersian,
                                       onTap: () {
-                                        ref.read(appLanguageProvider.notifier).state = 'en';
+                                        ref
+                                            .read(appLanguageProvider.notifier)
+                                            .state = 'en';
                                       },
                                     ),
                                     _buildLangChip(
@@ -191,7 +201,9 @@ class AppSettingsOverlay extends ConsumerWidget {
                                       flag: '🇮🇷',
                                       isSelected: isPersian,
                                       onTap: () {
-                                        ref.read(appLanguageProvider.notifier).state = 'fa';
+                                        ref
+                                            .read(appLanguageProvider.notifier)
+                                            .state = 'fa';
                                       },
                                     ),
                                   ],
@@ -205,18 +217,23 @@ class AppSettingsOverlay extends ConsumerWidget {
 
                         // ── 2. Playback Options Section ─────────────────────
                         _buildSectionHeader(
-                          isPersian ? 'تنظیمات پخش‌کننده' : 'Player Preferences',
+                          isPersian
+                              ? 'تنظیمات پخش‌کننده'
+                              : 'Player Preferences',
                           Icons.play_circle_outline_rounded,
                         ),
                         const SizedBox(height: 10),
                         _buildSettingTile(
-                          title: isPersian ? 'پریش هوشمند زیرنویس' : 'Smart Subtitle Seek',
+                          title: isPersian
+                              ? 'پریش هوشمند زیرنویس'
+                              : 'Smart Subtitle Seek',
                           subtitle: isPersian
                               ? 'پریش بر اساس زمان خطوط زیرنویس به جای ۱۰ ثانیه ثابت'
                               : 'Jump directly to subtitle timestamps instead of fixed 10s',
                           value: isSmartSeekEnabled,
                           onChanged: (val) {
-                            ref.read(smartSubtitleSeekProvider.notifier).state = val;
+                            ref.read(smartSubtitleSeekProvider.notifier).state =
+                                val;
                             saveSmartSubtitleSeek(val);
                           },
                         ),
@@ -225,12 +242,16 @@ class AppSettingsOverlay extends ConsumerWidget {
 
                         // ── 3. Auto Updates Section ────────────────────────
                         _buildSectionHeader(
-                          isPersian ? 'بروزرسانی‌های خودکار' : 'Automatic Updates',
+                          isPersian
+                              ? 'بروزرسانی‌های خودکار'
+                              : 'Automatic Updates',
                           Icons.system_update_rounded,
                         ),
                         const SizedBox(height: 10),
                         _buildSettingTile(
-                          title: isPersian ? 'بروزرسانی خودکار برنامه' : 'Auto Update App',
+                          title: isPersian
+                              ? 'بروزرسانی خودکار برنامه'
+                              : 'Auto Update App',
                           subtitle: isPersian
                               ? 'دریافت خودکار آخرین نسخه برنامه از گیت‌هاب'
                               : 'Automatically check & download new app releases from GitHub',
@@ -241,7 +262,9 @@ class AppSettingsOverlay extends ConsumerWidget {
                         ),
                         const SizedBox(height: 10),
                         _buildSettingTile(
-                          title: isPersian ? 'بروزرسانی خودکار واژه‌نامه‌ها' : 'Auto Update Dictionaries',
+                          title: isPersian
+                              ? 'بروزرسانی خودکار واژه‌نامه‌ها'
+                              : 'Auto Update Dictionaries',
                           subtitle: isPersian
                               ? 'دانلود و بروزرسانی خودکار پایگاه‌داده از گیت‌هاب'
                               : 'Auto-download & replace dictionary database from GitHub',
@@ -259,14 +282,16 @@ class AppSettingsOverlay extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.03),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.06)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.info_outline_rounded, color: Colors.white38, size: 18),
+                                  const Icon(Icons.info_outline_rounded,
+                                      color: Colors.white38, size: 18),
                                   const SizedBox(width: 8),
                                   Text(
                                     isPersian ? 'نسخه برنامه' : 'App Version',
@@ -278,7 +303,8 @@ class AppSettingsOverlay extends ConsumerWidget {
                                 ],
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: _kAccent.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),

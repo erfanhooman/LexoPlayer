@@ -15,7 +15,8 @@ class StemmerUtils {
 
   /// Regex that matches every character that is **not** a word character
   /// (`[a-zA-Z0-9_]`), **not** an apostrophe, **not** a space, and **not** a hyphen.
-  static final RegExp _nonWordExceptApostropheSpaceHyphen = RegExp(r"[^\w'\s-]");
+  static final RegExp _nonWordExceptApostropheSpaceHyphen =
+      RegExp(r"[^\w'\s-]");
 
   /// Removes non-word characters (except apostrophes, spaces, and hyphens)
   /// and lowercases [raw], then collapses multiple spaces into a single space.
@@ -29,7 +30,8 @@ class StemmerUtils {
   /// StemmerUtils.cleanToken("able-bodied"); // → "able-bodied"
   /// ```
   static String cleanToken(String raw) {
-    final cleaned = raw.replaceAll(_nonWordExceptApostropheSpaceHyphen, '').toLowerCase();
+    final cleaned =
+        raw.replaceAll(_nonWordExceptApostropheSpaceHyphen, '').toLowerCase();
     return cleaned.trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 

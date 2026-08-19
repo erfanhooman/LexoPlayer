@@ -78,8 +78,8 @@ class WsdEngine {
     final encoding = _hfTokenizer.encode(contextWindowText);
 
     // Run ONNX inference with the pre-tokenized input
-    final embeddings =
-        await _onnxService.runInference(encoding.inputIds, encoding.attentionMask);
+    final embeddings = await _onnxService.runInference(
+        encoding.inputIds, encoding.attentionMask);
 
     if (embeddings == null) return null;
     return (encoding, embeddings);
@@ -149,7 +149,8 @@ class WsdEngine {
     } else {
       final ctx = await encodeContextWindow(contextWindowText);
       if (ctx == null) {
-        return _fallbackWithSenses(targetToken, senses, 'fallback_onnx_missing');
+        return _fallbackWithSenses(
+            targetToken, senses, 'fallback_onnx_missing');
       }
       encoding = ctx.$1;
       embeddings = ctx.$2;
@@ -164,7 +165,8 @@ class WsdEngine {
     );
 
     if (targetVec == null) {
-      return _fallbackWithSenses(targetToken, senses, 'fallback_vector_extraction');
+      return _fallbackWithSenses(
+          targetToken, senses, 'fallback_vector_extraction');
     }
 
     // Calculate cosine similarity with each candidate sense vector
@@ -182,8 +184,8 @@ class WsdEngine {
       } else {
         // Positional rank fallback score
         final fallbackScore = max(0.1, 1.0 - (sense.senseIndex - 1) * 0.15);
-        scoredSenses.add(
-            (fallbackScore, sense.definitionEn, sense.translationFa));
+        scoredSenses
+            .add((fallbackScore, sense.definitionEn, sense.translationFa));
       }
     }
 
@@ -277,7 +279,8 @@ class WsdEngine {
       return floatList;
     }
     // Already Float32
-    return Float32List.view(blob.buffer, blob.offsetInBytes, blob.lengthInBytes ~/ 4);
+    return Float32List.view(
+        blob.buffer, blob.offsetInBytes, blob.lengthInBytes ~/ 4);
   }
 
   /// Computes the L2 norm of a vector.
@@ -318,7 +321,8 @@ class WsdEngine {
         WsdCandidate(
           rank: 1,
           score: 1.0,
-          definitionEn: "Definition for '${targetToken.lemma}' (${targetToken.pos}).",
+          definitionEn:
+              "Definition for '${targetToken.lemma}' (${targetToken.pos}).",
           translationFa: null,
         ),
       ],

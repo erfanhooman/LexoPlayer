@@ -73,7 +73,9 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isPersian ? 'بروزرسانی خودکار واژه‌نامه و زیرنویس' : 'Auto Update Dictionaries & Subtitles',
+                        isPersian
+                            ? 'بروزرسانی خودکار واژه‌نامه و زیرنویس'
+                            : 'Auto Update Dictionaries & Subtitles',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -82,7 +84,9 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isPersian ? 'دانلود و جایگزینی خودکار آخرین نسخه گیت‌هاب' : 'Auto-download & replace database from GitHub',
+                        isPersian
+                            ? 'دانلود و جایگزینی خودکار آخرین نسخه گیت‌هاب'
+                            : 'Auto-download & replace database from GitHub',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF9E9D9F),
@@ -138,8 +142,12 @@ class _DictionaryMainBox extends ConsumerWidget {
 
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
 
-    String displayName = isPersian ? 'هیچ واژه‌نامه‌ای انتخاب نشده است' : 'No dictionary selected';
-    String subtitle = isPersian ? 'یک واژه‌نامه را از زیر انتخاب یا وارد کنید' : 'Select or import a dictionary below';
+    String displayName = isPersian
+        ? 'هیچ واژه‌نامه‌ای انتخاب نشده است'
+        : 'No dictionary selected';
+    String subtitle = isPersian
+        ? 'یک واژه‌نامه را از زیر انتخاب یا وارد کنید'
+        : 'Select or import a dictionary below';
     if (selectedId != null && selectedId != 'none') {
       final manifest = manifestAsync.valueOrNull;
       final manifestEntry =
@@ -166,8 +174,9 @@ class _DictionaryMainBox extends ConsumerWidget {
       entries.add(_DictEntryInfo(
         id: id,
         name: mEntry?.displayName ?? manEntry?.displayName ?? id,
-        description:
-            mEntry?.description ?? manEntry?.description ?? (isPersian ? 'واژه‌نامه شخصی' : 'Custom dictionary'),
+        description: mEntry?.description ??
+            manEntry?.description ??
+            (isPersian ? 'واژه‌نامه شخصی' : 'Custom dictionary'),
         type: mEntry?.type ?? manEntry?.type ?? DictionaryType.unified,
         isSelected: id == selectedId,
       ));
@@ -223,14 +232,12 @@ class _DictionaryMainBox extends ConsumerWidget {
               ),
             ],
           ),
-
           if (entries.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Divider(color: Color(0xFF2C2C35), height: 1),
             const SizedBox(height: 12),
             ...entries.map((entry) => _DownloadedDictTile(entry: entry)),
           ],
-
           const SizedBox(height: 16),
           const Divider(color: Color(0xFF2C2C35), height: 1),
           const SizedBox(height: 12),
@@ -258,7 +265,9 @@ class _DictionaryMainBox extends ConsumerWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        isPersian ? 'افزودن واژه‌نامه محلی (.db)' : 'Import Local Dictionary (.db)',
+                        isPersian
+                            ? 'افزودن واژه‌نامه محلی (.db)'
+                            : 'Import Local Dictionary (.db)',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -307,8 +316,8 @@ class _DictionaryMainBox extends ConsumerWidget {
     }
   }
 
-  void _showImportDialog(
-      BuildContext context, WidgetRef ref, String filePath, String defaultName) {
+  void _showImportDialog(BuildContext context, WidgetRef ref, String filePath,
+      String defaultName) {
     showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -397,7 +406,8 @@ class _DownloadedDictTile extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, _DictEntryInfo entry) {
+  void _confirmDelete(
+      BuildContext context, WidgetRef ref, _DictEntryInfo entry) {
     final isPersian = ref.read(appLanguageProvider) == 'fa';
     showDialog(
       context: context,
@@ -407,18 +417,18 @@ class _DownloadedDictTile extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        title: Text(
-            isPersian ? 'حذف واژه‌نامه' : 'Delete Dictionary',
-            style:
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(isPersian ? 'حذف واژه‌نامه' : 'Delete Dictionary',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         content: Text(
-            isPersian ? 'آیا واژه‌نامه "${entry.name}" حذف شود؟' : 'Remove "${entry.name}"?',
+            isPersian
+                ? 'آیا واژه‌نامه "${entry.name}" حذف شود؟'
+                : 'Remove "${entry.name}"?',
             style: const TextStyle(color: Color(0xFF9E9D9F))),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                  isPersian ? 'انصراف' : 'Cancel',
+              child: Text(isPersian ? 'انصراف' : 'Cancel',
                   style: const TextStyle(color: Color(0xFF8E8D94)))),
           ElevatedButton(
             onPressed: () async {
@@ -436,8 +446,8 @@ class _DownloadedDictTile extends ConsumerWidget {
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8))),
-            child:
-                Text(isPersian ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.white)),
+            child: Text(isPersian ? 'حذف' : 'Delete',
+                style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -465,7 +475,9 @@ class _DownloadHubBox extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
-                  isPersian ? 'هنوز واژه‌نامه‌ای برای دانلود آماده نیست.' : 'No dictionaries available for download yet.',
+                  isPersian
+                      ? 'هنوز واژه‌نامه‌ای برای دانلود آماده نیست.'
+                      : 'No dictionaries available for download yet.',
                   style:
                       const TextStyle(fontSize: 13, color: Color(0xFF9E9D9F)),
                 ),
@@ -491,8 +503,8 @@ class _DownloadHubBox extends ConsumerWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: _accent.withValues(alpha: 0.12),
-                        border: Border.all(
-                            color: _accent.withValues(alpha: 0.3)),
+                        border:
+                            Border.all(color: _accent.withValues(alpha: 0.3)),
                       ),
                       child: Icon(
                         isDownloaded
@@ -513,10 +525,10 @@ class _DownloadHubBox extends ConsumerWidget {
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white)),
                           const SizedBox(height: 2),
-                          Text('${entry.description} • ${entry.formattedFileSize}',
+                          Text(
+                              '${entry.description} • ${entry.formattedFileSize}',
                               style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF9E9D9F)),
+                                  fontSize: 11, color: Color(0xFF9E9D9F)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ],
@@ -525,11 +537,13 @@ class _DownloadHubBox extends ConsumerWidget {
                     const SizedBox(width: 10),
                     if (isDownloaded)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: Colors.teal.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.teal.withValues(alpha: 0.4)),
+                          border: Border.all(
+                              color: Colors.teal.withValues(alpha: 0.4)),
                         ),
                         child: Text(
                           isPersian ? 'نصب شده' : 'Installed',
@@ -551,14 +565,17 @@ class _DownloadHubBox extends ConsumerWidget {
                       )
                     else
                       ElevatedButton.icon(
-                        onPressed: () => _downloadDictionary(ref, context, entry),
+                        onPressed: () =>
+                            _downloadDictionary(ref, context, entry),
                         icon: const Icon(Icons.download_rounded, size: 14),
                         label: Text(isPersian ? 'دانلود' : 'Download'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _accent,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -573,8 +590,7 @@ class _DownloadHubBox extends ConsumerWidget {
         loading: () => Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Center(
-              child: CircularProgressIndicator(
-                  color: _accent, strokeWidth: 2)),
+              child: CircularProgressIndicator(color: _accent, strokeWidth: 2)),
         ),
         error: (e, _) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -587,7 +603,8 @@ class _DownloadHubBox extends ConsumerWidget {
     );
   }
 
-  Future<void> _downloadDictionary(WidgetRef ref, BuildContext context, DictionaryEntry entry) async {
+  Future<void> _downloadDictionary(
+      WidgetRef ref, BuildContext context, DictionaryEntry entry) async {
     final downloadService = ref.read(dictDownloadServiceProvider);
     final messenger = ScaffoldMessenger.of(context);
     final isPersian = ref.read(appLanguageProvider) == 'fa';
@@ -607,14 +624,17 @@ class _DownloadHubBox extends ConsumerWidget {
       final ids = await ref.read(dictStorageManagerProvider).getDownloadedIds();
       ref.read(downloadedDictIdsProvider.notifier).state = ids;
 
-      ref.read(downloadProgressProvider.notifier).state = Map<String, double>.from(
+      ref.read(downloadProgressProvider.notifier).state =
+          Map<String, double>.from(
         ref.read(downloadProgressProvider),
       )..remove(entry.id);
 
       // Auto-select downloaded unified dictionary if none selected
       if (ref.read(selectedUnifiedDictIdProvider) == null) {
         ref.read(selectedUnifiedDictIdProvider.notifier).state = entry.id;
-        await ref.read(dictStorageManagerProvider).setSelectedUnifiedId(entry.id);
+        await ref
+            .read(dictStorageManagerProvider)
+            .setSelectedUnifiedId(entry.id);
       }
 
       if (!context.mounted) return;
@@ -628,14 +648,17 @@ class _DownloadHubBox extends ConsumerWidget {
         ),
       );
     } catch (e) {
-      ref.read(downloadProgressProvider.notifier).state = Map<String, double>.from(
+      ref.read(downloadProgressProvider.notifier).state =
+          Map<String, double>.from(
         ref.read(downloadProgressProvider),
       )..remove(entry.id);
 
       if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(isPersian ? 'خطا در دریافت واژه‌نامه: $e' : 'Download failed: $e'),
+          content: Text(isPersian
+              ? 'خطا در دریافت واژه‌نامه: $e'
+              : 'Download failed: $e'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
         ),
@@ -712,7 +735,9 @@ class _ImportDictDialogState extends ConsumerState<_ImportDictDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isPersian ? 'واژه‌نامه با موفقیت اضافه شد!' : 'Dictionary imported successfully!'),
+            content: Text(isPersian
+                ? 'واژه‌نامه با موفقیت اضافه شد!'
+                : 'Dictionary imported successfully!'),
             backgroundColor: Colors.teal,
           ),
         );
@@ -722,7 +747,8 @@ class _ImportDictDialogState extends ConsumerState<_ImportDictDialog> {
         final isPersian = ref.read(appLanguageProvider) == 'fa';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isPersian ? 'خطا در افزودن: $e' : 'Import failed: $e'),
+            content:
+                Text(isPersian ? 'خطا در افزودن: $e' : 'Import failed: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -770,8 +796,9 @@ class _ImportDictDialogState extends ConsumerState<_ImportDictDialog> {
                   borderSide: BorderSide(color: _accent),
                 ),
               ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? (isPersian ? 'الزامی است' : 'Required') : null,
+              validator: (v) => v == null || v.trim().isEmpty
+                  ? (isPersian ? 'الزامی است' : 'Required')
+                  : null,
             ),
           ],
         ),
@@ -786,8 +813,8 @@ class _ImportDictDialogState extends ConsumerState<_ImportDictDialog> {
           onPressed: _importing ? null : _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: _accent,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: _importing
               ? const SizedBox(

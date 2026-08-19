@@ -13,7 +13,9 @@ void main() {
       expect(redirect.inflectionNote, def);
     });
 
-    test('parseInflectionRedirect handles clean targets with trailing periods or notes', () {
+    test(
+        'parseInflectionRedirect handles clean targets with trailing periods or notes',
+        () {
       const def = 'simple past of polish off (to remove polish)';
       final redirect = parseInflectionRedirect(def);
 
@@ -22,7 +24,8 @@ void main() {
       expect(redirect.inflectionNote, def);
     });
 
-    test('SpanModel and ParentMeaning preserve inflectionNote and baseForm', () {
+    test('SpanModel and ParentMeaning preserve inflectionNote and baseForm',
+        () {
       const parent = ParentMeaning(
         definitionEn: 'To complete or consume something quickly.',
         translationFa: 'به سرعت کار چیزی را تمام کردن',
@@ -42,9 +45,11 @@ void main() {
         baseForm: parent.baseForm,
       );
 
-      expect(span.inflectionNote, 'simple past and past participle of make quick work of');
+      expect(span.inflectionNote,
+          'simple past and past participle of make quick work of');
       expect(span.baseForm, 'make quick work of');
-      expect(span.parentMeaning!.definitionEn, 'To complete or consume something quickly.');
+      expect(span.parentMeaning!.definitionEn,
+          'To complete or consume something quickly.');
 
       // Test JSON round-trip
       final jsonMap = span.toJson();
@@ -52,7 +57,8 @@ void main() {
 
       expect(roundTripSpan.inflectionNote, span.inflectionNote);
       expect(roundTripSpan.baseForm, span.baseForm);
-      expect(roundTripSpan.parentMeaning!.definitionEn, span.parentMeaning!.definitionEn);
+      expect(roundTripSpan.parentMeaning!.definitionEn,
+          span.parentMeaning!.definitionEn);
     });
   });
 }

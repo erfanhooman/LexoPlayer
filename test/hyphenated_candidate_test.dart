@@ -6,7 +6,8 @@ void main() {
     test('Tokenizer tags hyphenated compound -ed words as ADJ', () {
       final tokenizer = EngineTokenizer();
       final tokens = tokenizer.tokenize('The future was too near-sighted');
-      final nearSightedToken = tokens.firstWhere((t) => t.token == 'near-sighted');
+      final nearSightedToken =
+          tokens.firstWhere((t) => t.token == 'near-sighted');
 
       expect(nearSightedToken.spacyPos, 'ADJ');
       expect(nearSightedToken.pos, 'adj');

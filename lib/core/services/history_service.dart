@@ -5,7 +5,8 @@ const _kHistoryKey = 'lexo_recent_videos_v1';
 const _kMaxHistoryItems = 10;
 
 /// Provider that exposes the list of recently played media (paths or URLs).
-final recentVideosProvider = StateNotifierProvider<HistoryNotifier, List<String>>((ref) {
+final recentVideosProvider =
+    StateNotifierProvider<HistoryNotifier, List<String>>((ref) {
   return HistoryNotifier();
 });
 
@@ -22,16 +23,16 @@ class HistoryNotifier extends StateNotifier<List<String>> {
 
   Future<void> addMedia(String uri) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Create a new list, removing the item if it already exists to move it to the top
     final updatedList = List<String>.from(state)..remove(uri);
     updatedList.insert(0, uri);
-    
+
     // Truncate to max items
     if (updatedList.length > _kMaxHistoryItems) {
       updatedList.removeRange(_kMaxHistoryItems, updatedList.length);
     }
-    
+
     await prefs.setStringList(_kHistoryKey, updatedList);
     state = updatedList;
   }

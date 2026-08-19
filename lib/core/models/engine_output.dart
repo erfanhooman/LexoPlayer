@@ -101,8 +101,7 @@ class SpanModel {
     // Multi-word spans detected by Aho-Corasick always count as meaningful.
     if (isMultiWord) return true;
 
-    final hasTranslations =
-        (primaryTranslationFa?.isNotEmpty ?? false) ||
+    final hasTranslations = (primaryTranslationFa?.isNotEmpty ?? false) ||
         (secondaryTranslationFa?.isNotEmpty ?? false) ||
         (tertiaryTranslationFa?.isNotEmpty ?? false) ||
         otherTranslationFa.isNotEmpty;
@@ -151,8 +150,7 @@ class SpanModel {
               json['parent_meaning'] as Map<String, dynamic>)
           : null,
       childrenSubTokens: (json['children_sub_tokens'] as List<dynamic>?)
-              ?.map((e) =>
-                  ChildSubToken.fromJson(e as Map<String, dynamic>))
+              ?.map((e) => ChildSubToken.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
       wsd: (json['wsd'] as List<dynamic>?)
@@ -167,9 +165,8 @@ class SpanModel {
   Map<String, dynamic> toJson() {
     return {
       'span_id': spanId,
-      'type': type == SpanType.multiWordSpan
-          ? 'MULTI_WORD_SPAN'
-          : 'SINGLE_WORD',
+      'type':
+          type == SpanType.multiWordSpan ? 'MULTI_WORD_SPAN' : 'SINGLE_WORD',
       'category': category,
       'text': text,
       if (canonicalForm != null) 'canonical_form': canonicalForm,
@@ -182,8 +179,7 @@ class SpanModel {
       'tertiary_translation_fa': tertiaryTranslationFa,
       'other_translation_fa': otherTranslationFa,
       if (parentMeaning != null) 'parent_meaning': parentMeaning!.toJson(),
-      'children_sub_tokens':
-          childrenSubTokens.map((e) => e.toJson()).toList(),
+      'children_sub_tokens': childrenSubTokens.map((e) => e.toJson()).toList(),
       'wsd': wsd.map((e) => e.toJson()).toList(),
       if (inflectionNote != null) 'inflection_note': inflectionNote,
       if (baseForm != null) 'base_form': baseForm,

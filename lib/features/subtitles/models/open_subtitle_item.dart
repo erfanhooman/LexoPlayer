@@ -69,14 +69,22 @@ class OpenSubtitleItem {
     // 1. Check rest.opensubtitles.org schema
     if (json.containsKey('IDSubtitle') || json.containsKey('SubFileName')) {
       final subFileName = json['SubFileName']?.toString() ?? 'Subtitle.srt';
-      final release = (json['MovieReleaseName']?.toString() ?? subFileName).trim();
-      final id = json['IDSubtitle']?.toString() ?? json['IDSubtitleFile']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final release =
+          (json['MovieReleaseName']?.toString() ?? subFileName).trim();
+      final id = json['IDSubtitle']?.toString() ??
+          json['IDSubtitleFile']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString();
       final fileId = int.tryParse(json['IDSubtitleFile']?.toString() ?? '');
-      final lang = json['ISO639']?.toString() ?? json['SubLanguageID']?.toString() ?? 'en';
+      final lang = json['ISO639']?.toString() ??
+          json['SubLanguageID']?.toString() ??
+          'en';
       final langName = json['LanguageName']?.toString() ?? 'English';
-      final dlCnt = int.tryParse(json['SubDownloadsCnt']?.toString() ?? '0') ?? 0;
-      final rating = double.tryParse(json['SubRating']?.toString() ?? '0.0') ?? 0.0;
-      final dlUrl = json['SubDownloadLink']?.toString() ?? json['ZipDownloadLink']?.toString();
+      final dlCnt =
+          int.tryParse(json['SubDownloadsCnt']?.toString() ?? '0') ?? 0;
+      final rating =
+          double.tryParse(json['SubRating']?.toString() ?? '0.0') ?? 0.0;
+      final dlUrl = json['SubDownloadLink']?.toString() ??
+          json['ZipDownloadLink']?.toString();
       final season = int.tryParse(json['SeriesSeason']?.toString() ?? '');
       final episode = int.tryParse(json['SeriesEpisode']?.toString() ?? '');
       final year = int.tryParse(json['MovieYear']?.toString() ?? '');
@@ -112,21 +120,31 @@ class OpenSubtitleItem {
       }
     }
 
-    final featureDetails = attributes['feature_details'] as Map<String, dynamic>? ?? {};
+    final featureDetails =
+        attributes['feature_details'] as Map<String, dynamic>? ?? {};
 
     return OpenSubtitleItem(
-      id: json['id']?.toString() ?? attributes['subtitle_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: json['id']?.toString() ??
+          attributes['subtitle_id']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       fileId: fileId,
       fileName: fileName,
       language: attributes['language']?.toString() ?? 'en',
-      languageName: attributes['language_name']?.toString() ?? attributes['language']?.toString() ?? 'English',
+      languageName: attributes['language_name']?.toString() ??
+          attributes['language']?.toString() ??
+          'English',
       release: attributes['release']?.toString() ?? fileName,
       downloadCount: (attributes['download_count'] as num?)?.toInt() ?? 0,
-      rating: (attributes['ratings'] as num?)?.toDouble() ?? (attributes['rating'] as num?)?.toDouble() ?? 0.0,
+      rating: (attributes['ratings'] as num?)?.toDouble() ??
+          (attributes['rating'] as num?)?.toDouble() ??
+          0.0,
       downloadUrl: attributes['url']?.toString(),
-      seasonNumber: (featureDetails['season_number'] as num?)?.toInt() ?? (attributes['season_number'] as num?)?.toInt(),
-      episodeNumber: (featureDetails['episode_number'] as num?)?.toInt() ?? (attributes['episode_number'] as num?)?.toInt(),
-      year: (featureDetails['year'] as num?)?.toInt() ?? (attributes['year'] as num?)?.toInt(),
+      seasonNumber: (featureDetails['season_number'] as num?)?.toInt() ??
+          (attributes['season_number'] as num?)?.toInt(),
+      episodeNumber: (featureDetails['episode_number'] as num?)?.toInt() ??
+          (attributes['episode_number'] as num?)?.toInt(),
+      year: (featureDetails['year'] as num?)?.toInt() ??
+          (attributes['year'] as num?)?.toInt(),
     );
   }
 

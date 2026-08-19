@@ -53,21 +53,51 @@ class _SubtitleWordWidgetState extends ConsumerState<SubtitleWordWidget> {
       // Always include Persian/Arabic-capable fonts in the fallback chain so
       // subtitles like "سلام چطوری" render with visible glyphs on every platform.
       fontFamilyFallback: font == 'Menlo' || font == 'Courier New'
-          ? const ['Monaco', 'Consolas', 'Courier New', 'Vazirmatn', 'Tahoma', 'monospace']
+          ? const [
+              'Monaco',
+              'Consolas',
+              'Courier New',
+              'Vazirmatn',
+              'Tahoma',
+              'monospace'
+            ]
           : (font == 'Georgia' || font == 'Times New Roman'
-              ? const ['Times New Roman', 'Times', 'Vazirmatn', 'Tahoma', 'serif']
-              : const ['Vazirmatn', 'IRANSans', 'Tahoma', 'Arial', 'Helvetica Neue', 'sans-serif']),
+              ? const [
+                  'Times New Roman',
+                  'Times',
+                  'Vazirmatn',
+                  'Tahoma',
+                  'serif'
+                ]
+              : const [
+                  'Vazirmatn',
+                  'IRANSans',
+                  'Tahoma',
+                  'Arial',
+                  'Helvetica Neue',
+                  'sans-serif'
+                ]),
       shadows: outlineWidth > 0
           ? [
-              Shadow(offset: Offset(-outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(-outlineWidth, outlineWidth), color: Colors.black),
-              const Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, outlineWidth),
+                  color: Colors.black),
+              const Shadow(
+                  offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
             ]
           : const [
               Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
-              Shadow(offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
+              Shadow(
+                  offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
             ],
     );
 

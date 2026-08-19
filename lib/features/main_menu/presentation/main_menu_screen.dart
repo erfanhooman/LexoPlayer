@@ -38,7 +38,12 @@ TextStyle appStyle({
   if (isPersian) {
     return TextStyle(
       fontFamily: 'Parastoo',
-      fontFamilyFallback: const ['Vazirmatn', 'IRANSans', 'Tahoma', 'sans-serif'],
+      fontFamilyFallback: const [
+        'Vazirmatn',
+        'IRANSans',
+        'Tahoma',
+        'sans-serif'
+      ],
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -79,7 +84,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     }
 
     if (Platform.isMacOS) {
-      const MethodChannel('com.lexoplayer/open_file').setMethodCallHandler((call) async {
+      const MethodChannel('com.lexoplayer/open_file')
+          .setMethodCallHandler((call) async {
         if (call.method == 'onFileOpened' && call.arguments is String) {
           final rawPath = call.arguments as String;
           final cleaned = cleanVideoPathOrUri(rawPath);
@@ -102,7 +108,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     ref.read(recentVideosProvider.notifier).addMedia(uri);
 
     // Reset subtitles
-    ref.read(selectedSubtitleProvider.notifier).state = const SubtitleTrackOption(
+    ref.read(selectedSubtitleProvider.notifier).state =
+        const SubtitleTrackOption(
       id: 'none',
       name: 'Off',
       isExternal: false,
@@ -133,9 +140,30 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: [
-        'mp4', 'MP4', 'mkv', 'MKV', 'avi', 'AVI', 'webm', 'WEBM',
-        'mov', 'MOV', 'flv', 'FLV', 'm4v', 'M4V', '3gp', '3GP',
-        'ts', 'TS', 'wmv', 'WMV', 'mpg', 'MPG', 'mpeg', 'MPEG'
+        'mp4',
+        'MP4',
+        'mkv',
+        'MKV',
+        'avi',
+        'AVI',
+        'webm',
+        'WEBM',
+        'mov',
+        'MOV',
+        'flv',
+        'FLV',
+        'm4v',
+        'M4V',
+        '3gp',
+        '3GP',
+        'ts',
+        'TS',
+        'wmv',
+        'WMV',
+        'mpg',
+        'MPG',
+        'mpeg',
+        'MPEG'
       ],
       dialogTitle: 'Open Video File',
     );
@@ -146,7 +174,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   }
 
   Future<void> _pickLocalFolder() async {
-    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+    final String? selectedDirectory =
+        await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select Folder containing Video Files',
     );
 
@@ -215,7 +244,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                ref.watch(appLanguageProvider) == 'fa' ? 'فایل‌های اخیر' : 'Recent Files',
+                ref.watch(appLanguageProvider) == 'fa'
+                    ? 'فایل‌های اخیر'
+                    : 'Recent Files',
                 style: appStyle(
                   isPersian: ref.watch(appLanguageProvider) == 'fa',
                   fontSize: 18,
@@ -230,7 +261,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     ref.read(recentVideosProvider.notifier).clearHistory();
                   },
                   child: Text(
-                    ref.watch(appLanguageProvider) == 'fa' ? 'پاک‌سازی همه' : 'Clear All',
+                    ref.watch(appLanguageProvider) == 'fa'
+                        ? 'پاک‌سازی همه'
+                        : 'Clear All',
                     style: appStyle(
                       isPersian: ref.watch(appLanguageProvider) == 'fa',
                       fontSize: 14,
@@ -258,7 +291,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   Widget build(BuildContext context) {
     final recentVideos = ref.watch(recentVideosProvider);
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobileLayout = screenWidth < 880 || Platform.isAndroid || Platform.isIOS;
+    final isMobileLayout =
+        screenWidth < 880 || Platform.isAndroid || Platform.isIOS;
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
 
     return DropTarget(
@@ -400,7 +434,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     child: Center(
                       child: Container(
                         margin: const EdgeInsets.all(32),
-                        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 320),
+                        constraints:
+                            const BoxConstraints(maxWidth: 520, maxHeight: 320),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1B1923),
                           borderRadius: BorderRadius.circular(28),
@@ -448,7 +483,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                             ),
                             const SizedBox(height: 10),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(16),
@@ -621,9 +657,7 @@ class _SidebarNavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isActive
-                  ? const Color(0xFF221B16)
-                  : Colors.transparent,
+              color: isActive ? const Color(0xFF221B16) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: isActive
                   ? Border.all(color: kNeutralAccent.withValues(alpha: 0.25))
@@ -949,7 +983,8 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
                           value: 0.78,
                           minHeight: 6,
                           backgroundColor: const Color(0xFF2F2A38),
-                          valueColor: AlwaysStoppedAnimation<Color>(kNeutralAccent),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(kNeutralAccent),
                         ),
                       ),
 
@@ -981,11 +1016,13 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
                                 onTap: () => onResume(heroUri),
                                 borderRadius: BorderRadius.circular(20),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 10),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                                      const Icon(Icons.play_arrow_rounded,
+                                          color: Colors.white, size: 20),
                                       const SizedBox(width: 6),
                                       Text(
                                         isPersian ? 'ادامه پخش' : 'Resume',
@@ -1323,7 +1360,9 @@ class _QuickActionCard extends ConsumerWidget {
                 ),
               ),
               Icon(
-                isPersian ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                isPersian
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
                 color: const Color(0xFF75747C),
                 size: 20,
               ),
@@ -1385,7 +1424,8 @@ class _RecentFilesList extends ConsumerWidget {
                 onTap: () => onPlay(uri),
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   child: Row(
                     children: [
                       // Video Thumbnail Badge with Soft Neutral Border
@@ -1513,10 +1553,12 @@ class _StreamLinkModalDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_StreamLinkModalDialog> createState() => _StreamLinkModalDialogState();
+  ConsumerState<_StreamLinkModalDialog> createState() =>
+      _StreamLinkModalDialogState();
 }
 
-class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> {
+class _StreamLinkModalDialogState
+    extends ConsumerState<_StreamLinkModalDialog> {
   @override
   Widget build(BuildContext context) {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
@@ -1570,7 +1612,9 @@ class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> 
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          isPersian ? 'پخش آنلاین ویدیو' : 'Stream Video from Link',
+                          isPersian
+                              ? 'پخش آنلاین ویدیو'
+                              : 'Stream Video from Link',
                           style: appStyle(
                             isPersian: isPersian,
                             fontSize: 18,
@@ -1615,7 +1659,8 @@ class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> 
                   decoration: BoxDecoration(
                     color: const Color(0xFF1B1923),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF2C2C35), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFF2C2C35), width: 1),
                   ),
                   child: ValueListenableBuilder<TextEditingValue>(
                     valueListenable: widget.controller,
@@ -1662,9 +1707,12 @@ class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> 
                                   color: Color(0xFF8E8D94),
                                   size: 18,
                                 ),
-                                tooltip: isPersian ? 'جای‌گذاری از حافظه' : 'Paste from Clipboard',
+                                tooltip: isPersian
+                                    ? 'جای‌گذاری از حافظه'
+                                    : 'Paste from Clipboard',
                                 onPressed: () async {
-                                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                  final data = await Clipboard.getData(
+                                      Clipboard.kTextPlain);
                                   if (data != null && data.text != null) {
                                     widget.controller.text = data.text!.trim();
                                   }
@@ -1708,7 +1756,8 @@ class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> 
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF9E9D9F),
                         side: const BorderSide(color: Color(0xFF2C2C35)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1735,7 +1784,8 @@ class _StreamLinkModalDialogState extends ConsumerState<_StreamLinkModalDialog> 
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [kNeutralAccent, kNeutralAccentDark],
@@ -1878,10 +1928,12 @@ class _LanguageDropdownButton extends ConsumerStatefulWidget {
   const _LanguageDropdownButton();
 
   @override
-  ConsumerState<_LanguageDropdownButton> createState() => _LanguageDropdownButtonState();
+  ConsumerState<_LanguageDropdownButton> createState() =>
+      _LanguageDropdownButtonState();
 }
 
-class _LanguageDropdownButtonState extends ConsumerState<_LanguageDropdownButton> {
+class _LanguageDropdownButtonState
+    extends ConsumerState<_LanguageDropdownButton> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   bool _isOpen = false;
@@ -2005,10 +2057,14 @@ class _LanguageDropdownButtonState extends ConsumerState<_LanguageDropdownButton
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: _isOpen ? kNeutralAccent.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.06),
+            color: _isOpen
+                ? kNeutralAccent.withValues(alpha: 0.12)
+                : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(19),
             border: Border.all(
-              color: _isOpen ? kNeutralAccent.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1),
+              color: _isOpen
+                  ? kNeutralAccent.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.1),
             ),
           ),
           child: Row(
@@ -2025,7 +2081,9 @@ class _LanguageDropdownButtonState extends ConsumerState<_LanguageDropdownButton
               ),
               const SizedBox(width: 6),
               Icon(
-                _isOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                _isOpen
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
                 color: _isOpen ? kNeutralAccent : const Color(0xFF9E9D9F),
                 size: 18,
               ),
@@ -2069,10 +2127,13 @@ class _DropdownItemState extends State<_DropdownItem> {
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? kNeutralAccent.withValues(alpha: 0.15)
-                : (_isHovered ? Colors.white.withValues(alpha: 0.06) : Colors.transparent),
+                : (_isHovered
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.transparent),
             borderRadius: BorderRadius.circular(10),
             border: widget.isSelected
-                ? Border.all(color: kNeutralAccent.withValues(alpha: 0.35), width: 1)
+                ? Border.all(
+                    color: kNeutralAccent.withValues(alpha: 0.35), width: 1)
                 : Border.all(color: Colors.transparent, width: 1),
           ),
           child: Row(
@@ -2085,7 +2146,8 @@ class _DropdownItemState extends State<_DropdownItem> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13,
-                    fontWeight: widget.isSelected ? FontWeight.bold : FontWeight.w500,
+                    fontWeight:
+                        widget.isSelected ? FontWeight.bold : FontWeight.w500,
                   ),
                 ),
               ),

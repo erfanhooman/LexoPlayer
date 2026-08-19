@@ -16,7 +16,8 @@ PersianTranslations extractTop3FaTranslations(List<WsdCandidate> senses) {
     final faRaw = sense.translationFa;
     if (faRaw == null || faRaw.isEmpty) continue;
 
-    final parts = faRaw.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty);
+    final parts =
+        faRaw.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty);
     for (final p in parts) {
       if (seen.add(p)) {
         allList.add(p);
@@ -114,8 +115,11 @@ class HierarchicalSpanBuilder {
       // Validate category
       var category = mwe.category.toUpperCase();
       const validCategories = {
-        'IDIOM', 'PHRASAL_VERB', 'SEMI_AUXILIARY',
-        'COMPOUND_PREPOSITION', 'MWE',
+        'IDIOM',
+        'PHRASAL_VERB',
+        'SEMI_AUXILIARY',
+        'COMPOUND_PREPOSITION',
+        'MWE',
       };
       if (!validCategories.contains(category)) category = 'IDIOM';
 

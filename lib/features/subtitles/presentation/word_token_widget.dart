@@ -81,15 +81,25 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
               : const ['Helvetica Neue', 'Arial', 'sans-serif']),
       shadows: outlineWidth > 0
           ? [
-              Shadow(offset: Offset(-outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(-outlineWidth, outlineWidth), color: Colors.black),
-              const Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, outlineWidth),
+                  color: Colors.black),
+              const Shadow(
+                  offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
             ]
           : const [
               Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
-              Shadow(offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
+              Shadow(
+                  offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
             ],
     );
 

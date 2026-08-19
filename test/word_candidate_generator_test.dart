@@ -30,7 +30,9 @@ void main() {
       expect(candidates, equals(['run']));
     });
 
-    test('generates multi-word n-gram candidates prioritized by longest length first', () {
+    test(
+        'generates multi-word n-gram candidates prioritized by longest length first',
+        () {
       final tokens = WordTokenizer.tokenize('look forward to meeting you');
       // target is "forward" at token index 2 (tokens: ["look", " ", "forward", " ", "to", " ", "meeting", " ", "you"])
       final candidates = generator.generateCandidates(tokens, 2);
@@ -42,7 +44,8 @@ void main() {
 
       // Check sorting (longest first)
       for (int i = 0; i < candidates.length - 1; i++) {
-        expect(candidates[i].length, greaterThanOrEqualTo(candidates[i + 1].length));
+        expect(candidates[i].length,
+            greaterThanOrEqualTo(candidates[i + 1].length));
       }
     });
 

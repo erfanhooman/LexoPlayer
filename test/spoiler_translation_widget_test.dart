@@ -5,7 +5,8 @@ import 'package:lexo_player/features/dictionary/presentation/spoiler_translation
 
 void main() {
   group('SpoilerTranslationWidget', () {
-    testWidgets('parses comma-separated translations into chips', (tester) async {
+    testWidgets('parses comma-separated translations into chips',
+        (tester) async {
       const rawText = 'دوست داشتن, مایل بودن, دل خواستن';
 
       await tester.pumpWidget(
@@ -30,7 +31,8 @@ void main() {
       expect(find.text('دل خواستن'), findsOneWidget);
     });
 
-    testWidgets('shows max items and +X more button for long lists', (tester) async {
+    testWidgets('shows max items and +X more button for long lists',
+        (tester) async {
       const rawText = 'item1, item2, item3, item4, item5, item6';
 
       await tester.pumpWidget(
@@ -66,7 +68,8 @@ void main() {
       expect(find.text('Show less'), findsOneWidget);
     });
 
-    testWidgets('toggling reveal all updates button text to Hide translation', (tester) async {
+    testWidgets('toggling reveal all updates button text to Hide translation',
+        (tester) async {
       const rawText = 'دوست داشتن, مایل بودن';
 
       await tester.pumpWidget(

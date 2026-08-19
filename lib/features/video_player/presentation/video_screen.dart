@@ -80,7 +80,8 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
 
     try {
       // Reset subtitle selection when loading media
-      ref.read(selectedSubtitleProvider.notifier).state = const SubtitleTrackOption(
+      ref.read(selectedSubtitleProvider.notifier).state =
+          const SubtitleTrackOption(
         id: 'none',
         name: 'Off',
         isExternal: false,
@@ -128,7 +129,8 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
         }
       }
       final file = File(localPath);
-      final videoNameWithoutExt = path.basenameWithoutExtension(file.path).toLowerCase();
+      final videoNameWithoutExt =
+          path.basenameWithoutExtension(file.path).toLowerCase();
 
       final searchDirs = <Directory>[];
       if (await file.exists()) {
@@ -137,13 +139,15 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
 
       try {
         final appDir = await getApplicationDocumentsDirectory();
-        searchDirs.add(Directory(path.join(appDir.path, 'LexoPlayer', 'Subtitles')));
+        searchDirs
+            .add(Directory(path.join(appDir.path, 'LexoPlayer', 'Subtitles')));
       } catch (_) {}
 
       try {
         final home = Platform.environment['HOME'];
         if (home != null && home.isNotEmpty) {
-          searchDirs.add(Directory(path.join(home, 'Documents', 'LexoPlayer', 'Subtitles')));
+          searchDirs.add(Directory(
+              path.join(home, 'Documents', 'LexoPlayer', 'Subtitles')));
         }
       } catch (_) {}
 
@@ -161,8 +165,12 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                     path.basenameWithoutExtension(entity.path).toLowerCase();
                 if (subNameWithoutExt.contains(videoNameWithoutExt) ||
                     videoNameWithoutExt.contains(subNameWithoutExt) ||
-                    subNameWithoutExt.replaceAll('_', '.').contains(videoNameWithoutExt.replaceAll('_', '.')) ||
-                    videoNameWithoutExt.replaceAll('_', '.').contains(subNameWithoutExt.replaceAll('_', '.'))) {
+                    subNameWithoutExt
+                        .replaceAll('_', '.')
+                        .contains(videoNameWithoutExt.replaceAll('_', '.')) ||
+                    videoNameWithoutExt
+                        .replaceAll('_', '.')
+                        .contains(subNameWithoutExt.replaceAll('_', '.'))) {
                   seenPaths.add(entity.path);
                   try {
                     final blocks = await SubtitleParser.parseFile(entity.path);
@@ -187,7 +195,8 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
       }
 
       if (externalOptions.isNotEmpty && mounted) {
-        ref.read(externalSubtitleOptionsProvider.notifier).state = externalOptions;
+        ref.read(externalSubtitleOptionsProvider.notifier).state =
+            externalOptions;
       }
 
       if (mounted) {
@@ -208,9 +217,30 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
-          'mp4', 'MP4', 'mkv', 'MKV', 'avi', 'AVI', 'webm', 'WEBM',
-          'mov', 'MOV', 'flv', 'FLV', 'm4v', 'M4V', '3gp', '3GP',
-          'ts', 'TS', 'wmv', 'WMV', 'mpg', 'MPG', 'mpeg', 'MPEG'
+          'mp4',
+          'MP4',
+          'mkv',
+          'MKV',
+          'avi',
+          'AVI',
+          'webm',
+          'WEBM',
+          'mov',
+          'MOV',
+          'flv',
+          'FLV',
+          'm4v',
+          'M4V',
+          '3gp',
+          '3GP',
+          'ts',
+          'TS',
+          'wmv',
+          'WMV',
+          'mpg',
+          'MPG',
+          'mpeg',
+          'MPEG'
         ],
         dialogTitle: 'Open Video File',
       );
@@ -334,7 +364,6 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                 ),
               ),
             ),
-
             if (_isDraggingFile)
               Positioned.fill(
                 child: BackdropFilter(
@@ -344,7 +373,8 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                     child: Center(
                       child: Container(
                         margin: const EdgeInsets.all(32),
-                        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 320),
+                        constraints:
+                            const BoxConstraints(maxWidth: 520, maxHeight: 320),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1B1923),
                           borderRadius: BorderRadius.circular(28),
@@ -371,10 +401,12 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.35),
                                   width: 1.5,
                                 ),
                               ),
@@ -387,9 +419,12 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                             const SizedBox(height: 24),
                             Consumer(
                               builder: (context, ref, child) {
-                                final isPersian = ref.watch(appLanguageProvider) == 'fa';
+                                final isPersian =
+                                    ref.watch(appLanguageProvider) == 'fa';
                                 return Text(
-                                  isPersian ? 'فایل ویدیویی را اینجا رها کنید' : 'Drop Video File to Play',
+                                  isPersian
+                                      ? 'فایل ویدیویی را اینجا رها کنید'
+                                      : 'Drop Video File to Play',
                                   style: appStyle(
                                     isPersian: isPersian,
                                     fontSize: 20,
@@ -401,14 +436,16 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
                             ),
                             const SizedBox(height: 10),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Consumer(
                                 builder: (context, ref, child) {
-                                  final isPersian = ref.watch(appLanguageProvider) == 'fa';
+                                  final isPersian =
+                                      ref.watch(appLanguageProvider) == 'fa';
                                   return Text(
                                     isPersian
                                         ? 'پشتیبانی از فرمت‌های MP4, MKV, AVI, WEBM, MOV, FLV'
@@ -435,8 +472,6 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
       ),
     );
   }
-
-
 }
 
 /// Custom controls widget that encapsulates all overlays (ControlBar, Subtitles, Dictionary).
@@ -569,7 +604,8 @@ class _LexoVideoControlsState extends ConsumerState<LexoVideoControls> {
     final controlsVisible = ref.watch(controlsVisibleProvider);
 
     return MouseRegion(
-      cursor: controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
+      cursor:
+          controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
       child: Focus(
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
@@ -578,108 +614,111 @@ class _LexoVideoControlsState extends ConsumerState<LexoVideoControls> {
           onPointerDown: (_) => _onUserActivity(),
           onPointerHover: (_) => _onUserActivity(),
           onPointerMove: (_) => _onUserActivity(),
-        onPointerSignal: (pointerSignal) {
-          if (pointerSignal is PointerScrollEvent) {
-            _onUserActivity();
-            final player = ref.read(playerProvider);
-            final delta = pointerSignal.scrollDelta.dy < 0 ? 5.0 : -5.0;
-            PlayerActions.adjustVolumeRelative(player, delta, ref);
-          }
-        },
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // ── Background GestureDetector (Video Surface Taps/Double-taps) ──
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  final isVisible = ref.read(controlsVisibleProvider);
-                  if (isVisible) {
-                    ref.read(controlsVisibleProvider.notifier).state = false;
-                    _hideControlsTimer?.cancel();
-                  } else {
-                    _onUserActivity();
-                  }
-                },
-                onDoubleTapDown: _onDoubleTapDown,
-                onDoubleTap: _onDoubleTap,
+          onPointerSignal: (pointerSignal) {
+            if (pointerSignal is PointerScrollEvent) {
+              _onUserActivity();
+              final player = ref.read(playerProvider);
+              final delta = pointerSignal.scrollDelta.dy < 0 ? 5.0 : -5.0;
+              PlayerActions.adjustVolumeRelative(player, delta, ref);
+            }
+          },
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // ── Background GestureDetector (Video Surface Taps/Double-taps) ──
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    final isVisible = ref.read(controlsVisibleProvider);
+                    if (isVisible) {
+                      ref.read(controlsVisibleProvider.notifier).state = false;
+                      _hideControlsTimer?.cancel();
+                    } else {
+                      _onUserActivity();
+                    }
+                  },
+                  onDoubleTapDown: _onDoubleTapDown,
+                  onDoubleTap: _onDoubleTap,
+                ),
               ),
-            ),
 
-            // ── Interactive Subtitle Overlay ──
-            const InteractiveSubtitleOverlay(),
+              // ── Interactive Subtitle Overlay ──
+              const InteractiveSubtitleOverlay(),
 
-            // ── Desktop Dictionary Popup Overlay ──
-            const EngineDefinitionPopup(),
+              // ── Desktop Dictionary Popup Overlay ──
+              const EngineDefinitionPopup(),
 
-            // ── Floating Volume HUD Overlay ──
-            const VolumeHudOverlay(),
+              // ── Floating Volume HUD Overlay ──
+              const VolumeHudOverlay(),
 
-            // ── Auto-hiding Top Header Bar (Video Title + Back Button) ──
-            Positioned(
-              left: 24,
-              top: 48,
-              right: 24,
-              child: AnimatedOpacity(
-                opacity: controlsVisible ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: IgnorePointer(
-                  ignoring: !controlsVisible,
-                  child: Row(
-                    children: [
-                      // Back Button
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {
-                            final player = ref.read(playerProvider);
-                            player.pause();
-                            PlayerActions.stop(player);
-                            ref.read(isVideoLoadedProvider.notifier).state = false;
-                            Navigator.of(context).pop();
-                          },
-                          child: GlassContainer(
-                            padding: const EdgeInsets.all(12),
-                            borderRadius: BorderRadius.circular(24),
-                            color: Colors.grey.withValues(alpha: 0.10),
-                            borderColor: Colors.grey.shade300.withValues(alpha: 0.14),
-                            blur: 10.0,
-                            child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+              // ── Auto-hiding Top Header Bar (Video Title + Back Button) ──
+              Positioned(
+                left: 24,
+                top: 48,
+                right: 24,
+                child: AnimatedOpacity(
+                  opacity: controlsVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    ignoring: !controlsVisible,
+                    child: Row(
+                      children: [
+                        // Back Button
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              final player = ref.read(playerProvider);
+                              player.pause();
+                              PlayerActions.stop(player);
+                              ref.read(isVideoLoadedProvider.notifier).state =
+                                  false;
+                              Navigator.of(context).pop();
+                            },
+                            child: GlassContainer(
+                              padding: const EdgeInsets.all(12),
+                              borderRadius: BorderRadius.circular(24),
+                              color: Colors.grey.withValues(alpha: 0.10),
+                              borderColor:
+                                  Colors.grey.shade300.withValues(alpha: 0.14),
+                              blur: 10.0,
+                              child: const Icon(Icons.arrow_back_rounded,
+                                  color: Colors.white, size: 20),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      
-                      // Video Title Pill
-                      const Expanded(child: _VideoTitleHeader()),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+                        const SizedBox(width: 16),
 
-            // ── Auto-hiding Control Bar ──
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: AnimatedOpacity(
-                opacity: controlsVisible ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: IgnorePointer(
-                  ignoring: !controlsVisible,
-                  child: ControlBar(
-                    onPickVideo: widget.onPickVideo,
-                    onPickSubtitle: widget.onPickSubtitle,
+                        // Video Title Pill
+                        const Expanded(child: _VideoTitleHeader()),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+
+              // ── Auto-hiding Control Bar ──
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: AnimatedOpacity(
+                  opacity: controlsVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    ignoring: !controlsVisible,
+                    child: ControlBar(
+                      onPickVideo: widget.onPickVideo,
+                      onPickSubtitle: widget.onPickSubtitle,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

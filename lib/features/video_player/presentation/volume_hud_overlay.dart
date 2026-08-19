@@ -92,7 +92,8 @@ class _VolumeHudOverlayState extends ConsumerState<VolumeHudOverlay> {
                 child: Container(
                   width: 56,
                   height: 180,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF16161A).withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(24),
@@ -120,13 +121,17 @@ class _VolumeHudOverlayState extends ConsumerState<VolumeHudOverlay> {
                       const SizedBox(height: 12),
                       Expanded(
                         child: RotatedBox(
-                          quarterTurns: 3, // Vertical orientation (bottom to top)
+                          quarterTurns:
+                              3, // Vertical orientation (bottom to top)
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
-                              value: isMuted ? 0.0 : (volume / 200.0).clamp(0.0, 1.0),
+                              value: isMuted
+                                  ? 0.0
+                                  : (volume / 200.0).clamp(0.0, 1.0),
                               backgroundColor: Colors.white12,
-                              valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(activeColor),
                             ),
                           ),
                         ),
@@ -141,7 +146,9 @@ class _VolumeHudOverlayState extends ConsumerState<VolumeHudOverlay> {
                           style: TextStyle(
                             color: isMuted
                                 ? Colors.redAccent
-                                : (isBoosted ? const Color(0xFFFF9100) : Colors.white),
+                                : (isBoosted
+                                    ? const Color(0xFFFF9100)
+                                    : Colors.white),
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             fontFeatures: const [FontFeature.tabularFigures()],

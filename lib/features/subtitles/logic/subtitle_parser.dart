@@ -46,7 +46,12 @@ class SubtitleParser {
   static final RegExp _htmlTagRegex = RegExp(r'<[^>]+>');
 
   /// Recognized subtitle file extensions.
-  static const List<String> supportedExtensions = ['.srt', '.vtt', '.ass', '.ssa'];
+  static const List<String> supportedExtensions = [
+    '.srt',
+    '.vtt',
+    '.ass',
+    '.ssa'
+  ];
 
   /// Returns `true` when [filePath] points at a recognized subtitle file.
   static bool isSupportedSubtitleFile(String filePath) {
@@ -62,7 +67,8 @@ class SubtitleParser {
 
     // Prefer the extension, but fall back to content sniffing so files with
     // missing/misleading extensions still load correctly.
-    final format = SubtitleFormat.fromExtension(filePath) ?? detectFormat(content);
+    final format =
+        SubtitleFormat.fromExtension(filePath) ?? detectFormat(content);
 
     switch (format) {
       case SubtitleFormat.srt:
@@ -104,7 +110,8 @@ class SubtitleParser {
       if (currentStart != null &&
           currentEnd != null &&
           currentTextLines.isNotEmpty) {
-        _addBlock(blocks, currentStart!, currentEnd!, currentTextLines.join(' '));
+        _addBlock(
+            blocks, currentStart!, currentEnd!, currentTextLines.join(' '));
       }
       currentStart = null;
       currentEnd = null;
@@ -154,7 +161,8 @@ class SubtitleParser {
       if (currentStart != null &&
           currentEnd != null &&
           currentTextLines.isNotEmpty) {
-        _addBlock(blocks, currentStart!, currentEnd!, currentTextLines.join(' '));
+        _addBlock(
+            blocks, currentStart!, currentEnd!, currentTextLines.join(' '));
       }
       currentStart = null;
       currentEnd = null;
@@ -308,7 +316,8 @@ class SubtitleParser {
     final minutes = int.tryParse(match.group(2) ?? '') ?? 0;
     final seconds = int.tryParse(match.group(3) ?? '') ?? 0;
     final msRaw = match.group(4) ?? '';
-    final milliseconds = int.tryParse(msRaw.padRight(3, '0').substring(0, 3)) ?? 0;
+    final milliseconds =
+        int.tryParse(msRaw.padRight(3, '0').substring(0, 3)) ?? 0;
 
     return Duration(
       hours: hours,
@@ -328,7 +337,10 @@ class SubtitleParser {
     if (bytes.isEmpty) return '';
 
     // UTF-8 BOM.
-    if (bytes.length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xEF &&
+        bytes[1] == 0xBB &&
+        bytes[2] == 0xBF) {
       return _decodeUtf8(bytes.sublist(3)) ?? '';
     }
 

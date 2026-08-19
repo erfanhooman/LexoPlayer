@@ -85,8 +85,7 @@ final engineInitProvider = FutureProvider<void>((ref) async {
     // 2. Initialize ONNX Runtime
     final onnxService = RealOnnxService();
     await onnxService.initialize();
-    developer.log(
-        'Engine init: ONNX ready=${onnxService.isInitialized}',
+    developer.log('Engine init: ONNX ready=${onnxService.isInitialized}',
         name: 'EngineInit');
 
     // 3. Create engine instance

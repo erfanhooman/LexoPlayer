@@ -36,8 +36,9 @@ class _InteractiveSubtitleOverlayState
     final subtitleText = ref.watch(activeSubtitleTextProvider);
     final secondaryText = ref.watch(activeSecondarySubtitleTextProvider);
     final isSecondaryVisible = ref.watch(isSecondarySubtitleVisibleProvider);
-    final hasSecondaryTrack = ref.watch(selectedSecondarySubtitleProvider) != null &&
-        ref.watch(selectedSecondarySubtitleProvider)!.id != 'none';
+    final hasSecondaryTrack =
+        ref.watch(selectedSecondarySubtitleProvider) != null &&
+            ref.watch(selectedSecondarySubtitleProvider)!.id != 'none';
 
     final isVisible = ref.watch(subtitleVisibilityProvider);
     final engineOutputAsync = ref.watch(engineOutputProvider);
@@ -72,7 +73,7 @@ class _InteractiveSubtitleOverlayState
           hitTestBehavior: HitTestBehavior.opaque,
           onEnter: (_) => setState(() => _isHovered = true),
           onExit: (_) => setState(() => _isHovered = false),
-              child: Padding(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -87,18 +88,21 @@ class _InteractiveSubtitleOverlayState
                     child: Container(
                       key: ValueKey<String>('sec_$secondaryText'),
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Color(ref.watch(subtitleBgColorProvider)).withValues(alpha: 0.85),
+                        color: Color(ref.watch(subtitleBgColorProvider))
+                            .withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.white12, width: 0.8),
                       ),
                       child: Text(
                         secondaryText,
                         textAlign: TextAlign.center,
-                        textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(secondaryText)
-                            ? TextDirection.rtl
-                            : TextDirection.ltr,
+                        textDirection:
+                            RegExp(r'[\u0600-\u06FF]').hasMatch(secondaryText)
+                                ? TextDirection.rtl
+                                : TextDirection.ltr,
                         style: _secondaryStyle(ref),
                       ),
                     ),
@@ -107,96 +111,98 @@ class _InteractiveSubtitleOverlayState
                 // Primary Interactive Subtitle Container
                 if (displayText.isNotEmpty)
                   GestureDetector(
-                    onDoubleTap: () => setState(() => _showDebugHud = !_showDebugHud),
+                    onDoubleTap: () =>
+                        setState(() => _showDebugHud = !_showDebugHud),
                     child: Container(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      (_isHovered && hasSecondaryTrack) ? 8 : 10,
-                      16,
-                      10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Color(ref.watch(subtitleBgColorProvider)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Minimal Hover Toggle Button — ONLY visible on mouse hover!
-                        if (hasSecondaryTrack)
-                          AnimatedOpacity(
-                            opacity: _isHovered ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 180),
-                            child: AnimatedContainer(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        (_isHovered && hasSecondaryTrack) ? 8 : 10,
+                        16,
+                        10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Color(ref.watch(subtitleBgColorProvider)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Minimal Hover Toggle Button — ONLY visible on mouse hover!
+                          if (hasSecondaryTrack)
+                            AnimatedOpacity(
+                              opacity: _isHovered ? 1.0 : 0.0,
                               duration: const Duration(milliseconds: 180),
-                              height: _isHovered ? 26 : 0,
-                              margin: EdgeInsets.only(bottom: _isHovered ? 6 : 0),
-                              child: _isHovered
-                                  ? Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          ref
-                                              .read(
-                                                  isSecondarySubtitleVisibleProvider
-                                                      .notifier)
-                                              .state = !isSecondaryVisible;
-                                        },
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
-                                                color: Colors.white24,
-                                                width: 0.8),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                isSecondaryVisible
-                                                    ? Icons.visibility_rounded
-                                                    : Icons
-                                                        .visibility_off_rounded,
-                                                color: isSecondaryVisible
-                                                    ? const Color(0xFFFF5500)
-                                                    : Colors.white60,
-                                                size: 13,
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                isSecondaryVisible
-                                                    ? (isPersian
-                                                        ? 'مخفی‌سازی ترجمه'
-                                                        : 'Hide Translation')
-                                                    : (isPersian
-                                                        ? 'نمایش ترجمه'
-                                                        : 'Show Translation'),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                height: _isHovered ? 26 : 0,
+                                margin:
+                                    EdgeInsets.only(bottom: _isHovered ? 6 : 0),
+                                child: _isHovered
+                                    ? Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () {
+                                            ref
+                                                .read(
+                                                    isSecondarySubtitleVisibleProvider
+                                                        .notifier)
+                                                .state = !isSecondaryVisible;
+                                          },
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: Colors.white24,
+                                                  width: 0.8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isSecondaryVisible
+                                                      ? Icons.visibility_rounded
+                                                      : Icons
+                                                          .visibility_off_rounded,
+                                                  color: isSecondaryVisible
+                                                      ? const Color(0xFFFF5500)
+                                                      : Colors.white60,
+                                                  size: 13,
                                                 ),
-                                              ),
-                                            ],
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  isSecondaryVisible
+                                                      ? (isPersian
+                                                          ? 'مخفی‌سازی ترجمه'
+                                                          : 'Hide Translation')
+                                                      : (isPersian
+                                                          ? 'نمایش ترجمه'
+                                                          : 'Show Translation'),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
                             ),
-                          ),
 
-                        // Interactive Tokenized Primary Subtitle Text
-                        _buildTokens(displayText, spans, ref),
-                      ],
-                    ),
+                          // Interactive Tokenized Primary Subtitle Text
+                          _buildTokens(displayText, spans, ref),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -269,12 +275,15 @@ class _InteractiveSubtitleOverlayState
       }
     }
 
-    matchedSpan ??= spans.where((s) => charStart < s.endChar && charEnd > s.startChar).firstOrNull;
+    matchedSpan ??= spans
+        .where((s) => charStart < s.endChar && charEnd > s.startChar)
+        .firstOrNull;
 
     final cleanTok = token.text.toLowerCase().replaceAll(RegExp(r"[^\w']"), '');
     if (cleanTok.isNotEmpty) {
       matchedSpan ??= spans.where((s) {
-        final cleanSpanText = s.text.toLowerCase().replaceAll(RegExp(r"[^\w']"), '');
+        final cleanSpanText =
+            s.text.toLowerCase().replaceAll(RegExp(r"[^\w']"), '');
         return cleanSpanText == cleanTok;
       }).firstOrNull;
     }
@@ -310,14 +319,23 @@ class _InteractiveSubtitleOverlayState
       fontFamily: font == 'System' ? null : font,
       shadows: outlineWidth > 0
           ? [
-              Shadow(offset: Offset(-outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, -outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth, outlineWidth), color: Colors.black),
-              Shadow(offset: Offset(-outlineWidth, outlineWidth), color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, -outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth, outlineWidth),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth, outlineWidth),
+                  color: Colors.black),
             ]
           : const [
               Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black),
-              Shadow(offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
+              Shadow(
+                  offset: Offset(-1, -1), blurRadius: 3, color: Colors.black),
             ],
     );
   }
@@ -335,10 +353,18 @@ class _InteractiveSubtitleOverlayState
       fontFamily: font == 'System' ? null : font,
       shadows: outlineWidth > 0
           ? [
-              Shadow(offset: Offset(-outlineWidth * 0.8, -outlineWidth * 0.8), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth * 0.8, -outlineWidth * 0.8), color: Colors.black),
-              Shadow(offset: Offset(outlineWidth * 0.8, outlineWidth * 0.8), color: Colors.black),
-              Shadow(offset: Offset(-outlineWidth * 0.8, outlineWidth * 0.8), color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth * 0.8, -outlineWidth * 0.8),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth * 0.8, -outlineWidth * 0.8),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(outlineWidth * 0.8, outlineWidth * 0.8),
+                  color: Colors.black),
+              Shadow(
+                  offset: Offset(-outlineWidth * 0.8, outlineWidth * 0.8),
+                  color: Colors.black),
             ]
           : const [
               Shadow(offset: Offset(1, 1), blurRadius: 2, color: Colors.black),
@@ -362,17 +388,18 @@ class _InteractiveSubtitleOverlayState
         children: [
           const Text(
             'SUBTITLE DEBUG HUD (double-tap to dismiss)',
-            style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           ...debug.entries.map((e) => Text(
-            '${e.key}: ${e.value}',
-            style: TextStyle(
-              color: e.value.contains('NULL') ? Colors.amber : Colors.white,
-              fontSize: 10,
-              fontFamily: 'Menlo',
-            ),
-          )),
+                '${e.key}: ${e.value}',
+                style: TextStyle(
+                  color: e.value.contains('NULL') ? Colors.amber : Colors.white,
+                  fontSize: 10,
+                  fontFamily: 'Menlo',
+                ),
+              )),
         ],
       ),
     );

@@ -23,7 +23,8 @@ class DownloadHubScreen extends ConsumerWidget {
               children: [
                 // ── Header & Back Button ─────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -53,11 +54,12 @@ class DownloadHubScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                
+
                 // ── Main Content ─────────────────────────────────────────
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +70,6 @@ class DownloadHubScreen extends ConsumerWidget {
                         const SizedBox(height: 8),
                         const _ActiveDictSelector(isMonolingual: false),
                         const SizedBox(height: 24),
-                        
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
@@ -83,11 +84,9 @@ class DownloadHubScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        
                         const SizedBox(height: 40),
                         Divider(color: theme.colorScheme.outlineVariant),
                         const SizedBox(height: 32),
-                        
                         const _SectionTitle('DOWNLOAD HUB'),
                         const SizedBox(height: 20),
                         const _DownloadMarketplace(),
@@ -192,14 +191,15 @@ class _ActiveDictSelector extends ConsumerWidget {
     final available = isMonolingual
         ? ref.watch(availableMonolingualProvider)
         : ref.watch(availableBilingualProvider);
-        
+
     final selectedId = isMonolingual
         ? ref.watch(selectedMonolingualIdProvider)
         : ref.watch(selectedBilingualIdProvider);
 
-    final effectiveValue = (selectedId == null || !available.any((dict) => dict.id == selectedId))
-        ? 'none'
-        : selectedId;
+    final effectiveValue =
+        (selectedId == null || !available.any((dict) => dict.id == selectedId))
+            ? 'none'
+            : selectedId;
 
     return Card(
       elevation: 0,
@@ -219,14 +219,18 @@ class _ActiveDictSelector extends ConsumerWidget {
             Row(
               children: [
                 Icon(
-                  isMonolingual ? Icons.translate_rounded : Icons.g_translate_rounded,
+                  isMonolingual
+                      ? Icons.translate_rounded
+                      : Icons.g_translate_rounded,
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isMonolingual ? 'Primary Definition Dictionary' : 'Secondary Translation Dictionary',
+                    isMonolingual
+                        ? 'Primary Definition Dictionary'
+                        : 'Secondary Translation Dictionary',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -246,14 +250,17 @@ class _ActiveDictSelector extends ConsumerWidget {
                   value: effectiveValue,
                   isExpanded: true,
                   dropdownColor: theme.colorScheme.surface,
-                  icon: Icon(Icons.keyboard_arrow_down, color: theme.colorScheme.primary),
+                  icon: Icon(Icons.keyboard_arrow_down,
+                      color: theme.colorScheme.primary),
                   style: theme.textTheme.bodyLarge,
                   items: [
                     DropdownMenuItem(
                       value: 'none',
                       child: Text(
                         'None (Disabled)',
-                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+                        style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6)),
                       ),
                     ),
                     for (final dict in available)
@@ -265,9 +272,11 @@ class _ActiveDictSelector extends ConsumerWidget {
                   onChanged: (val) {
                     if (val != null) {
                       if (isMonolingual) {
-                        ref.read(selectedMonolingualIdProvider.notifier).state = val;
+                        ref.read(selectedMonolingualIdProvider.notifier).state =
+                            val;
                       } else {
-                        ref.read(selectedBilingualIdProvider.notifier).state = val;
+                        ref.read(selectedBilingualIdProvider.notifier).state =
+                            val;
                       }
                       saveSelections(ref);
                     }
@@ -291,8 +300,10 @@ class _DownloadMarketplace extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return manifestAsync.when(
-      loading: () => Center(child: CircularProgressIndicator(color: theme.colorScheme.primary)),
-      error: (e, _) => Text('Error loading hub: $e', style: TextStyle(color: theme.colorScheme.error)),
+      loading: () => Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.primary)),
+      error: (e, _) => Text('Error loading hub: $e',
+          style: TextStyle(color: theme.colorScheme.error)),
       data: (manifest) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +327,8 @@ class _DownloadMarketplace extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              for (final entry in manifest.monolingual) _MarketItem(entry: entry),
+              for (final entry in manifest.monolingual)
+                _MarketItem(entry: entry),
               const SizedBox(height: 32),
             ],
             if (manifest.bilingual.isNotEmpty) ...[
@@ -369,21 +381,24 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
       final ids = await ref.read(dictStorageManagerProvider).getDownloadedIds();
       ref.read(downloadedDictIdsProvider.notifier).state = ids;
 
-      ref.read(downloadProgressProvider.notifier).state = Map<String, double>.from(
+      ref.read(downloadProgressProvider.notifier).state =
+          Map<String, double>.from(
         ref.read(downloadProgressProvider),
       )..remove(widget.entry.id);
 
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('"${widget.entry.displayName}" installed and ready to use'),
+          content:
+              Text('"${widget.entry.displayName}" installed and ready to use'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 3),
         ),
       );
     } catch (e) {
-      ref.read(downloadProgressProvider.notifier).state = Map<String, double>.from(
+      ref.read(downloadProgressProvider.notifier).state =
+          Map<String, double>.from(
         ref.read(downloadProgressProvider),
       )..remove(widget.entry.id);
 
@@ -410,7 +425,9 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await ref.read(dictDownloadServiceProvider).deleteDictionary(widget.entry.id);
+      await ref
+          .read(dictDownloadServiceProvider)
+          .deleteDictionary(widget.entry.id);
 
       final ids = await ref.read(dictStorageManagerProvider).getDownloadedIds();
       ref.read(downloadedDictIdsProvider.notifier).state = ids;
@@ -420,7 +437,9 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
       final biId = ref.read(selectedBilingualIdProvider);
       if (monoId == widget.entry.id) {
         ref.read(selectedMonolingualIdProvider.notifier).state = null;
-        await ref.read(dictStorageManagerProvider).setSelectedMonolingualId(null);
+        await ref
+            .read(dictStorageManagerProvider)
+            .setSelectedMonolingualId(null);
       }
       if (biId == widget.entry.id) {
         ref.read(selectedBilingualIdProvider.notifier).state = null;
@@ -509,7 +528,8 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
                         onPressed: _handleDelete,
-                        icon: Icon(Icons.delete_outline_rounded, size: 16, color: theme.colorScheme.error),
+                        icon: Icon(Icons.delete_outline_rounded,
+                            size: 16, color: theme.colorScheme.error),
                         label: Text(
                           'REMOVE',
                           style: TextStyle(
@@ -520,12 +540,15 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
                           ),
                         ),
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          backgroundColor: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          backgroundColor: theme.colorScheme.errorContainer
+                              .withValues(alpha: 0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: theme.colorScheme.error.withValues(alpha: 0.3),
+                              color: theme.colorScheme.error
+                                  .withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -536,7 +559,8 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
                         onPressed: _handleDownload,
-                        icon: Icon(Icons.file_download_outlined, size: 16, color: theme.colorScheme.primary),
+                        icon: Icon(Icons.file_download_outlined,
+                            size: 16, color: theme.colorScheme.primary),
                         label: Text(
                           'GET',
                           style: TextStyle(
@@ -547,12 +571,15 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
                           ),
                         ),
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          backgroundColor: theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),

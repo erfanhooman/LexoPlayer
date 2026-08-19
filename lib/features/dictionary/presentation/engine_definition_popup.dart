@@ -41,7 +41,9 @@ class _EngineDefinitionPopupState extends ConsumerState<EngineDefinitionPopup> {
 
   @override
   Widget build(BuildContext context) {
-    if (Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600) {
+    if (Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600) {
       return _MobileLookupListener();
     }
 
@@ -163,10 +165,12 @@ class _MobileBottomSheetContent extends ConsumerStatefulWidget {
   const _MobileBottomSheetContent({required this.span});
 
   @override
-  ConsumerState<_MobileBottomSheetContent> createState() => _MobileBottomSheetContentState();
+  ConsumerState<_MobileBottomSheetContent> createState() =>
+      _MobileBottomSheetContentState();
 }
 
-class _MobileBottomSheetContentState extends ConsumerState<_MobileBottomSheetContent> {
+class _MobileBottomSheetContentState
+    extends ConsumerState<_MobileBottomSheetContent> {
   late List<SpanModel> _history;
   bool _isLoadingNested = false;
 
@@ -241,7 +245,6 @@ class _MobileBottomSheetContentState extends ConsumerState<_MobileBottomSheetCon
                 ),
               ),
             ),
-
             if (_history.length > 1) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -252,18 +255,23 @@ class _MobileBottomSheetContentState extends ConsumerState<_MobileBottomSheetCon
                       onTap: _popHistory,
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF5500).withValues(alpha: 0.15),
+                          color:
+                              const Color(0xFFFF5500).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                              color: const Color(0xFFFF5500).withValues(alpha: 0.4)),
+                              color: const Color(0xFFFF5500)
+                                  .withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isPersian ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
+                              isPersian
+                                  ? Icons.arrow_forward_rounded
+                                  : Icons.arrow_back_rounded,
                               size: 14,
                               color: const Color(0xFFFF5500),
                             ),
@@ -296,7 +304,6 @@ class _MobileBottomSheetContentState extends ConsumerState<_MobileBottomSheetCon
               ),
               const SizedBox(height: 8),
             ],
-
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -326,7 +333,8 @@ class _EngineDefinitionCard extends ConsumerStatefulWidget {
   const _EngineDefinitionCard({required this.span});
 
   @override
-  ConsumerState<_EngineDefinitionCard> createState() => _EngineDefinitionCardState();
+  ConsumerState<_EngineDefinitionCard> createState() =>
+      _EngineDefinitionCardState();
 }
 
 class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
@@ -343,7 +351,8 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
   @override
   void didUpdateWidget(covariant _EngineDefinitionCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.span.spanId != widget.span.spanId || oldWidget.span.text != widget.span.text) {
+    if (oldWidget.span.spanId != widget.span.spanId ||
+        oldWidget.span.text != widget.span.text) {
       _history = [widget.span];
       _hasMouseEnteredAfterSizeChange = true;
     }
@@ -400,106 +409,112 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
         ref.read(spanHoverControllerProvider).onPopupHoverExit();
       },
       child: Container(
-      width: 450,
-      constraints: const BoxConstraints(maxHeight: 550),
-      decoration: BoxDecoration(
-        color: const Color(0xE6141416),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.6),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Nested Navigation Breadcrumb / Back button ──────
-                if (_history.length > 1) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      InkWell(
-                        onTap: _popHistory,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF5500).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                                color: const Color(0xFFFF5500).withValues(alpha: 0.4)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isPersian ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
-                                size: 14,
-                                color: const Color(0xFFFF5500),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                isPersian
-                                    ? 'بازگشت به ${_history[_history.length - 2].text}'
-                                    : 'Back to ${_history[_history.length - 2].text}',
-                                style: const TextStyle(
-                                  color: Color(0xFFFF5500),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+        width: 450,
+        constraints: const BoxConstraints(maxHeight: 550),
+        decoration: BoxDecoration(
+          color: const Color(0xE6141416),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.6),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Nested Navigation Breadcrumb / Back button ──────
+                  if (_history.length > 1) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        InkWell(
+                          onTap: _popHistory,
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF5500)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                  color: const Color(0xFFFF5500)
+                                      .withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isPersian
+                                      ? Icons.arrow_forward_rounded
+                                      : Icons.arrow_back_rounded,
+                                  size: 14,
+                                  color: const Color(0xFFFF5500),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  isPersian
+                                      ? 'بازگشت به ${_history[_history.length - 2].text}'
+                                      : 'Back to ${_history[_history.length - 2].text}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF5500),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      if (_isLoadingNested)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFFF5500),
+                        if (_isLoadingNested)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFFF5500),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
-                // ── Main Content View ─────────────────────────────
-                Flexible(
-                  child: currentSpan.isMultiWord && currentSpan.childrenSubTokens.isNotEmpty
-                      ? ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 470),
-                          child: _HierarchyCarousel(
+                  // ── Main Content View ─────────────────────────────
+                  Flexible(
+                    child: currentSpan.isMultiWord &&
+                            currentSpan.childrenSubTokens.isNotEmpty
+                        ? ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 470),
+                            child: _HierarchyCarousel(
+                              span: currentSpan,
+                              onWordTap: _navigateToWord,
+                            ),
+                          )
+                        : _SingleWordView(
                             span: currentSpan,
                             onWordTap: _navigateToWord,
                           ),
-                        )
-                      : _SingleWordView(
-                          span: currentSpan,
-                          onWordTap: _navigateToWord,
-                        ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -512,7 +527,8 @@ Future<SpanModel?> _fetchWordSpan(WidgetRef ref, String rawToken) async {
 
   try {
     final repo = ref.read(unifiedDictionaryRepositoryProvider);
-    final result = await repo.lookupWordWithSenses(cleanToken, '', token: cleanToken);
+    final result =
+        await repo.lookupWordWithSenses(cleanToken, '', token: cleanToken);
 
     if (result != null) {
       final word = result.word;
@@ -540,10 +556,14 @@ Future<SpanModel?> _fetchWordSpan(WidgetRef ref, String rawToken) async {
         pos: word.pos.toUpperCase(),
         startChar: 0,
         endChar: rawToken.length,
-        primaryTranslationFa: faTranslations.isNotEmpty ? faTranslations.first : null,
-        secondaryTranslationFa: faTranslations.length > 1 ? faTranslations[1] : null,
-        tertiaryTranslationFa: faTranslations.length > 2 ? faTranslations[2] : null,
-        otherTranslationFa: faTranslations.length > 3 ? faTranslations.sublist(3) : const [],
+        primaryTranslationFa:
+            faTranslations.isNotEmpty ? faTranslations.first : null,
+        secondaryTranslationFa:
+            faTranslations.length > 1 ? faTranslations[1] : null,
+        tertiaryTranslationFa:
+            faTranslations.length > 2 ? faTranslations[2] : null,
+        otherTranslationFa:
+            faTranslations.length > 3 ? faTranslations.sublist(3) : const [],
         wsd: wsdList,
       );
 
@@ -659,11 +679,14 @@ class _SingleWordView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final translations = <String>[
-      if (span.primaryTranslationFa != null && span.primaryTranslationFa!.isNotEmpty)
+      if (span.primaryTranslationFa != null &&
+          span.primaryTranslationFa!.isNotEmpty)
         span.primaryTranslationFa!,
-      if (span.secondaryTranslationFa != null && span.secondaryTranslationFa!.isNotEmpty)
+      if (span.secondaryTranslationFa != null &&
+          span.secondaryTranslationFa!.isNotEmpty)
         span.secondaryTranslationFa!,
-      if (span.tertiaryTranslationFa != null && span.tertiaryTranslationFa!.isNotEmpty)
+      if (span.tertiaryTranslationFa != null &&
+          span.tertiaryTranslationFa!.isNotEmpty)
         span.tertiaryTranslationFa!,
       ...span.otherTranslationFa.where((t) => t.isNotEmpty),
     ];
@@ -746,7 +769,8 @@ class _InflectionBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231C14),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFF9900).withValues(alpha: 0.35)),
+        border:
+            Border.all(color: const Color(0xFFFF9900).withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1046,7 +1070,8 @@ class _TabChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFFFF5500) : const Color(0xFF9E9D9F),
+            color:
+                isSelected ? const Color(0xFFFF5500) : const Color(0xFF9E9D9F),
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
@@ -1108,7 +1133,8 @@ class _WordHeaderRow extends StatelessWidget {
               // POS badge
               if (pos != null && pos!.isNotEmpty) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF5500).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
@@ -1214,8 +1240,6 @@ class _TranslationsRow extends StatelessWidget {
   }
 }
 
-
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  WSD sense tile — rank + definition_en + very small translation_fa
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1265,7 +1289,8 @@ class _WsdSenseTile extends StatelessWidget {
               ),
             ],
           ),
-          if (sense.translationFa != null && sense.translationFa!.isNotEmpty) ...[
+          if (sense.translationFa != null &&
+              sense.translationFa!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.only(left: 14),

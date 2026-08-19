@@ -5,8 +5,16 @@ import 'package:lexo_player/features/dictionary/data/unified_dictionary_reposito
 /// Intervening modifier words that can appear inside an idiom without
 /// changing its meaning (e.g., "bite the proverbial bullet").
 const Set<String> interveningModifiers = {
-  'proverbial', 'metaphorical', 'literal', 'alleged', 'so-called',
-  'famous', 'supposed', 'figurative', 'virtual', 'historical',
+  'proverbial',
+  'metaphorical',
+  'literal',
+  'alleged',
+  'so-called',
+  'famous',
+  'supposed',
+  'figurative',
+  'virtual',
+  'historical',
 };
 
 /// Redirect definition prefixes that indicate non-idiomatic entries.
@@ -107,7 +115,8 @@ class FastMweDetector {
       _automaton.build();
       _isLoaded = true;
     }
-    print('FastMweDetector: Loaded $count multi-word idioms into Aho-Corasick automaton.');
+    print(
+        'FastMweDetector: Loaded $count multi-word idioms into Aho-Corasick automaton.');
   }
 
   /// Detects multi-word expressions in [text] using the tokenized [tokens].
@@ -130,8 +139,8 @@ class FastMweDetector {
       final startIndex = endIndex - normPhrase.length + 1;
 
       // Check word boundaries
-      final isStartBound = startIndex == 0 ||
-          normalizedSentence[startIndex - 1] == ' ';
+      final isStartBound =
+          startIndex == 0 || normalizedSentence[startIndex - 1] == ' ';
       final isEndBound = endIndex == normalizedSentence.length - 1 ||
           normalizedSentence[endIndex + 1] == ' ';
 
@@ -209,8 +218,7 @@ class FastMweDetector {
           final idiomInfo = _phraseMap[candidateNorm]!;
           final phraseStr = subTokens.map((t) => t.token).join(' ');
 
-          if (!isLengthCompatible(
-              phraseStr, idiomInfo['phrase'] as String)) {
+          if (!isLengthCompatible(phraseStr, idiomInfo['phrase'] as String)) {
             continue;
           }
 
@@ -236,7 +244,8 @@ class FastMweDetector {
       List<EngineTokenInfo> tokens, List<String> phraseLemmas) {
     final pLen = phraseLemmas.length;
     for (int i = 0; i <= tokens.length - pLen; i++) {
-      final subLemmas = tokens.sublist(i, i + pLen).map((t) => t.lemma).toList();
+      final subLemmas =
+          tokens.sublist(i, i + pLen).map((t) => t.lemma).toList();
       if (_listEquals(subLemmas, phraseLemmas)) {
         return tokens.sublist(i, i + pLen);
       }

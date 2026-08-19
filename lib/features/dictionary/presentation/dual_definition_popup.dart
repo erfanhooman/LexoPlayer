@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -42,7 +41,9 @@ class _DualDefinitionPopupState extends ConsumerState<DualDefinitionPopup> {
   @override
   Widget build(BuildContext context) {
     // On mobile or narrow windows, we use a bottom sheet instead.
-    if (Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600) {
+    if (Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600) {
       return _MobileLookupListener();
     }
 
@@ -193,7 +194,8 @@ class _MobileBottomSheetContent extends StatefulWidget {
   final List<DictionaryResult> results;
   const _MobileBottomSheetContent({required this.results});
   @override
-  State<_MobileBottomSheetContent> createState() => _MobileBottomSheetContentState();
+  State<_MobileBottomSheetContent> createState() =>
+      _MobileBottomSheetContentState();
 }
 
 class _MobileBottomSheetContentState extends State<_MobileBottomSheetContent> {
@@ -249,18 +251,27 @@ class _MobileBottomSheetContentState extends State<_MobileBottomSheetContent> {
                       onTap: () => setState(() => _selectedIndex = index),
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFFF5500) : Colors.transparent,
+                          color: isSelected
+                              ? const Color(0xFFFF5500)
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isSelected ? const Color(0xFFFF5500) : const Color(0xFF2C2C35)),
+                          border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFFFF5500)
+                                  : const Color(0xFF2C2C35)),
                         ),
                         child: Text(
                           widget.results[index].word,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFF8A8A93),
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF8A8A93),
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -273,7 +284,8 @@ class _MobileBottomSheetContentState extends State<_MobileBottomSheetContent> {
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: _DefinitionContent(result: widget.results[_selectedIndex]),
+                child:
+                    _DefinitionContent(result: widget.results[_selectedIndex]),
               ),
             ),
           ],
@@ -334,20 +346,29 @@ class _DefinitionCardState extends State<_DefinitionCard> {
                           onTap: () => setState(() => _selectedIndex = index),
                           child: Container(
                             margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFFF5500) : Colors.transparent,
+                              color: isSelected
+                                  ? const Color(0xFFFF5500)
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isSelected ? const Color(0xFFFF5500) : const Color(0xFF2C2C35),
+                                color: isSelected
+                                    ? const Color(0xFFFF5500)
+                                    : const Color(0xFF2C2C35),
                               ),
                             ),
                             child: Text(
                               widget.results[index].word,
                               style: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFF8A8A93),
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF8A8A93),
                                 fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                               ),
                             ),
                           ),
@@ -358,7 +379,8 @@ class _DefinitionCardState extends State<_DefinitionCard> {
                   const SizedBox(height: 12),
                 ],
                 Flexible(
-                  child: _DefinitionContent(result: widget.results[_selectedIndex]),
+                  child: _DefinitionContent(
+                      result: widget.results[_selectedIndex]),
                 ),
               ],
             ),
@@ -639,7 +661,8 @@ class _DefinitionContent extends StatelessWidget {
               if (result.wasStemmed) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF5500).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),

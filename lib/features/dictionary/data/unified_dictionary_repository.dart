@@ -100,7 +100,8 @@ class UnifiedDictionaryRepository {
         if (stem.isNotEmpty) {
           candidates.add(stem);
           if (!stem.endsWith('e')) candidates.add('${stem}e');
-          if (stem.endsWith('i')) candidates.add('${stem.substring(0, stem.length - 1)}y');
+          if (stem.endsWith('i'))
+            candidates.add('${stem.substring(0, stem.length - 1)}y');
         }
         if (input.contains('-')) {
           final parts = input.split('-');
@@ -110,7 +111,8 @@ class UnifiedDictionaryRepository {
             candidates.add('$prefix-$lastStem');
             if (!lastStem.endsWith('e')) candidates.add('$prefix-${lastStem}e');
             if (lastStem.endsWith('i')) {
-              candidates.add('$prefix-${lastStem.substring(0, lastStem.length - 1)}y');
+              candidates.add(
+                  '$prefix-${lastStem.substring(0, lastStem.length - 1)}y');
             }
           }
         }
@@ -123,7 +125,8 @@ class UnifiedDictionaryRepository {
   // ── Word Lookups ─────────────────────────────────────────────────────────
 
   /// Look up a word by lemma, POS, and optional surface token, returning the Word row.
-  Future<UnifiedWord?> lookupWord(String lemma, String pos, {String? token}) async {
+  Future<UnifiedWord?> lookupWord(String lemma, String pos,
+      {String? token}) async {
     if (_db == null) return null;
 
     final candidates = _buildWordCandidates(lemma, token);
@@ -178,8 +181,8 @@ class UnifiedDictionaryRepository {
 
   /// Look up a word and return all its senses (convenience method).
   /// Falls back to checking idioms table if no word entry is found.
-  Future<WordLookupResult?> lookupWordWithSenses(
-      String lemma, String pos, {String? token}) async {
+  Future<WordLookupResult?> lookupWordWithSenses(String lemma, String pos,
+      {String? token}) async {
     final word = await lookupWord(lemma, pos, token: token);
     if (word != null) {
       final senses = await getSenses(word.id);
@@ -241,14 +244,17 @@ class UnifiedDictionaryRepository {
       final rows = await _db!.query(
         'idioms',
         columns: [
-          'id', 'phrase', 'normalized_phrase', 'pos',
-          'definition_en', 'translation_fa',
+          'id',
+          'phrase',
+          'normalized_phrase',
+          'pos',
+          'definition_en',
+          'translation_fa',
         ],
       );
       return rows.map((r) => UnifiedIdiom.fromMap(r)).toList();
     } catch (e) {
-      developer.log('getAllIdioms error: $e',
-          name: 'UnifiedDict', level: 1000);
+      developer.log('getAllIdioms error: $e', name: 'UnifiedDict', level: 1000);
       return const [];
     }
   }
@@ -260,9 +266,14 @@ class UnifiedDictionaryRepository {
       final rows = await _db!.query(
         'idioms',
         columns: [
-          'id', 'phrase', 'normalized_phrase', 'pos',
-          'definition_en', 'translation_fa',
-          'vector_blob', 'isolated_components_vec_blob',
+          'id',
+          'phrase',
+          'normalized_phrase',
+          'pos',
+          'definition_en',
+          'translation_fa',
+          'vector_blob',
+          'isolated_components_vec_blob',
         ],
       );
       return rows.map((r) => UnifiedIdiom.fromMap(r)).toList();
@@ -308,7 +319,8 @@ class UnifiedDictionaryRepository {
       return floatList;
     }
     // Already Float32
-    return Float32List.view(blob.buffer, blob.offsetInBytes, blob.lengthInBytes ~/ 4);
+    return Float32List.view(
+        blob.buffer, blob.offsetInBytes, blob.lengthInBytes ~/ 4);
   }
 }
 

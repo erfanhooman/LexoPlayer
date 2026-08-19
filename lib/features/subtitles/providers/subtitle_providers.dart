@@ -55,12 +55,14 @@ final subtitleVisibilityProvider = StateProvider<bool>(
 );
 
 /// Tracks the list of loaded external subtitle options.
-final externalSubtitleOptionsProvider = StateProvider<List<SubtitleTrackOption>>(
+final externalSubtitleOptionsProvider =
+    StateProvider<List<SubtitleTrackOption>>(
   (ref) => const [],
 );
 
 /// Stream provider for all subtitle tracks discovered by media_kit.
-final embeddedSubtitleTracksProvider = StreamProvider<List<SubtitleTrack>>((ref) {
+final embeddedSubtitleTracksProvider =
+    StreamProvider<List<SubtitleTrack>>((ref) {
   final player = ref.watch(playerProvider);
   return player.stream.tracks.map((tracks) => tracks.subtitle);
 });
@@ -99,10 +101,12 @@ final availableSubtitlesProvider = Provider<List<SubtitleTrackOption>>((ref) {
 });
 
 /// The currently selected subtitle track option (Primary).
-final selectedSubtitleProvider = StateProvider<SubtitleTrackOption?>((ref) => null);
+final selectedSubtitleProvider =
+    StateProvider<SubtitleTrackOption?>((ref) => null);
 
 /// The currently selected secondary (translation) subtitle track option.
-final selectedSecondarySubtitleProvider = StateProvider<SubtitleTrackOption?>((ref) => null);
+final selectedSecondarySubtitleProvider =
+    StateProvider<SubtitleTrackOption?>((ref) => null);
 
 /// Holds the currently loaded list of parsed [SubtitleBlock]s for the secondary track.
 final secondarySubtitleListProvider = StateProvider<List<SubtitleBlock>>(
@@ -120,10 +124,12 @@ final isSecondarySubtitleVisibleProvider = StateProvider<bool>(
 );
 
 /// Holds the current primary softsub subtitle text emitted by media_kit (lines[0]).
-final softsubPrimarySubtitleTextProvider = StateProvider<String?>((ref) => null);
+final softsubPrimarySubtitleTextProvider =
+    StateProvider<String?>((ref) => null);
 
 /// Holds the current secondary softsub subtitle text emitted by media_kit (lines[1]).
-final softsubSecondarySubtitleTextProvider = StateProvider<String?>((ref) => null);
+final softsubSecondarySubtitleTextProvider =
+    StateProvider<String?>((ref) => null);
 
 /// Alias for primary softsub text.
 final softsubSubtitleTextProvider = softsubPrimarySubtitleTextProvider;
@@ -175,7 +181,8 @@ final subtitleDebugProvider = Provider<Map<String, String>>((ref) {
 
   return {
     'Primary': '${primarySel?.name ?? "null"} (${primarySel?.id ?? "null"})',
-    'Secondary': '${secondarySel?.name ?? "null"} (${secondarySel?.id ?? "null"})',
+    'Secondary':
+        '${secondarySel?.name ?? "null"} (${secondarySel?.id ?? "null"})',
     'P_Blocks': '${primaryBlocks.length}',
     'S_Blocks': '${secondaryBlocks.length}',
     'P_Index': '$primaryIdx',
@@ -270,7 +277,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
   final player = ref.watch(playerProvider);
 
   // 1. Sync primary subtitle track selection with media_kit player.
-  ref.listen<SubtitleTrackOption?>(selectedSubtitleProvider, (prev, next) async {
+  ref.listen<SubtitleTrackOption?>(selectedSubtitleProvider,
+      (prev, next) async {
     // Invalidate any pending parse before handling every new selection,
     // including Off, so an old file cannot be applied after a media change.
     final generation = ++_primaryLoadGeneration;
@@ -286,7 +294,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
         try {
           blocks = await SubtitleParser.parseFile(next.filePath!);
         } catch (e) {
-          developer.log('Error parsing primary subtitle: $e', name: 'SubtitleSync');
+          developer.log('Error parsing primary subtitle: $e',
+              name: 'SubtitleSync');
         }
       }
       // Ignore stale results if the user changed track while we were parsing.
@@ -321,8 +330,10 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
         if (secBlocks.isNotEmpty) {
           final secPosAsync = ref.read(positionProvider);
           final secPosition = secPosAsync.valueOrNull ?? player.state.position;
-          final secIdx = BinarySearchSync.findActiveIndex(secBlocks, secPosition);
-          ref.read(activeSecondarySubtitleIndexProvider.notifier).state = secIdx;
+          final secIdx =
+              BinarySearchSync.findActiveIndex(secBlocks, secPosition);
+          ref.read(activeSecondarySubtitleIndexProvider.notifier).state =
+              secIdx;
           ref.read(isSecondarySubtitleVisibleProvider.notifier).state = true;
         }
       }
@@ -335,7 +346,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
   });
 
   // 2. Sync secondary subtitle track selection.
-  ref.listen<SubtitleTrackOption?>(selectedSecondarySubtitleProvider, (prev, next) async {
+  ref.listen<SubtitleTrackOption?>(selectedSecondarySubtitleProvider,
+      (prev, next) async {
     final generation = ++_secondaryLoadGeneration;
     if (next == null || next.id == 'none') {
       ref.read(secondarySubtitleListProvider.notifier).state = const [];
@@ -354,7 +366,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
         try {
           blocks = await SubtitleParser.parseFile(next.filePath!);
         } catch (e) {
-          developer.log('Error parsing secondary subtitle: $e', name: 'SubtitleSync');
+          developer.log('Error parsing secondary subtitle: $e',
+              name: 'SubtitleSync');
         }
       }
       if (generation != _secondaryLoadGeneration) return;
@@ -388,17 +401,25 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
       final secondarySelected = ref.read(selectedSecondarySubtitleProvider);
 
       // Primary softsub text (lines[0])
-      if (primarySelected != null && primarySelected.nativeTrack != null && lines.isNotEmpty && lines[0].isNotEmpty) {
+      if (primarySelected != null &&
+          primarySelected.nativeTrack != null &&
+          lines.isNotEmpty &&
+          lines[0].isNotEmpty) {
         final cleaned = SubtitleParser.cleanSubtitleText(lines[0]);
-        ref.read(softsubPrimarySubtitleTextProvider.notifier).state = cleaned.isEmpty ? null : cleaned;
+        ref.read(softsubPrimarySubtitleTextProvider.notifier).state =
+            cleaned.isEmpty ? null : cleaned;
       } else {
         ref.read(softsubPrimarySubtitleTextProvider.notifier).state = null;
       }
 
       // Secondary softsub text (lines[1])
-      if (secondarySelected != null && secondarySelected.nativeTrack != null && lines.length > 1 && lines[1].isNotEmpty) {
+      if (secondarySelected != null &&
+          secondarySelected.nativeTrack != null &&
+          lines.length > 1 &&
+          lines[1].isNotEmpty) {
         final cleaned = SubtitleParser.cleanSubtitleText(lines[1]);
-        ref.read(softsubSecondarySubtitleTextProvider.notifier).state = cleaned.isEmpty ? null : cleaned;
+        ref.read(softsubSecondarySubtitleTextProvider.notifier).state =
+            cleaned.isEmpty ? null : cleaned;
       } else {
         ref.read(softsubSecondarySubtitleTextProvider.notifier).state = null;
       }
@@ -424,7 +445,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
         final secIdx = BinarySearchSync.findActiveIndex(secBlocks, position);
         final currentSecIdx = ref.read(activeSecondarySubtitleIndexProvider);
         if (secIdx != currentSecIdx) {
-          ref.read(activeSecondarySubtitleIndexProvider.notifier).state = secIdx;
+          ref.read(activeSecondarySubtitleIndexProvider.notifier).state =
+              secIdx;
         }
       }
     });
@@ -433,7 +455,8 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
   // 4. Auto-select first available subtitle track when discovered if currently unselected or off.
   //    Prefer external (user-loaded SRT/VTT) tracks over embedded ones so a
   //    nearby subtitle file wins over the video's built-in track.
-  ref.listen<List<SubtitleTrackOption>>(availableSubtitlesProvider, (prev, next) {
+  ref.listen<List<SubtitleTrackOption>>(availableSubtitlesProvider,
+      (prev, next) {
     final currentSelected = ref.read(selectedSubtitleProvider);
 
     final externalTracks = next.where((opt) => opt.isExternal).toList();
@@ -443,9 +466,11 @@ final playerSubtitleSyncProvider = Provider<void>((ref) {
     // Nothing selected yet — pick external first, then embedded.
     if (currentSelected == null || currentSelected.id == 'none') {
       if (externalTracks.isNotEmpty) {
-        ref.read(selectedSubtitleProvider.notifier).state = externalTracks.first;
+        ref.read(selectedSubtitleProvider.notifier).state =
+            externalTracks.first;
       } else if (embeddedTracks.isNotEmpty) {
-        ref.read(selectedSubtitleProvider.notifier).state = embeddedTracks.first;
+        ref.read(selectedSubtitleProvider.notifier).state =
+            embeddedTracks.first;
       }
       return;
     }
@@ -503,9 +528,12 @@ Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
     if (size != null) ref.read(subtitleSizeProvider.notifier).state = size;
     if (color != null) ref.read(subtitleColorProvider.notifier).state = color;
     if (bg != null) ref.read(subtitleBgColorProvider.notifier).state = bg;
-    if (outline != null) ref.read(subtitleOutlineWidthProvider.notifier).state = outline;
-    if (font != null) ref.read(subtitleFontFamilyProvider.notifier).state = font;
-    if (smartSeek != null) ref.read(smartSubtitleSeekProvider.notifier).state = smartSeek;
+    if (outline != null)
+      ref.read(subtitleOutlineWidthProvider.notifier).state = outline;
+    if (font != null)
+      ref.read(subtitleFontFamilyProvider.notifier).state = font;
+    if (smartSeek != null)
+      ref.read(smartSubtitleSeekProvider.notifier).state = smartSeek;
   } catch (e) {
     // Fail silently in case preferences are uninitialised
   }
@@ -564,19 +592,22 @@ Future<void> saveMediaSubtitleSelection({
 
     if (primaryOption != null) {
       if (primaryOption.filePath != null) {
-        await prefs.setString('${keyBase}_primary_path', primaryOption.filePath!);
+        await prefs.setString(
+            '${keyBase}_primary_path', primaryOption.filePath!);
       }
       await prefs.setString('${keyBase}_primary_id', primaryOption.id);
     }
 
     if (secondaryOption != null) {
       if (secondaryOption.filePath != null) {
-        await prefs.setString('${keyBase}_secondary_path', secondaryOption.filePath!);
+        await prefs.setString(
+            '${keyBase}_secondary_path', secondaryOption.filePath!);
       }
       await prefs.setString('${keyBase}_secondary_id', secondaryOption.id);
     }
   } catch (e) {
-    developer.log('Error saving subtitle selection: $e', name: 'SubtitlePersistence');
+    developer.log('Error saving subtitle selection: $e',
+        name: 'SubtitlePersistence');
   }
 }
 
@@ -632,6 +663,7 @@ Future<void> restoreMediaSubtitleSelection({
       }
     }
   } catch (e) {
-    developer.log('Error restoring subtitle selection: $e', name: 'SubtitlePersistence');
+    developer.log('Error restoring subtitle selection: $e',
+        name: 'SubtitlePersistence');
   }
 }

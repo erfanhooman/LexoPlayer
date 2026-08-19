@@ -39,7 +39,8 @@ class ManifestService {
   /// Remote URL that serves the latest `manifest.json`.
   ///
   /// Change this to point to your production or staging server.
-  static const String _manifestUrl = 'https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json';
+  static const String _manifestUrl =
+      'https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json';
 
   /// File name used when persisting the manifest to local storage.
   static const String _cacheFileName = 'manifest_cache.json';
@@ -169,8 +170,10 @@ class ManifestService {
         sourceLanguage: 'en',
         nativeLanguage: 'fa',
         displayName: 'LexoEngine Unified Dictionary (EN-FA)',
-        description: 'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.',
-        remoteUrl: 'https://erfanhooman.github.io/LexoPlayer/dictionaries/dictionary.db.zip',
+        description:
+            'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.',
+        remoteUrl:
+            'https://erfanhooman.github.io/LexoPlayer/dictionaries/dictionary.db.zip',
         fileSizeBytes: 239221480,
         md5Checksum: 'd862fb14c5477f9900b0f4535d50500c',
         type: DictionaryType.unified,

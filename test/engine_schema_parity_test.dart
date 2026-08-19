@@ -8,7 +8,8 @@ import 'package:lexo_player/core/models/engine_output.dart';
 /// JSON output to guarantee schema parity.
 void main() {
   test('Dart toJson field structure matches Python engine output', () {
-    final raw = File('test/fixtures/python_engine_sample.json').readAsStringSync();
+    final raw =
+        File('test/fixtures/python_engine_sample.json').readAsStringSync();
     final pythonJson = jsonDecode(raw) as Map<String, dynamic>;
     final output = EngineOutput.fromJson(pythonJson);
 

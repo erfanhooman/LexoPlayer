@@ -27,7 +27,8 @@ class DictionaryLookupService {
       return const [];
     }
 
-    final candidates = _candidateGenerator.generateCandidates(lineTokens, targetIndex);
+    final candidates =
+        _candidateGenerator.generateCandidates(lineTokens, targetIndex);
     if (candidates.isEmpty) {
       return const [];
     }

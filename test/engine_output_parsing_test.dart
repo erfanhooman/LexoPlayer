@@ -8,7 +8,8 @@ import 'package:lexo_player/core/models/engine_output.dart';
 /// produced by the Python LexoEngine (`cli.py` sample output).
 void main() {
   test('Dart models parse the real Python engine JSON output', () {
-    final raw = File('test/fixtures/python_engine_sample.json').readAsStringSync();
+    final raw =
+        File('test/fixtures/python_engine_sample.json').readAsStringSync();
     final json = jsonDecode(raw) as Map<String, dynamic>;
 
     final output = EngineOutput.fromJson(json);

@@ -53,7 +53,8 @@ class _GlassContainerState extends State<GlassContainer> {
     if (_liquidGlassShaderProgram != null || _isShaderLoading) return;
     _isShaderLoading = true;
     try {
-      final program = await ui.FragmentProgram.fromAsset('shaders/liquid_glass.frag');
+      final program =
+          await ui.FragmentProgram.fromAsset('shaders/liquid_glass.frag');
       _liquidGlassShaderProgram = program;
       if (mounted) setState(() {});
     } catch (_) {
@@ -67,7 +68,8 @@ class _GlassContainerState extends State<GlassContainer> {
   Widget build(BuildContext context) {
     final effectiveRadius = widget.borderRadius ?? BorderRadius.circular(20);
     final effectiveColor = widget.color ?? Colors.grey.withValues(alpha: 0.10);
-    final effectiveBorderColor = widget.borderColor ?? Colors.grey.shade300.withValues(alpha: 0.14);
+    final effectiveBorderColor =
+        widget.borderColor ?? Colors.grey.shade300.withValues(alpha: 0.14);
     final effectiveBorder = widget.border ??
         Border.all(
           color: effectiveBorderColor,
@@ -100,29 +102,32 @@ class _GlassContainerState extends State<GlassContainer> {
             borderRadius: effectiveRadius,
             borderColor: effectiveBorderColor,
           ),
-          child: ui.ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur) != null
-              ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: widget.padding,
-                    decoration: BoxDecoration(
-                      color: effectiveColor,
-                      borderRadius: effectiveRadius,
-                      border: effectiveBorder,
+          child:
+              ui.ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur) !=
+                      null
+                  ? BackdropFilter(
+                      filter: ui.ImageFilter.blur(
+                          sigmaX: widget.blur, sigmaY: widget.blur),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: widget.padding,
+                        decoration: BoxDecoration(
+                          color: effectiveColor,
+                          borderRadius: effectiveRadius,
+                          border: effectiveBorder,
+                        ),
+                        child: widget.child,
+                      ),
+                    )
+                  : Container(
+                      padding: widget.padding,
+                      decoration: BoxDecoration(
+                        color: effectiveColor,
+                        borderRadius: effectiveRadius,
+                        border: effectiveBorder,
+                      ),
+                      child: widget.child,
                     ),
-                    child: widget.child,
-                  ),
-                )
-              : Container(
-                  padding: widget.padding,
-                  decoration: BoxDecoration(
-                    color: effectiveColor,
-                    borderRadius: effectiveRadius,
-                    border: effectiveBorder,
-                  ),
-                  child: widget.child,
-                ),
         ),
       ),
     );
@@ -164,6 +169,7 @@ class _LiquidGlassRimPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiquidGlassRimPainter oldDelegate) {
-    return oldDelegate.borderColor != borderColor || oldDelegate.borderRadius != borderRadius;
+    return oldDelegate.borderColor != borderColor ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }

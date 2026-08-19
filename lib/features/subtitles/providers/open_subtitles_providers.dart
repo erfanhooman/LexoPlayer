@@ -41,7 +41,8 @@ final openSubtitlesParsedMetadataProvider =
     StateProvider<ParsedVideoMetadata?>((ref) => null);
 
 /// ID of subtitle item currently being downloaded (or `null` if idle).
-final openSubtitlesDownloadingIdProvider = StateProvider<String?>((ref) => null);
+final openSubtitlesDownloadingIdProvider =
+    StateProvider<String?>((ref) => null);
 
 /// Search state model for OpenSubtitles search results dialog.
 class OpenSubtitlesSearchState {
@@ -57,19 +58,24 @@ class OpenSubtitlesSearchState {
 
   OpenSubtitleItem? get recommendedItem {
     final found = items.where((i) => i.isRecommended);
-    return found.isNotEmpty ? found.first : (items.isNotEmpty ? items.first : null);
+    return found.isNotEmpty
+        ? found.first
+        : (items.isNotEmpty ? items.first : null);
   }
 }
 
 /// StateNotifier managing OpenSubtitles search executions.
-class OpenSubtitlesSearchNotifier extends StateNotifier<OpenSubtitlesSearchState> {
+class OpenSubtitlesSearchNotifier
+    extends StateNotifier<OpenSubtitlesSearchState> {
   final Ref _ref;
 
-  OpenSubtitlesSearchNotifier(this._ref) : super(const OpenSubtitlesSearchState());
+  OpenSubtitlesSearchNotifier(this._ref)
+      : super(const OpenSubtitlesSearchState());
 
   Future<void> search({String? customQuery, String? customLang}) async {
     final service = _ref.read(openSubtitlesServiceProvider);
-    final String? rawQuery = customQuery ?? _ref.read(openSubtitlesQueryProvider);
+    final String? rawQuery =
+        customQuery ?? _ref.read(openSubtitlesQueryProvider);
     final String query = (rawQuery ?? '').trim();
     final String lang = customLang ?? _ref.read(openSubtitlesLanguageProvider);
     final metadata = _ref.read(openSubtitlesParsedMetadataProvider);
@@ -103,7 +109,7 @@ class OpenSubtitlesSearchNotifier extends StateNotifier<OpenSubtitlesSearchState
 }
 
 /// Provider for managing OpenSubtitles search execution state.
-final openSubtitlesSearchProvider =
-    StateNotifierProvider.autoDispose<OpenSubtitlesSearchNotifier, OpenSubtitlesSearchState>(
+final openSubtitlesSearchProvider = StateNotifierProvider.autoDispose<
+    OpenSubtitlesSearchNotifier, OpenSubtitlesSearchState>(
   (ref) => OpenSubtitlesSearchNotifier(ref),
 );

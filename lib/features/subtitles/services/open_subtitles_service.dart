@@ -25,19 +25,30 @@ class SubtitleLanguageOption {
 }
 
 const List<SubtitleLanguageOption> kSupportedSubtitleLanguages = [
-  SubtitleLanguageOption(code: 'fa', englishName: 'Persian / Farsi', nativeName: 'فارسی'),
-  SubtitleLanguageOption(code: 'en', englishName: 'English', nativeName: 'English'),
-  SubtitleLanguageOption(code: 'es', englishName: 'Spanish', nativeName: 'Español'),
-  SubtitleLanguageOption(code: 'fr', englishName: 'French', nativeName: 'Français'),
-  SubtitleLanguageOption(code: 'de', englishName: 'German', nativeName: 'Deutsch'),
-  SubtitleLanguageOption(code: 'ar', englishName: 'Arabic', nativeName: 'العربية'),
-  SubtitleLanguageOption(code: 'tr', englishName: 'Turkish', nativeName: 'Türkçe'),
-  SubtitleLanguageOption(code: 'ru', englishName: 'Russian', nativeName: 'Русский'),
-  SubtitleLanguageOption(code: 'it', englishName: 'Italian', nativeName: 'Italiano'),
-  SubtitleLanguageOption(code: 'pt', englishName: 'Portuguese', nativeName: 'Português'),
+  SubtitleLanguageOption(
+      code: 'fa', englishName: 'Persian / Farsi', nativeName: 'فارسی'),
+  SubtitleLanguageOption(
+      code: 'en', englishName: 'English', nativeName: 'English'),
+  SubtitleLanguageOption(
+      code: 'es', englishName: 'Spanish', nativeName: 'Español'),
+  SubtitleLanguageOption(
+      code: 'fr', englishName: 'French', nativeName: 'Français'),
+  SubtitleLanguageOption(
+      code: 'de', englishName: 'German', nativeName: 'Deutsch'),
+  SubtitleLanguageOption(
+      code: 'ar', englishName: 'Arabic', nativeName: 'العربية'),
+  SubtitleLanguageOption(
+      code: 'tr', englishName: 'Turkish', nativeName: 'Türkçe'),
+  SubtitleLanguageOption(
+      code: 'ru', englishName: 'Russian', nativeName: 'Русский'),
+  SubtitleLanguageOption(
+      code: 'it', englishName: 'Italian', nativeName: 'Italiano'),
+  SubtitleLanguageOption(
+      code: 'pt', englishName: 'Portuguese', nativeName: 'Português'),
   SubtitleLanguageOption(code: 'zh', englishName: 'Chinese', nativeName: '中文'),
   SubtitleLanguageOption(code: 'ko', englishName: 'Korean', nativeName: '한국어'),
-  SubtitleLanguageOption(code: 'ja', englishName: 'Japanese', nativeName: '日本語'),
+  SubtitleLanguageOption(
+      code: 'ja', englishName: 'Japanese', nativeName: '日本語'),
 ];
 
 class OpenSubtitlesService {
@@ -102,7 +113,9 @@ class OpenSubtitlesService {
 
     List<OpenSubtitleItem> results = [];
     final sub3Lang = _mapLanguageTo3LetterCode(languageCode);
-    final formattedQuery = Uri.encodeComponent(cleanQuery.toLowerCase().replaceAll(RegExp(r'\s+'), '+')).replaceAll('%2B', '+');
+    final formattedQuery = Uri.encodeComponent(
+            cleanQuery.toLowerCase().replaceAll(RegExp(r'\s+'), '+'))
+        .replaceAll('%2B', '+');
     final restDio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 12),
@@ -115,11 +128,15 @@ class OpenSubtitlesService {
 
     // 1. Primary: Query rest.opensubtitles.org public REST API (No API key required)
     try {
-      final restUrl = 'https://rest.opensubtitles.org/search/query-$formattedQuery/sublanguageid-$sub3Lang';
-      developer.log('Searching rest.opensubtitles.org: $restUrl', name: 'OpenSubtitlesService');
+      final restUrl =
+          'https://rest.opensubtitles.org/search/query-$formattedQuery/sublanguageid-$sub3Lang';
+      developer.log('Searching rest.opensubtitles.org: $restUrl',
+          name: 'OpenSubtitlesService');
       final response = await restDio.get<dynamic>(restUrl);
 
-      if (response.statusCode == 200 && response.data != null && response.data is List) {
+      if (response.statusCode == 200 &&
+          response.data != null &&
+          response.data is List) {
         final list = response.data as List<dynamic>;
         for (final itemJson in list) {
           if (itemJson is Map<String, dynamic>) {
@@ -127,13 +144,15 @@ class OpenSubtitlesService {
               final item = OpenSubtitleItem.fromJson(itemJson);
               results.add(item);
             } catch (e) {
-              developer.log('Error parsing rest item: $e', name: 'OpenSubtitlesService');
+              developer.log('Error parsing rest item: $e',
+                  name: 'OpenSubtitlesService');
             }
           }
         }
       }
     } catch (e) {
-      developer.log('rest.opensubtitles.org search failed: $e', name: 'OpenSubtitlesService');
+      developer.log('rest.opensubtitles.org search failed: $e',
+          name: 'OpenSubtitlesService');
     }
 
     // 2. Secondary fallback: api.opensubtitles.com
@@ -145,12 +164,15 @@ class OpenSubtitlesService {
       };
 
       if (metadata != null) {
-        if (metadata.season != null) queryParams['season_number'] = metadata.season;
-        if (metadata.episode != null) queryParams['episode_number'] = metadata.episode;
+        if (metadata.season != null)
+          queryParams['season_number'] = metadata.season;
+        if (metadata.episode != null)
+          queryParams['episode_number'] = metadata.episode;
       }
 
       try {
-        final response = await _dio.get('/subtitles', queryParameters: queryParams);
+        final response =
+            await _dio.get('/subtitles', queryParameters: queryParams);
         if (response.statusCode == 200 && response.data != null) {
           final data = response.data['data'];
           if (data is List) {
@@ -165,7 +187,8 @@ class OpenSubtitlesService {
           }
         }
       } catch (e) {
-        developer.log('api.opensubtitles.com search failed: $e', name: 'OpenSubtitlesService');
+        developer.log('api.opensubtitles.com search failed: $e',
+            name: 'OpenSubtitlesService');
       }
     }
 
@@ -205,7 +228,8 @@ class OpenSubtitlesService {
           score -= 120.0; // WRONG EPISODE PENALTY
         }
 
-        final epStr = 's${s.toString().padLeft(2, '0')}e${e.toString().padLeft(2, '0')}';
+        final epStr =
+            's${s.toString().padLeft(2, '0')}e${e.toString().padLeft(2, '0')}';
         final releaseLower = item.release.toLowerCase();
         final fileLower = item.fileName.toLowerCase();
 
@@ -215,7 +239,9 @@ class OpenSubtitlesService {
       }
 
       // Match Year
-      if (metadata != null && metadata.year != null && item.year == metadata.year) {
+      if (metadata != null &&
+          metadata.year != null &&
+          item.year == metadata.year) {
         score += 40.0;
       }
 
@@ -251,8 +277,10 @@ class OpenSubtitlesService {
   }
 
   /// Download subtitle file (handles direct URL, gzip, zip archives, or raw SRT).
-  Future<String> downloadSubtitle(OpenSubtitleItem item, {Directory? targetDir}) async {
-    developer.log('Downloading subtitle: ${item.fileName} (fileId: ${item.fileId})',
+  Future<String> downloadSubtitle(OpenSubtitleItem item,
+      {Directory? targetDir}) async {
+    developer.log(
+        'Downloading subtitle: ${item.fileName} (fileId: ${item.fileId})',
         name: 'OpenSubtitlesService');
 
     String? downloadUrl = item.downloadUrl;
@@ -260,12 +288,16 @@ class OpenSubtitlesService {
     // If file_id is available and downloadUrl is missing, request download link from OpenSubtitles
     if (item.fileId != null) {
       try {
-        final resp = await _dio.post('/download', data: {'file_id': item.fileId});
-        if (resp.statusCode == 200 && resp.data != null && resp.data['link'] != null) {
+        final resp =
+            await _dio.post('/download', data: {'file_id': item.fileId});
+        if (resp.statusCode == 200 &&
+            resp.data != null &&
+            resp.data['link'] != null) {
           downloadUrl = resp.data['link'].toString();
         }
       } catch (e) {
-        developer.log('POST /download link retrieval failed: $e. Falling back to direct URL.',
+        developer.log(
+            'POST /download link retrieval failed: $e. Falling back to direct URL.',
             name: 'OpenSubtitlesService');
       }
     }
@@ -288,7 +320,8 @@ class OpenSubtitlesService {
 
     // Check GZIP signature (0x1F, 0x8B)
     if (bytes.length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B) {
-      developer.log('Decompressing GZIP subtitle payload...', name: 'OpenSubtitlesService');
+      developer.log('Decompressing GZIP subtitle payload...',
+          name: 'OpenSubtitlesService');
       subtitleContentBytes = GZipDecoder().decodeBytes(bytes);
     }
     // Check ZIP signature (PK\x03\x04)
@@ -297,7 +330,8 @@ class OpenSubtitlesService {
         bytes[1] == 0x4B &&
         bytes[2] == 0x03 &&
         bytes[3] == 0x04) {
-      developer.log('Decompressing ZIP archive payload...', name: 'OpenSubtitlesService');
+      developer.log('Decompressing ZIP archive payload...',
+          name: 'OpenSubtitlesService');
       final archive = ZipDecoder().decodeBytes(bytes);
       for (final file in archive) {
         if (!file.isFile) continue;
@@ -341,7 +375,8 @@ class OpenSubtitlesService {
   /// Sniffs a subtitle file extension from raw bytes without decoding fully.
   static String _sniffSubtitleExtension(List<int> bytes) {
     try {
-      final head = latin1.decode(bytes.sublist(0, bytes.length < 4096 ? bytes.length : 4096));
+      final head = latin1
+          .decode(bytes.sublist(0, bytes.length < 4096 ? bytes.length : 4096));
       switch (SubtitleParser.detectFormat(head)) {
         case SubtitleFormat.webVtt:
           return '.vtt';

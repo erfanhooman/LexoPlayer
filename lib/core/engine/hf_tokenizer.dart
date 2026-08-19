@@ -181,8 +181,9 @@ class HfTokenizer {
       bool found = false;
 
       while (start < end) {
-        var substr =
-            start == 0 ? lower.substring(start, end) : '##${lower.substring(start, end)}';
+        var substr = start == 0
+            ? lower.substring(start, end)
+            : '##${lower.substring(start, end)}';
         if (_vocab.containsKey(substr)) {
           result.add(substr);
           found = true;

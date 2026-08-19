@@ -24,10 +24,12 @@ class SpoilerTranslationWidget extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<SpoilerTranslationWidget> createState() => _SpoilerTranslationWidgetState();
+  ConsumerState<SpoilerTranslationWidget> createState() =>
+      _SpoilerTranslationWidgetState();
 }
 
-class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWidget> {
+class _SpoilerTranslationWidgetState
+    extends ConsumerState<SpoilerTranslationWidget> {
   final Set<int> _revealedIndices = {};
   bool _revealAll = false;
   bool _isExpanded = false;
@@ -53,8 +55,9 @@ class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWid
     final remainingCount = items.length - visibleCount;
 
     return Column(
-      crossAxisAlignment:
-          widget.compactHeaderMode ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: widget.compactHeaderMode
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         // Reveal / Hide All Header Bar
@@ -110,7 +113,9 @@ class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWid
           child: Wrap(
             spacing: 6,
             runSpacing: 6,
-            alignment: widget.compactHeaderMode ? WrapAlignment.end : WrapAlignment.start,
+            alignment: widget.compactHeaderMode
+                ? WrapAlignment.end
+                : WrapAlignment.start,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (int i = 0; i < visibleCount; i++) ...[
@@ -132,14 +137,17 @@ class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWid
                 GestureDetector(
                   onTap: () => setState(() => _isExpanded = true),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF25252E),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: const Color(0xFF3F3F4C)),
                     ),
                     child: Text(
-                      isPersian ? '+$remainingCount مورد دیگر' : '+$remainingCount more',
+                      isPersian
+                          ? '+$remainingCount مورد دیگر'
+                          : '+$remainingCount more',
                       style: const TextStyle(
                         color: Color(0xFFA1A1AA),
                         fontSize: 11.5,
@@ -152,7 +160,8 @@ class _SpoilerTranslationWidgetState extends ConsumerState<SpoilerTranslationWid
                 GestureDetector(
                   onTap: () => setState(() => _isExpanded = false),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF25252E),
                       borderRadius: BorderRadius.circular(6),

@@ -89,7 +89,8 @@ final wordCandidateGeneratorProvider = Provider<IWordCandidateGenerator>((ref) {
 });
 
 /// Provider for [DictionaryLookupService].
-final dictionaryLookupServiceProvider = Provider<DictionaryLookupService>((ref) {
+final dictionaryLookupServiceProvider =
+    Provider<DictionaryLookupService>((ref) {
   final repo = ref.watch(dictionaryRepositoryProvider);
   final candidateGen = ref.watch(wordCandidateGeneratorProvider);
   return DictionaryLookupService(
@@ -167,7 +168,8 @@ class HoverPlaybackTimer {
   HoverPlaybackTimer(this._ref);
 
   /// Triggered when the pointer enters a word token in the subtitle track.
-  void onHoverEnter(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink, BuildContext context) {
+  void onHoverEnter(List<TokenSpan> lineTokens, int tokenIndex,
+      LayerLink layerLink, BuildContext context) {
     final player = _ref.read(playerProvider);
 
     // If a transition timer was already running, cancel it so we don't
@@ -183,7 +185,8 @@ class HoverPlaybackTimer {
       PlayerActions.pause(player);
     }
 
-    _ref.read(selectedTokenProvider.notifier).state = SelectedTokenData(lineTokens, tokenIndex);
+    _ref.read(selectedTokenProvider.notifier).state =
+        SelectedTokenData(lineTokens, tokenIndex);
     _ref.read(selectedTokenLayerLinkProvider.notifier).state = layerLink;
     _ref.read(selectedTokenContextProvider.notifier).state = context;
   }
@@ -211,7 +214,8 @@ class HoverPlaybackTimer {
   ///
   /// Unlike temporary hover popups, explicit clicks pin the popup and disable
   /// automatic playback resume when the hover exits.
-  void onTap(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink, BuildContext context) {
+  void onTap(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink,
+      BuildContext context) {
     _debounceTimer?.cancel();
     _debounceTimer = null;
     _wasPlaying = false; // Disable auto-resume for explicit clicks.
@@ -219,7 +223,8 @@ class HoverPlaybackTimer {
     final player = _ref.read(playerProvider);
     PlayerActions.pause(player);
 
-    _ref.read(selectedTokenProvider.notifier).state = SelectedTokenData(lineTokens, tokenIndex);
+    _ref.read(selectedTokenProvider.notifier).state =
+        SelectedTokenData(lineTokens, tokenIndex);
     _ref.read(selectedTokenLayerLinkProvider.notifier).state = layerLink;
     _ref.read(selectedTokenContextProvider.notifier).state = context;
   }

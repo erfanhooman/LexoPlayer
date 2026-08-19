@@ -13,7 +13,7 @@ class AppColors {
   // ── Derived Accent Shades ──────────────────────────────────────────────────
   static const Color primaryDark = Color(0xFFD95325);
   static const Color primaryLight = Color(0xFFFF885B);
-  
+
   static Color get primarySoft => primary.withValues(alpha: 0.15);
   static Color get primaryBorder => primary.withValues(alpha: 0.3);
 

@@ -156,7 +156,7 @@ Future<void> saveSelections(WidgetRef ref) async {
   final monoId = ref.read(selectedMonolingualIdProvider);
   final biId = ref.read(selectedBilingualIdProvider);
   final unifiedId = ref.read(selectedUnifiedDictIdProvider);
-  
+
   await storage.setSelectedMonolingualId(monoId == 'none' ? null : monoId);
   await storage.setSelectedBilingualId(biId == 'none' ? null : biId);
   await storage.setSelectedUnifiedId(unifiedId == 'none' ? null : unifiedId);

@@ -26,16 +26,14 @@ joined together
         expect(blocks.length, equals(3));
         expect(blocks[0].text, equals('Hello, world!'));
         expect(blocks[0].startTime, equals(const Duration(seconds: 1)));
-        expect(blocks[0].endTime,
-            equals(const Duration(seconds: 4)));
+        expect(blocks[0].endTime, equals(const Duration(seconds: 4)));
 
         expect(blocks[1].text, equals('This is a test.'));
         expect(blocks[1].startTime,
             equals(const Duration(seconds: 5, milliseconds: 500)));
 
         expect(blocks[2].text, equals('Multiple lines joined together'));
-        expect(blocks[2].startTime,
-            equals(const Duration(seconds: 10)));
+        expect(blocks[2].startTime, equals(const Duration(seconds: 10)));
       });
 
       test('strips HTML tags from text', () {
@@ -81,9 +79,11 @@ Missing hour cue
         final blocks = SubtitleParser.parseSrt(srtContent);
         expect(blocks.length, equals(2));
         expect(blocks[0].text, equals('Single digit hour cue'));
-        expect(blocks[0].startTime, equals(const Duration(seconds: 3, milliseconds: 200)));
+        expect(blocks[0].startTime,
+            equals(const Duration(seconds: 3, milliseconds: 200)));
         expect(blocks[1].text, equals('Missing hour cue'));
-        expect(blocks[1].startTime, equals(const Duration(minutes: 1, seconds: 23, milliseconds: 456)));
+        expect(blocks[1].startTime,
+            equals(const Duration(minutes: 1, seconds: 23, milliseconds: 456)));
       });
     });
 
@@ -222,11 +222,16 @@ Dialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,سلام دنیا
 
     group('detectFormat', () {
       test('sniffs WebVTT, ASS, and SRT by content', () {
-        expect(SubtitleParser.detectFormat('WEBVTT\n\n00:00:01.000 --> 00:00:04.000'),
+        expect(
+            SubtitleParser.detectFormat(
+                'WEBVTT\n\n00:00:01.000 --> 00:00:04.000'),
             SubtitleFormat.webVtt);
-        expect(SubtitleParser.detectFormat('[Script Info]\n[Events]\nDialogue: 0,...'),
+        expect(
+            SubtitleParser.detectFormat(
+                '[Script Info]\n[Events]\nDialogue: 0,...'),
             SubtitleFormat.ass);
-        expect(SubtitleParser.detectFormat('1\n00:00:01,000 --> 00:00:04,000\nHi'),
+        expect(
+            SubtitleParser.detectFormat('1\n00:00:01,000 --> 00:00:04,000\nHi'),
             SubtitleFormat.srt);
       });
     });

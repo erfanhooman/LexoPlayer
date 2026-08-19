@@ -43,7 +43,9 @@ class DictSelectionOverlay extends ConsumerWidget {
 
   /// Presents the settings panel using the appropriate platform-native surface.
   static void show(BuildContext context) {
-    final isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
       showModalBottomSheet(
@@ -60,8 +62,7 @@ class DictSelectionOverlay extends ConsumerWidget {
         barrierColor: Colors.black54,
         builder: (_) => const Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding:
-              EdgeInsets.symmetric(horizontal: 80, vertical: 60),
+          insetPadding: EdgeInsets.symmetric(horizontal: 80, vertical: 60),
           child: DictSelectionOverlay(),
         ),
       );
@@ -141,8 +142,12 @@ class DictSelectionOverlay extends ConsumerWidget {
                           entries: monolingualList,
                           selectedId: selectedMono,
                           onChanged: (id) {
-                            ref.read(selectedMonolingualIdProvider.notifier).state = id;
-                            ref.read(dictStorageManagerProvider).setSelectedMonolingualId(id);
+                            ref
+                                .read(selectedMonolingualIdProvider.notifier)
+                                .state = id;
+                            ref
+                                .read(dictStorageManagerProvider)
+                                .setSelectedMonolingualId(id);
                           },
                         ),
                         const SizedBox(height: 14),
@@ -154,13 +159,18 @@ class DictSelectionOverlay extends ConsumerWidget {
                           entries: bilingualList,
                           selectedId: selectedBi,
                           onChanged: (id) {
-                            ref.read(selectedBilingualIdProvider.notifier).state = id;
-                            ref.read(dictStorageManagerProvider).setSelectedBilingualId(id);
+                            ref
+                                .read(selectedBilingualIdProvider.notifier)
+                                .state = id;
+                            ref
+                                .read(dictStorageManagerProvider)
+                                .setSelectedBilingualId(id);
                           },
                         ),
                         const SizedBox(height: 16),
 
-                        Divider(color: Colors.white.withOpacity(0.08), height: 1),
+                        Divider(
+                            color: Colors.white.withOpacity(0.08), height: 1),
                         const SizedBox(height: 16),
 
                         // ── Buttons ────────────────────────────────────────────────
@@ -193,13 +203,15 @@ class DictSelectionOverlay extends ConsumerWidget {
                                       horizontal: 24, vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    side: const BorderSide(color: _kAccent, width: 1.2),
+                                    side: const BorderSide(
+                                        color: _kAccent, width: 1.2),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 12),
                               TextButton.icon(
-                                onPressed: () => _importLocalDictionary(context, ref),
+                                onPressed: () =>
+                                    _importLocalDictionary(context, ref),
                                 icon: const Icon(Icons.upload_file_rounded,
                                     size: 18, color: Colors.white70),
                                 label: const Text(
@@ -211,12 +223,15 @@ class DictSelectionOverlay extends ConsumerWidget {
                                   ),
                                 ),
                                 style: TextButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.05),
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.05),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 24, vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    side: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.2),
+                                    side: BorderSide(
+                                        color: Colors.white.withOpacity(0.15),
+                                        width: 1.2),
                                   ),
                                 ),
                               ),

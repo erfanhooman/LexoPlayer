@@ -159,58 +159,83 @@ class DualDictionaryRepository {
     final candidates = <String>[];
 
     // 1. Specific morphological transformations (highest priority):
-    
+
     // Past tense -ied / Plural -ies -> -y (e.g. gussied -> gussy, plied -> ply, sculleries -> scullery)
     if (cleaned.endsWith('ied')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 3)}y'); // gussied -> gussy, plied -> ply
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 3)}y'); // gussied -> gussy, plied -> ply
     }
     if (cleaned.endsWith('ies')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 3)}y'); // sculleries -> scullery, stories -> story
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 3)}y'); // sculleries -> scullery, stories -> story
     }
 
     // Agent / Passive -ee -> -ate / -er (e.g. exoneree -> exonerate)
     if (cleaned.endsWith('ee')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 2)}ate'); // exoneree -> exonerate
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 2)}ate'); // exoneree -> exonerate
       candidates.add('${cleaned.substring(0, cleaned.length - 2)}er');
     }
 
     // Superlative -est / -iest (e.g. basest -> base, happiest -> happy)
     if (cleaned.endsWith('iest')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 4)}y'); // happiest -> happy
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 4)}y'); // happiest -> happy
     } else if (cleaned.endsWith('est')) {
-      candidates.add(cleaned.substring(0, cleaned.length - 2)); // fastest -> fast
-      candidates.add(cleaned.substring(0, cleaned.length - 3)); // basest -> base (drops 'est', tries 'base')
-      candidates.add('${cleaned.substring(0, cleaned.length - 2)}e'); // basest -> base
+      candidates
+          .add(cleaned.substring(0, cleaned.length - 2)); // fastest -> fast
+      candidates.add(cleaned.substring(
+          0, cleaned.length - 3)); // basest -> base (drops 'est', tries 'base')
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 2)}e'); // basest -> base
     }
 
     // Verb endings -ed / -teered (e.g. volunteered -> volunteer, indulged -> indulge)
     if (cleaned.endsWith('teered')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 2)}r'); // volunteered -> volunteer
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 2)}r'); // volunteered -> volunteer
     } else if (cleaned.endsWith('ed')) {
-      candidates.add(cleaned.substring(0, cleaned.length - 1)); // indulged -> indulge
-      candidates.add(cleaned.substring(0, cleaned.length - 2)); // walked -> walk
+      candidates
+          .add(cleaned.substring(0, cleaned.length - 1)); // indulged -> indulge
+      candidates
+          .add(cleaned.substring(0, cleaned.length - 2)); // walked -> walk
     }
 
     // Gerund / Participle -ing (e.g. countenancing -> countenance, persuading -> persuade)
-    if (cleaned.endsWith('cing') || cleaned.endsWith('sing') || cleaned.endsWith('zing') || cleaned.endsWith('ding') || cleaned.endsWith('ging')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 3)}e'); // countenancing -> countenance
+    if (cleaned.endsWith('cing') ||
+        cleaned.endsWith('sing') ||
+        cleaned.endsWith('zing') ||
+        cleaned.endsWith('ding') ||
+        cleaned.endsWith('ging')) {
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 3)}e'); // countenancing -> countenance
     }
     if (cleaned.endsWith('ing')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 3)}e'); // persuading -> persuade
-      candidates.add(cleaned.substring(0, cleaned.length - 3)); // walking -> walk
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 3)}e'); // persuading -> persuade
+      candidates
+          .add(cleaned.substring(0, cleaned.length - 3)); // walking -> walk
     }
 
     // Plurals ending in -ces, -nces, -ances, -ences (e.g. condolences -> condolence, appliances -> appliance)
-    if (cleaned.endsWith('ces') || cleaned.endsWith('ses') || cleaned.endsWith('zes')) {
-      candidates.add(cleaned.substring(0, cleaned.length - 1)); // condolences -> condolence, appliances -> appliance
+    if (cleaned.endsWith('ces') ||
+        cleaned.endsWith('ses') ||
+        cleaned.endsWith('zes')) {
+      candidates.add(cleaned.substring(
+          0,
+          cleaned.length -
+              1)); // condolences -> condolence, appliances -> appliance
     }
 
     // Nominalizations -ations, -ation (e.g. irritations -> irritation -> irritate)
     if (cleaned.endsWith('ations')) {
-      candidates.add(cleaned.substring(0, cleaned.length - 1)); // irritations -> irritation
-      candidates.add('${cleaned.substring(0, cleaned.length - 5)}e'); // irritations -> irritate
+      candidates.add(cleaned.substring(
+          0, cleaned.length - 1)); // irritations -> irritation
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 5)}e'); // irritations -> irritate
     } else if (cleaned.endsWith('ation')) {
-      candidates.add('${cleaned.substring(0, cleaned.length - 4)}e'); // irritation -> irritate
+      candidates.add(
+          '${cleaned.substring(0, cleaned.length - 4)}e'); // irritation -> irritate
     } else if (cleaned.endsWith('ions')) {
       candidates.add(cleaned.substring(0, cleaned.length - 1));
       candidates.add('${cleaned.substring(0, cleaned.length - 3)}e');
@@ -218,7 +243,8 @@ class DualDictionaryRepository {
 
     // General plural -s (e.g. intruders -> intruder)
     if (cleaned.endsWith('s') && !cleaned.endsWith('ss')) {
-      candidates.add(cleaned.substring(0, cleaned.length - 1)); // intruders -> intruder
+      candidates.add(
+          cleaned.substring(0, cleaned.length - 1)); // intruders -> intruder
     }
 
     // Agent nouns / Comparatives -ers, -er
@@ -283,7 +309,7 @@ class DualDictionaryRepository {
     for (final candidate in candidates) {
       final res = await lookup(candidate);
       final isSingleWord = !candidate.contains(' ');
-      
+
       if (res.hasDefinition || res.hasTranslation || isSingleWord) {
         results.add(res);
       }
@@ -316,7 +342,8 @@ class DualDictionaryRepository {
         rows = await _monoDb!.query(
           'entries',
           columns: ['html_definition'],
-          where: 'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
+          where:
+              'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
           whereArgs: ['$firstChar%', normalized],
           limit: 1,
         );
@@ -353,7 +380,8 @@ class DualDictionaryRepository {
         rows = await _biDb!.query(
           'entries',
           columns: ['localized_text'],
-          where: 'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
+          where:
+              'word LIKE ? AND LOWER(REPLACE(REPLACE(word, "-", ""), " ", "")) = ?',
           whereArgs: ['$firstChar%', normalized],
           limit: 1,
         );

@@ -46,7 +46,8 @@ class AutoUpdateService {
         checkAndAutoUpdateApp(ref);
       }
     } catch (e) {
-      developer.log('Error initializing AutoUpdateService: $e', name: 'AutoUpdateService');
+      developer.log('Error initializing AutoUpdateService: $e',
+          name: 'AutoUpdateService');
     }
   }
 
@@ -111,14 +112,16 @@ class AutoUpdateService {
         }
       }
     } catch (e) {
-      developer.log('Error during dictionary auto-update: $e', name: 'AutoUpdateService');
+      developer.log('Error during dictionary auto-update: $e',
+          name: 'AutoUpdateService');
     }
   }
 
   /// Checks GitHub Releases API for app updates
   static Future<void> checkAndAutoUpdateApp(dynamic ref) async {
     try {
-      const releaseUrl = 'https://api.github.com/repos/erfanhooman/LexoPlayer/releases/latest';
+      const releaseUrl =
+          'https://api.github.com/repos/erfanhooman/LexoPlayer/releases/latest';
       final response = await _dio.get<Map<String, dynamic>>(releaseUrl);
 
       if (response.statusCode == 200 && response.data != null) {

@@ -21,7 +21,9 @@ class WordCandidateGenerator implements IWordCandidateGenerator {
 
   @override
   List<String> generateCandidates(List<TokenSpan> lineTokens, int targetIndex) {
-    if (lineTokens.isEmpty || targetIndex < 0 || targetIndex >= lineTokens.length) {
+    if (lineTokens.isEmpty ||
+        targetIndex < 0 ||
+        targetIndex >= lineTokens.length) {
       return const [];
     }
 
@@ -43,7 +45,9 @@ class WordCandidateGenerator implements IWordCandidateGenerator {
 
     // Generate n-gram word phrases containing targetWordPos.
     for (int len = 1; len <= maxWords; len++) {
-      for (int startPos = targetWordPos - len + 1; startPos <= targetWordPos; startPos++) {
+      for (int startPos = targetWordPos - len + 1;
+          startPos <= targetWordPos;
+          startPos++) {
         final endPos = startPos + len - 1;
         if (startPos >= 0 && endPos < wordIndices.length) {
           final phraseWords = <String>[];

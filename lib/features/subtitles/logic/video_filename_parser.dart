@@ -22,8 +22,9 @@ class ParsedVideoMetadata {
 
   bool get isTVShow => season != null && episode != null;
 
-  String get formattedEpisodeStr =>
-      isTVShow ? 'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}' : '';
+  String get formattedEpisodeStr => isTVShow
+      ? 'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}'
+      : '';
 
   @override
   String toString() {
@@ -41,11 +42,50 @@ class VideoFilenameParser {
   VideoFilenameParser._();
 
   static const List<String> _noiseTokens = [
-    '720p', '1080p', '2160p', '4k', 'hdr', 'hdr10', 'hdtv', 'web-dl', 'webdl', 'webrip',
-    'web', 'bluray', 'bdrip', 'brrip', 'dvdrip', 'dvd', 'x264', 'x265', 'h264', 'h265',
-    'hevc', 'avc', 'aac', 'dts', 'ac3', '5.1', '7.1', '10bit', 'subbed', 'dubbed',
-    'remastered', 'extended', 'proper', 'repack', 'unrated', 'director', 'cut',
-    'yify', 'rarbg', 'eztv', 'psa', 'tgx', 'ettv', 'vxt'
+    '720p',
+    '1080p',
+    '2160p',
+    '4k',
+    'hdr',
+    'hdr10',
+    'hdtv',
+    'web-dl',
+    'webdl',
+    'webrip',
+    'web',
+    'bluray',
+    'bdrip',
+    'brrip',
+    'dvdrip',
+    'dvd',
+    'x264',
+    'x265',
+    'h264',
+    'h265',
+    'hevc',
+    'avc',
+    'aac',
+    'dts',
+    'ac3',
+    '5.1',
+    '7.1',
+    '10bit',
+    'subbed',
+    'dubbed',
+    'remastered',
+    'extended',
+    'proper',
+    'repack',
+    'unrated',
+    'director',
+    'cut',
+    'yify',
+    'rarbg',
+    'eztv',
+    'psa',
+    'tgx',
+    'ettv',
+    'vxt'
   ];
 
   static ParsedVideoMetadata parse(String filePathOrName) {
@@ -60,8 +100,10 @@ class VideoFilenameParser {
     final sExMatch = sExRegex.firstMatch(basenameWithoutExt);
 
     // Pattern 2: 1x05 or 01x05 (delimiters: dots, underscores, dashes, spaces)
-    final xRegex = RegExp(r'(?:^|[._\-\s])(\d{1,2})[xX](\d{1,2})(?:[._\-\s]|$)');
-    final xMatch = sExMatch == null ? xRegex.firstMatch(basenameWithoutExt) : null;
+    final xRegex =
+        RegExp(r'(?:^|[._\-\s])(\d{1,2})[xX](\d{1,2})(?:[._\-\s]|$)');
+    final xMatch =
+        sExMatch == null ? xRegex.firstMatch(basenameWithoutExt) : null;
 
     if (sExMatch != null) {
       season = int.tryParse(sExMatch.group(1)!);

@@ -59,7 +59,7 @@ final playerProvider = Provider.autoDispose<Player>((ref) {
 
   ref.onDispose(() {
     developer.log('Disposing native Player instance', name: 'playerProvider');
-    
+
     // Save final position on dispose
     final playlist = player.state.playlist;
     if (playlist.index >= 0 && playlist.index < playlist.medias.length) {
@@ -86,10 +86,10 @@ String _normalizeUriOrPath(String input) {
   } catch (_) {
     // If parsing as URI fails, just treat as raw path
   }
-  
+
   // Normalize Windows path separators and drive letter casing
   normalized = normalized.replaceAll('\\', '/');
-  
+
   // If it starts with drive letter (e.g. "C:/"), uppercase it consistently.
   final driveLetterRegex = RegExp(r'^([a-zA-Z]):/');
   final match = driveLetterRegex.firstMatch(normalized);
@@ -97,7 +97,7 @@ String _normalizeUriOrPath(String input) {
     final drive = match.group(1)!.toUpperCase();
     normalized = normalized.replaceFirst(driveLetterRegex, '$drive:/');
   }
-  
+
   return normalized;
 }
 
@@ -108,24 +108,28 @@ String _getPlaybackPositionKey(String uri) {
   return 'video_pos_$digest';
 }
 
-Future<void> _savePlaybackPosition(String uri, Duration position, Duration totalDuration) async {
+Future<void> _savePlaybackPosition(
+    String uri, Duration position, Duration totalDuration) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     final key = _getPlaybackPositionKey(uri);
-    
+
     // If we are close to the end (within 5 seconds), reset to start
-    final isNearEnd = totalDuration > Duration.zero && 
+    final isNearEnd = totalDuration > Duration.zero &&
         (totalDuration - position).inSeconds < 5;
-        
+
     if (isNearEnd || position.inSeconds <= 0) {
       await prefs.remove(key);
-      developer.log('Cleared saved position for $uri (near end or <= 0)', name: 'PlayerPosition');
+      developer.log('Cleared saved position for $uri (near end or <= 0)',
+          name: 'PlayerPosition');
     } else {
       await prefs.setInt(key, position.inMilliseconds);
-      developer.log('Saved position for $uri: ${position.inSeconds}s', name: 'PlayerPosition');
+      developer.log('Saved position for $uri: ${position.inSeconds}s',
+          name: 'PlayerPosition');
     }
   } catch (e) {
-    developer.log('Error saving playback position: $e', name: 'PlayerPosition', level: 900);
+    developer.log('Error saving playback position: $e',
+        name: 'PlayerPosition', level: 900);
   }
 }
 
@@ -138,7 +142,8 @@ Future<Duration?> _loadPlaybackPosition(String uri) async {
       return Duration(milliseconds: ms);
     }
   } catch (e) {
-    developer.log('Error loading playback position: $e', name: 'PlayerPosition', level: 900);
+    developer.log('Error loading playback position: $e',
+        name: 'PlayerPosition', level: 900);
   }
   return null;
 }
@@ -218,7 +223,8 @@ final isMutedProvider = StateProvider.autoDispose<bool>((ref) => false);
 final preMuteVolumeProvider = StateProvider.autoDispose<double>((ref) => 100.0);
 
 /// Toggle state for time label: false = elapsed time, true = remaining time (-).
-final showRemainingTimeProvider = StateProvider.autoDispose<bool>((ref) => false);
+final showRemainingTimeProvider =
+    StateProvider.autoDispose<bool>((ref) => false);
 
 /// Data model for the Volume HUD indicator overlay.
 class VolumeHudData {
@@ -234,7 +240,8 @@ class VolumeHudData {
 }
 
 /// Volume HUD state provider for smooth on-screen percentage toast.
-final volumeHudProvider = StateProvider.autoDispose<VolumeHudData?>((ref) => null);
+final volumeHudProvider =
+    StateProvider.autoDispose<VolumeHudData?>((ref) => null);
 
 /// Aspect ratio mode enumeration.
 enum AspectRatioMode { fit, fill, stretch, ratio16x9, ratio4x3 }
@@ -272,7 +279,8 @@ class PlayerActions {
         await _savePlaybackPosition(oldUri, oldPosition, oldDuration);
       }
     } catch (e) {
-      developer.log('Failed to save previous video state: $e', name: 'PlayerActions');
+      developer.log('Failed to save previous video state: $e',
+          name: 'PlayerActions');
     }
 
     final mediaPathOrUri = cleanVideoPathOrUri(uri) ?? uri;
@@ -287,7 +295,8 @@ class PlayerActions {
     await player.setSubtitleTrack(SubtitleTrack.no());
 
     if (savedPosition != null && savedPosition.inSeconds > 0) {
-      developer.log('Resuming playback at: ${savedPosition.inSeconds}s', name: 'PlayerActions');
+      developer.log('Resuming playback at: ${savedPosition.inSeconds}s',
+          name: 'PlayerActions');
       try {
         Duration dur = player.state.duration;
         if (dur <= Duration.zero) {
@@ -300,7 +309,9 @@ class PlayerActions {
 
         // If saved position is near the end (within 5 seconds), reset to start instead of jumping to end.
         if (dur > Duration.zero && (dur - savedPosition).inSeconds < 5) {
-          developer.log('Saved position is near end of video. Resuming from start.', name: 'PlayerActions');
+          developer.log(
+              'Saved position is near end of video. Resuming from start.',
+              name: 'PlayerActions');
           await player.seek(Duration.zero);
         } else {
           await Future.delayed(const Duration(milliseconds: 200));
@@ -311,14 +322,14 @@ class PlayerActions {
         await player.seek(savedPosition);
       }
     }
-    
+
     await player.play();
   }
 
   static Future<void> play(Player player) => player.play();
   static Future<void> pause(Player player) => player.pause();
   static Future<void> playOrPause(Player player) => player.playOrPause();
-  
+
   /// Stop playback, but explicitly save the position first so it is not lost.
   static Future<void> stop(Player player) async {
     await player.pause();
@@ -341,7 +352,8 @@ class PlayerActions {
 
   static Duration _getEffectivePosition(Player player) {
     if (_pendingSeekPosition != null && _pendingSeekTime != null) {
-      if (DateTime.now().difference(_pendingSeekTime!) < const Duration(milliseconds: 1200)) {
+      if (DateTime.now().difference(_pendingSeekTime!) <
+          const Duration(milliseconds: 1200)) {
         return _pendingSeekPosition!;
       }
     }
@@ -490,7 +502,8 @@ class PlayerActions {
       player.setRate(speed);
 
   /// Set volume (0 – 200%) and trigger on-screen HUD indicator.
-  static Future<void> setVolume(Player player, double volume, WidgetRef ref) async {
+  static Future<void> setVolume(
+      Player player, double volume, WidgetRef ref) async {
     final clamped = volume.clamp(0.0, 200.0);
     await player.setVolume(clamped);
     if (clamped > 0 && ref.read(isMutedProvider)) {
@@ -500,7 +513,8 @@ class PlayerActions {
   }
 
   /// Relative volume adjustment (e.g. +5% or -5%) for keyboard shortcuts.
-  static Future<void> adjustVolumeRelative(Player player, double delta, WidgetRef ref) async {
+  static Future<void> adjustVolumeRelative(
+      Player player, double delta, WidgetRef ref) async {
     final isMuted = ref.read(isMutedProvider);
     double current = player.state.volume;
 

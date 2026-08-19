@@ -42,56 +42,49 @@ void main() {
 
       test('returns null when position is after last block', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 30)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 30)),
           isNull,
         );
       });
 
       test('returns null when position is in a gap between blocks', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 5)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 5)),
           isNull,
         );
       });
 
       test('returns correct index when position is at exact startTime', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 6)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 6)),
           equals(1),
         );
       });
 
       test('returns correct index when position is at exact endTime', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 9)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 9)),
           equals(1),
         );
       });
 
       test('returns correct index when position is within a block', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 13)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 13)),
           equals(2),
         );
       });
 
       test('works with first block', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 2)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 2)),
           equals(0),
         );
       });
 
       test('works with last block', () {
         expect(
-          BinarySearchSync.findActiveIndex(
-              blocks, const Duration(seconds: 22)),
+          BinarySearchSync.findActiveIndex(blocks, const Duration(seconds: 22)),
           equals(3),
         );
       });
@@ -105,13 +98,11 @@ void main() {
           ),
         ];
         expect(
-          BinarySearchSync.findActiveIndex(
-              single, const Duration(seconds: 7)),
+          BinarySearchSync.findActiveIndex(single, const Duration(seconds: 7)),
           equals(0),
         );
         expect(
-          BinarySearchSync.findActiveIndex(
-              single, const Duration(seconds: 3)),
+          BinarySearchSync.findActiveIndex(single, const Duration(seconds: 3)),
           isNull,
         );
       });

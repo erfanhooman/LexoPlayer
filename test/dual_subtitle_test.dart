@@ -40,29 +40,37 @@ void main() {
 
       // 1. Set options and blocks
       container.read(selectedSubtitleProvider.notifier).state = primaryOption;
-      container.read(subtitleListProvider.notifier).state = primaryOption.externalBlocks!;
+      container.read(subtitleListProvider.notifier).state =
+          primaryOption.externalBlocks!;
 
-      container.read(selectedSecondarySubtitleProvider.notifier).state = secondaryOption;
-      container.read(secondarySubtitleListProvider.notifier).state = secondaryOption.externalBlocks!;
+      container.read(selectedSecondarySubtitleProvider.notifier).state =
+          secondaryOption;
+      container.read(secondarySubtitleListProvider.notifier).state =
+          secondaryOption.externalBlocks!;
 
       // 2. Set active index at 3 seconds
       final position = const Duration(seconds: 3);
-      final pIdx = BinarySearchSync.findActiveIndex(primaryOption.externalBlocks!, position);
-      final sIdx = BinarySearchSync.findActiveIndex(secondaryOption.externalBlocks!, position);
+      final pIdx = BinarySearchSync.findActiveIndex(
+          primaryOption.externalBlocks!, position);
+      final sIdx = BinarySearchSync.findActiveIndex(
+          secondaryOption.externalBlocks!, position);
 
       container.read(activeSubtitleIndexProvider.notifier).state = pIdx;
-      container.read(activeSecondarySubtitleIndexProvider.notifier).state = sIdx;
+      container.read(activeSecondarySubtitleIndexProvider.notifier).state =
+          sIdx;
 
       // 3. Verify both primary and secondary texts derive correctly
       expect(container.read(activeSubtitleTextProvider), equals('Hello world'));
-      expect(container.read(activeSecondarySubtitleTextProvider), equals('سلام دنیا'));
+      expect(container.read(activeSecondarySubtitleTextProvider),
+          equals('سلام دنیا'));
 
       // 4. Verify Persian text contains Persian Unicode range
       final secondaryText = container.read(activeSecondarySubtitleTextProvider);
       expect(RegExp(r'[\u0600-\u06FF]').hasMatch(secondaryText!), isTrue);
     });
 
-    test('Media subtitle selection persistence across video re-opens', () async {
+    test('Media subtitle selection persistence across video re-opens',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final container = ProviderContainer();
       const testUri = '/path/to/movie.mp4';
@@ -96,8 +104,10 @@ void main() {
         availableOptions: available,
       );
 
-      expect(container.read(selectedSubtitleProvider)?.id, equals('external_sub_en'));
-      expect(container.read(selectedSecondarySubtitleProvider)?.id, equals('external_sub_fa'));
+      expect(container.read(selectedSubtitleProvider)?.id,
+          equals('external_sub_en'));
+      expect(container.read(selectedSecondarySubtitleProvider)?.id,
+          equals('external_sub_fa'));
     });
   });
 }

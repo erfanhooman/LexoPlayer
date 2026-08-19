@@ -13,7 +13,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('App smoke test - renders LexoPlayer app', (WidgetTester tester) async {
+  testWidgets('App smoke test - renders LexoPlayer app',
+      (WidgetTester tester) async {
     final originalOnError = FlutterError.onError;
     FlutterError.onError = (details) {
       if (details.exceptionAsString().contains('overflowed')) return;

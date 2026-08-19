@@ -61,7 +61,8 @@ class WordTokenizer {
     if (input.isEmpty) return const [];
 
     // Replace ASS break tags (\N, \n, \h) and raw line breaks/tabs with spaces
-    final sanitizedInput = input.replaceAll(RegExp(r'(\\N|\\n|\\h|[\r\n\t])'), ' ');
+    final sanitizedInput =
+        input.replaceAll(RegExp(r'(\\N|\\n|\\h|[\r\n\t])'), ' ');
 
     final List<TokenSpan> spans = [];
 

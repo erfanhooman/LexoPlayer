@@ -15,7 +15,8 @@ void testCleanToken() {
 
   // Test 2: Phrase with spaces and punctuation
   final res2 = StemmerUtils.cleanToken('I had no voice in that matter.');
-  assert(res2 == 'i had no voice in that matter', 'Expected "i had no voice in that matter", got "$res2"');
+  assert(res2 == 'i had no voice in that matter',
+      'Expected "i had no voice in that matter", got "$res2"');
   print('  ✓ Phrase with spaces and punctuation preserved');
 
   // Test 3: Hyphenated compound word
@@ -32,7 +33,7 @@ void testCleanToken() {
   final res5 = StemmerUtils.cleanToken('  able   bodied  ');
   assert(res5 == 'able bodied', 'Expected "able bodied", got "$res5"');
   print('  ✓ Extra spaces trimmed and collapsed');
-  
+
   // Test 6: Word with apostrophe
   final res6 = StemmerUtils.cleanToken("it's okay");
   assert(res6 == "it's okay", "Expected \"it's okay\", got \"$res6\"");

@@ -27,7 +27,8 @@ void main() {
 
     test('HTTP/HTTPS streaming links', () {
       expect(
-        formatMediaTitle('https://streaming.service.com/movies/Inception.2010.1080p.mp4?token=123'),
+        formatMediaTitle(
+            'https://streaming.service.com/movies/Inception.2010.1080p.mp4?token=123'),
         equals('Inception (2010)'),
       );
     });

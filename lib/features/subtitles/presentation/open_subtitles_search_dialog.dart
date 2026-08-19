@@ -24,7 +24,9 @@ class OpenSubtitlesSearchDialog extends ConsumerStatefulWidget {
 
   /// Presents the OpenSubtitles search panel adaptively.
   static void show(BuildContext context, {String? mediaUri}) {
-    final isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
       showModalBottomSheet(
@@ -41,7 +43,8 @@ class OpenSubtitlesSearchDialog extends ConsumerStatefulWidget {
         barrierColor: Colors.black54,
         builder: (_) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
           child: OpenSubtitlesSearchDialog(initialUri: mediaUri),
         ),
       );
@@ -49,10 +52,12 @@ class OpenSubtitlesSearchDialog extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<OpenSubtitlesSearchDialog> createState() => _OpenSubtitlesSearchDialogState();
+  ConsumerState<OpenSubtitlesSearchDialog> createState() =>
+      _OpenSubtitlesSearchDialogState();
 }
 
-class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchDialog> {
+class _OpenSubtitlesSearchDialogState
+    extends ConsumerState<OpenSubtitlesSearchDialog> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -156,7 +161,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -169,7 +175,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
             ),
             backgroundColor: _kAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -233,13 +240,17 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                           decoration: BoxDecoration(
                             color: _kAccent.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: _kAccent.withValues(alpha: 0.3)),
                           ),
-                          child: const Icon(Icons.auto_awesome_rounded, color: _kAccent, size: 20),
+                          child: const Icon(Icons.auto_awesome_rounded,
+                              color: _kAccent, size: 20),
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          isPersian ? 'جستجوی خودکار زیرنویس (OpenSubtitles)' : 'OpenSubtitles Auto Search',
+                          isPersian
+                              ? 'جستجوی خودکار زیرنویس (OpenSubtitles)'
+                              : 'OpenSubtitles Auto Search',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -250,7 +261,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white70, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
                       splashRadius: 20,
                     ),
@@ -262,7 +274,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                 if (metadata != null)
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: _kScaffoldBg,
                       borderRadius: BorderRadius.circular(10),
@@ -271,7 +284,9 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                     child: Row(
                       children: [
                         Icon(
-                          metadata.isTVShow ? Icons.tv_rounded : Icons.movie_rounded,
+                          metadata.isTVShow
+                              ? Icons.tv_rounded
+                              : Icons.movie_rounded,
                           color: _kAccent,
                           size: 16,
                         ),
@@ -288,11 +303,13 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                         ),
                         if (metadata.isTVShow)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: _kAccent.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: _kAccent.withValues(alpha: 0.4)),
+                              border: Border.all(
+                                  color: _kAccent.withValues(alpha: 0.4)),
                             ),
                             child: Text(
                               metadata.formattedEpisodeStr,
@@ -324,7 +341,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                           value: selectedLangCode,
                           dropdownColor: _kOverlayBg,
                           borderRadius: BorderRadius.circular(12),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kAccent, size: 18),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                              color: _kAccent, size: 18),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -333,14 +351,20 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                           items: kSupportedSubtitleLanguages.map((lang) {
                             return DropdownMenuItem<String>(
                               value: lang.code,
-                              child: Text(isPersian ? lang.nativeName : lang.englishName),
+                              child: Text(isPersian
+                                  ? lang.nativeName
+                                  : lang.englishName),
                             );
                           }).toList(),
                           onChanged: (newLang) {
                             if (newLang != null) {
-                              ref.read(openSubtitlesLanguageProvider.notifier).state = newLang;
+                              ref
+                                  .read(openSubtitlesLanguageProvider.notifier)
+                                  .state = newLang;
                               saveOpenSubtitlesLanguage(newLang);
-                              ref.read(openSubtitlesSearchProvider.notifier).search();
+                              ref
+                                  .read(openSubtitlesSearchProvider.notifier)
+                                  .search();
                             }
                           },
                         ),
@@ -354,13 +378,18 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                         height: 42,
                         child: TextField(
                           controller: _searchController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           decoration: InputDecoration(
-                            hintText: isPersian ? 'نام فیلم یا سریال...' : 'Movie or series title...',
-                            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                            hintText: isPersian
+                                ? 'نام فیلم یا سریال...'
+                                : 'Movie or series title...',
+                            hintStyle: const TextStyle(
+                                color: Colors.white38, fontSize: 12),
                             filled: true,
                             fillColor: _kScaffoldBg,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: const BorderSide(color: _kBorder),
@@ -370,16 +399,25 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                               borderSide: const BorderSide(color: _kAccent),
                             ),
                             suffixIcon: IconButton(
-                              icon: const Icon(Icons.search_rounded, color: _kAccent, size: 20),
+                              icon: const Icon(Icons.search_rounded,
+                                  color: _kAccent, size: 20),
                               onPressed: () {
-                                ref.read(openSubtitlesQueryProvider.notifier).state = _searchController.text;
-                                ref.read(openSubtitlesSearchProvider.notifier).search();
+                                ref
+                                    .read(openSubtitlesQueryProvider.notifier)
+                                    .state = _searchController.text;
+                                ref
+                                    .read(openSubtitlesSearchProvider.notifier)
+                                    .search();
                               },
                             ),
                           ),
                           onSubmitted: (val) {
-                            ref.read(openSubtitlesQueryProvider.notifier).state = val;
-                            ref.read(openSubtitlesSearchProvider.notifier).search();
+                            ref
+                                .read(openSubtitlesQueryProvider.notifier)
+                                .state = val;
+                            ref
+                                .read(openSubtitlesSearchProvider.notifier)
+                                .search();
                           },
                         ),
                       ),
@@ -390,7 +428,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
 
                 // ── Results Body ───────────────────────────────────────────
                 Expanded(
-                  child: _buildResultsBody(context, searchState, isPersian, downloadingId),
+                  child: _buildResultsBody(
+                      context, searchState, isPersian, downloadingId),
                 ),
               ],
             ),
@@ -421,7 +460,9 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
             ),
             const SizedBox(height: 16),
             Text(
-              isPersian ? 'در حال جستجو در OpenSubtitles...' : 'Searching OpenSubtitles...',
+              isPersian
+                  ? 'در حال جستجو در OpenSubtitles...'
+                  : 'Searching OpenSubtitles...',
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ],
@@ -436,7 +477,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 36),
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.redAccent, size: 36),
               const SizedBox(height: 10),
               Text(
                 state.errorMessage!,
@@ -447,10 +489,13 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
-                label: Text(isPersian ? 'تلاش مجدد' : 'Retry', style: const TextStyle(color: Colors.white)),
+                icon: const Icon(Icons.refresh_rounded,
+                    size: 16, color: Colors.white),
+                label: Text(isPersian ? 'تلاش مجدد' : 'Retry',
+                    style: const TextStyle(color: Colors.white)),
                 onPressed: () {
                   ref.read(openSubtitlesSearchProvider.notifier).search();
                 },
@@ -466,11 +511,15 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.subtitles_off_rounded, color: Colors.white.withValues(alpha: 0.3), size: 48),
+            Icon(Icons.subtitles_off_rounded,
+                color: Colors.white.withValues(alpha: 0.3), size: 48),
             const SizedBox(height: 12),
             Text(
               isPersian ? 'زیرنویسی یافت نشد' : 'No subtitles found',
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
@@ -485,7 +534,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
     }
 
     final recommended = state.recommendedItem;
-    final otherItems = state.items.where((i) => i.id != recommended?.id).toList();
+    final otherItems =
+        state.items.where((i) => i.id != recommended?.id).toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -503,14 +553,17 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
               ),
             ),
             const SizedBox(height: 8),
-            _buildSubtitleCard(context, recommended, isRecommended: true, downloadingId: downloadingId),
+            _buildSubtitleCard(context, recommended,
+                isRecommended: true, downloadingId: downloadingId),
             const SizedBox(height: 16),
           ],
 
           // ── Other Results List ───────────────────────────────────
           if (otherItems.isNotEmpty) ...[
             Text(
-              isPersian ? 'سایر نتایج (${otherItems.length})' : 'All Candidates (${otherItems.length})',
+              isPersian
+                  ? 'سایر نتایج (${otherItems.length})'
+                  : 'All Candidates (${otherItems.length})',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 12,
@@ -524,7 +577,8 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
               itemCount: otherItems.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                return _buildSubtitleCard(context, otherItems[index], isRecommended: false, downloadingId: downloadingId);
+                return _buildSubtitleCard(context, otherItems[index],
+                    isRecommended: false, downloadingId: downloadingId);
               },
             ),
           ],
@@ -585,21 +639,26 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 13,
-                          fontWeight: isRecommended ? FontWeight.bold : FontWeight.w600,
+                          fontWeight:
+                              isRecommended ? FontWeight.bold : FontWeight.w600,
                         ),
                       ),
                     ),
                     if (item.formattedEpisodeInfo.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.white12,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           item.formattedEpisodeInfo,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -610,22 +669,29 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                   children: [
                     Text(
                       item.languageName,
-                      style: const TextStyle(color: _kAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          color: _kAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 12),
-                    Icon(Icons.download_rounded, color: Colors.white38, size: 12),
+                    Icon(Icons.download_rounded,
+                        color: Colors.white38, size: 12),
                     const SizedBox(width: 3),
                     Text(
                       '${item.downloadCount}',
-                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 11),
                     ),
                     if (item.rating > 0) ...[
                       const SizedBox(width: 12),
-                      const Icon(Icons.star_half_rounded, color: Colors.amber, size: 12),
+                      const Icon(Icons.star_half_rounded,
+                          color: Colors.amber, size: 12),
                       const SizedBox(width: 3),
                       Text(
                         item.rating.toStringAsFixed(1),
-                        style: const TextStyle(color: Colors.white54, fontSize: 11),
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 11),
                       ),
                     ],
                   ],
@@ -638,10 +704,13 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
           // Download & Apply Action Button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isRecommended ? _kAccent : Colors.white.withValues(alpha: 0.12),
+              backgroundColor: isRecommended
+                  ? _kAccent
+                  : Colors.white.withValues(alpha: 0.12),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
               elevation: isRecommended ? 4 : 0,
             ),
             onPressed: isDownloading ? null : () => _handleDownload(item),
@@ -655,8 +724,11 @@ class _OpenSubtitlesSearchDialogState extends ConsumerState<OpenSubtitlesSearchD
                     ),
                   )
                 : Text(
-                    isPersian ? (isRecommended ? 'تایید و دانلود' : 'دانلود') : (isRecommended ? 'Download & Apply' : 'Download'),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    isPersian
+                        ? (isRecommended ? 'تایید و دانلود' : 'دانلود')
+                        : (isRecommended ? 'Download & Apply' : 'Download'),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold),
                   ),
           ),
         ],

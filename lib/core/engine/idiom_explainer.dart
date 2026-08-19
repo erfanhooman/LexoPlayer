@@ -5,9 +5,36 @@ import 'package:lexo_player/features/dictionary/data/unified_dictionary_reposito
 
 /// Structural stop words used for content-word coverage filtering.
 const Set<String> structuralStopWords = {
-  'the', 'a', 'an', 'in', 'of', 'to', 'under', 'at', 'for', 'on', 'with',
-  'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'and', 'or', 'but', 'so', 'it', 'this', 'that', 'these', 'those',
+  'the',
+  'a',
+  'an',
+  'in',
+  'of',
+  'to',
+  'under',
+  'at',
+  'for',
+  'on',
+  'with',
+  'by',
+  'from',
+  'as',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'and',
+  'or',
+  'but',
+  'so',
+  'it',
+  'this',
+  'that',
+  'these',
+  'those',
 };
 
 /// Explanation result for a detected idiom.
@@ -100,6 +127,7 @@ class IdiomExplainer {
 
   /// Pre-loaded idiom cache: normalized_phrase -> idiom data
   final Map<String, Map<String, dynamic>> _idiomCache = {};
+
   /// Secondary index: raw phrase (lowercased) -> idiom data
   final Map<String, Map<String, dynamic>> _phraseIndex = {};
   bool _isCacheLoaded = false;
@@ -131,7 +159,8 @@ class IdiomExplainer {
       }
     }
     _isCacheLoaded = true;
-    developer.log('IdiomExplainer: Loaded ${_idiomCache.length} idioms into cache.',
+    developer.log(
+        'IdiomExplainer: Loaded ${_idiomCache.length} idioms into cache.',
         name: 'IdiomExplainer');
   }
 
@@ -206,7 +235,8 @@ class IdiomExplainer {
       category: 'MWE',
       detectionMethod: detectedMethod,
       explanationSource: 'default_generic',
-      definitionEn: "An idiomatic expression meaning non-literal phrase: '$phrase'.",
+      definitionEn:
+          "An idiomatic expression meaning non-literal phrase: '$phrase'.",
       translationFa: null,
       confidence: 0.50,
     );
@@ -257,8 +287,10 @@ class IdiomExplainer {
   /// Extracts content words (excluding stop words, len >= 2).
   Set<String> _extractContentWords(String text) {
     final cleaned = text.toLowerCase().replaceAll(RegExp(r'[^\w\s]'), '');
-    return cleaned.split(' ').where((w) =>
-        !structuralStopWords.contains(w) && w.length >= 2).toSet();
+    return cleaned
+        .split(' ')
+        .where((w) => !structuralStopWords.contains(w) && w.length >= 2)
+        .toSet();
   }
 
   /// Checks if the POS structure of the input phrase is compatible.
@@ -266,7 +298,11 @@ class IdiomExplainer {
     if (candidatePos.isEmpty || !candidatePos.toLowerCase().contains('verb')) {
       return true;
     }
-    final words = inputPhrase.toLowerCase().replaceAll(RegExp(r'[^\w\s]'), '').split(' ').toSet();
+    final words = inputPhrase
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]'), '')
+        .split(' ')
+        .toSet();
     return words.intersection(structuralStopWords).length < words.length;
   }
 }

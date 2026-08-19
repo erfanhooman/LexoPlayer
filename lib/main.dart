@@ -53,7 +53,8 @@ Future<void> main(List<String> args) async {
   if (initialVideoUri == null && Platform.isMacOS) {
     try {
       const channel = MethodChannel('com.lexoplayer/open_file');
-      final String? nativePath = await channel.invokeMethod<String>('getInitialFile');
+      final String? nativePath =
+          await channel.invokeMethod<String>('getInitialFile');
       if (nativePath != null) {
         initialVideoUri = cleanVideoPathOrUri(nativePath);
       }
@@ -129,9 +130,22 @@ String? cleanVideoPathOrUri(String rawArg) {
 
   // 5. Video extension check for non-existent or relative paths
   final extensions = [
-    '.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv',
-    '.m4v', '.3gp', '.ts', '.wmv', '.mpg', '.mpeg',
-    '.vob', '.ogv', '.m2ts', '.divx'
+    '.mp4',
+    '.mkv',
+    '.avi',
+    '.mov',
+    '.webm',
+    '.flv',
+    '.m4v',
+    '.3gp',
+    '.ts',
+    '.wmv',
+    '.mpg',
+    '.mpeg',
+    '.vob',
+    '.ogv',
+    '.m2ts',
+    '.divx'
   ];
 
   if (extensions.any((ext) => lower.endsWith(ext))) {
@@ -192,7 +206,12 @@ class _LexoPlayerAppState extends ConsumerState<LexoPlayerApp> {
           brightness: Brightness.dark,
         ),
         textTheme: (isPersian
-                ? GoogleFonts.vazirmatnTextTheme(ThemeData.dark().textTheme).apply(fontFamilyFallback: ['Parastoo', 'IRANSans', 'sans-serif'])
+                ? GoogleFonts.vazirmatnTextTheme(ThemeData.dark().textTheme)
+                    .apply(fontFamilyFallback: [
+                    'Parastoo',
+                    'IRANSans',
+                    'sans-serif'
+                  ])
                 : GoogleFonts.mulishTextTheme(ThemeData.dark().textTheme))
             .apply(bodyColor: Colors.white, displayColor: Colors.white),
         tooltipTheme: TooltipThemeData(
@@ -243,7 +262,10 @@ class _EngineLoadingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final rawStatus = ref.watch(dictLoadingStatusProvider);
-    final statusMsg = rawStatus ?? (isPersian ? 'در حال آماده‌سازی موتور هوشمند و واژه‌نامه...' : 'Initializing ONNX Engine & Vocabulary...');
+    final statusMsg = rawStatus ??
+        (isPersian
+            ? 'در حال آماده‌سازی موتور هوشمند و واژه‌نامه...'
+            : 'Initializing ONNX Engine & Vocabulary...');
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0C12),
@@ -285,7 +307,8 @@ class _EngineLoadingScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: GlassContainer(
                 borderRadius: BorderRadius.circular(28),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
