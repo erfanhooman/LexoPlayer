@@ -3,8 +3,22 @@ name: Continuous Integration
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - 'index.html'
+      - 'dictionaries/**'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
   pull_request:
     branches: [ main, develop ]
+    paths-ignore:
+      - 'index.html'
+      - 'dictionaries/**'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
