@@ -215,9 +215,11 @@ jobs:
           chmod +x AppDir/AppRun
 
           # Download appimagetool and generate AppImage
-          wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
-          chmod +x appimagetool
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir output/LexoPlayer-x86_64.AppImage || true
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool || wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool || true
+          if [ -f appimagetool ]; then
+            chmod +x appimagetool
+            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir output/LexoPlayer-x86_64.AppImage || true
+          fi
 
       - name: Create Linux Tarball Archive
         run: |
