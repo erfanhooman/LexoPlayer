@@ -1,4 +1,4 @@
-package com.example.lexo_player
+package com.erfanhooman.lexoplayer
 
 import io.flutter.embedding.android.FlutterActivity
 

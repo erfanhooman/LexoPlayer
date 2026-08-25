@@ -3,7 +3,7 @@ name: Multi-Platform Automated Release
 on:
   push:
     tags:
-      - 'beta-2'
+      - 'beta*'
       - 'v*'
   workflow_dispatch:
     inputs:

@@ -38,6 +38,8 @@ class RealOnnxService implements OnnxService {
   @override
   Future<void> initialize() async {
     try {
+      OrtEnv.instance.init();
+
       // Load model bytes from bundled asset
       final assetBytes =
           await rootBundle.load('assets/minilm_target_token.onnx');
