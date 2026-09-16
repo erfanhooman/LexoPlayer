@@ -4,13 +4,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/features/subtitles/presentation/open_subtitles_search_dialog.dart';
 
 const _kOverlayBg = Color(0xE6141418); // 90% Midnight Charcoal
 const _kScaffoldBg = Color(0xFF0C0C0E); // Midnight Charcoal Scaffold
 const _kBorder = Color(0xFF25252B); // Sleek card border
-const _kAccent = Color(0xFFFF5500); // Burnt Tangerine orange
+const _kAccent = AppColors.primary; // Sunrise Coral — single app accent
 
 /// Settings panel specifically for configuring subtitle styling.
 ///
@@ -64,7 +65,7 @@ class SubtitleSettingsOverlay extends ConsumerWidget {
       0xFFFFF176,
       0xFF00E5FF,
       0xFF69F0AE,
-      0xFFFF5500
+      0xFFFF6B35,
     ].contains(rawColor)
         ? rawColor
         : 0xFFFFFFFF;
@@ -263,7 +264,7 @@ class SubtitleSettingsOverlay extends ConsumerWidget {
                                 value: 0xFF69F0AE,
                                 child: Text(isPersian ? 'سبز' : 'Green')),
                             DropdownMenuItem(
-                                value: 0xFFFF5500,
+                                value: 0xFFFF6B35,
                                 child:
                                     Text(isPersian ? 'نارنجی' : 'Tangerine')),
                           ],

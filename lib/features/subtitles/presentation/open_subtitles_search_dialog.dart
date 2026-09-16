@@ -10,12 +10,13 @@ import 'package:lexo_player/features/subtitles/providers/open_subtitles_provider
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/features/subtitles/logic/subtitle_parser.dart';
 import 'package:lexo_player/features/subtitles/logic/video_filename_parser.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 
 const _kOverlayBg = Color(0xE6141418); // 90% Midnight Charcoal
 const _kScaffoldBg = Color(0xFF0C0C0E); // Midnight Charcoal Scaffold
 const _kBorder = Color(0xFF25252B); // Sleek card border
-const _kAccent = Color(0xFFFF5500); // Burnt Tangerine orange
+const _kAccent = AppColors.primary; // Sunrise Coral — single app accent
 
 class OpenSubtitlesSearchDialog extends ConsumerStatefulWidget {
   final String? initialUri;

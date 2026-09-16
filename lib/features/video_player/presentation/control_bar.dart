@@ -632,7 +632,7 @@ class _SubtitleFileButtonState extends ConsumerState<_SubtitleFileButton> {
               ? 'زیرنویس اصلی (زبان در حال یادگیری)'
               : 'PRIMARY SUBTITLE (MAIN)',
           style: const TextStyle(
-            color: Color(0xFFFF5500),
+            color: AppColors.primary,
             fontSize: 11,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.8,
@@ -653,7 +653,7 @@ class _SubtitleFileButtonState extends ConsumerState<_SubtitleFileButton> {
               isSelected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? const Color(0xFFFF5500) : Colors.white38,
+              color: isSelected ? AppColors.primary : Colors.white38,
               size: 16,
             ),
             const SizedBox(width: 8),
@@ -763,7 +763,7 @@ class _SubtitleFileButtonState extends ConsumerState<_SubtitleFileButton> {
       child: Row(
         children: [
           const Icon(Icons.auto_awesome_rounded,
-              color: Color(0xFFFF5500), size: 18),
+              color: AppColors.primary, size: 18),
           const SizedBox(width: 8),
           Text(
             isPersian

@@ -166,34 +166,6 @@ int _secondaryLoadGeneration = 0;
 /// Holds the timestamp string of the currently active subtitle.
 final activeSubtitleTimestampProvider = StateProvider<String?>((ref) => null);
 
-/// Debug provider that exposes the full subtitle debug state for the HUD overlay.
-final subtitleDebugProvider = Provider<Map<String, String>>((ref) {
-  final primarySel = ref.watch(selectedSubtitleProvider);
-  final secondarySel = ref.watch(selectedSecondarySubtitleProvider);
-  final primaryBlocks = ref.watch(subtitleListProvider);
-  final secondaryBlocks = ref.watch(secondarySubtitleListProvider);
-  final primaryIdx = ref.watch(activeSubtitleIndexProvider);
-  final secondaryIdx = ref.watch(activeSecondarySubtitleIndexProvider);
-  final primaryText = ref.watch(activeSubtitleTextProvider);
-  final secondaryText = ref.watch(activeSecondarySubtitleTextProvider);
-  final isSecVisible = ref.watch(isSecondarySubtitleVisibleProvider);
-  final position = ref.watch(positionProvider).valueOrNull;
-
-  return {
-    'Primary': '${primarySel?.name ?? "null"} (${primarySel?.id ?? "null"})',
-    'Secondary':
-        '${secondarySel?.name ?? "null"} (${secondarySel?.id ?? "null"})',
-    'P_Blocks': '${primaryBlocks.length}',
-    'S_Blocks': '${secondaryBlocks.length}',
-    'P_Index': '$primaryIdx',
-    'S_Index': '$secondaryIdx',
-    'P_Text': '${primaryText ?? "NULL"}',
-    'S_Text': '${secondaryText ?? "NULL"}',
-    'S_Visible': '$isSecVisible',
-    'Position': '${position?.inMilliseconds ?? "null"}ms',
-  };
-});
-
 /// Derives the text of the previous subtitle (for sliding window context).
 final previousSubtitleTextProvider = Provider<String?>((ref) {
   final index = ref.watch(activeSubtitleIndexProvider);

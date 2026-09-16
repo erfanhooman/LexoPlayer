@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/engine_output.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/subtitles/presentation/subtitle_word_widget.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
@@ -24,7 +25,6 @@ class InteractiveSubtitleOverlay extends ConsumerStatefulWidget {
 class _InteractiveSubtitleOverlayState
     extends ConsumerState<InteractiveSubtitleOverlay> {
   bool _isHovered = false;
-  bool _showDebugHud = false;
 
   /// Matches right-to-left scripts (Hebrew, Arabic, Persian, Urdu, etc.).
   static final RegExp _rtlRegex = RegExp(
@@ -78,9 +78,6 @@ class _InteractiveSubtitleOverlayState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Debug HUD
-                if (_showDebugHud) _buildDebugHud(ref),
-
                 // Secondary Translation Subtitle — Stacked Non-Overlapping above Primary
                 if (secondaryText != null && isSecondaryVisible)
                   AnimatedSwitcher(
@@ -110,99 +107,44 @@ class _InteractiveSubtitleOverlayState
 
                 // Primary Interactive Subtitle Container
                 if (displayText.isNotEmpty)
-                  GestureDetector(
-                    onDoubleTap: () =>
-                        setState(() => _showDebugHud = !_showDebugHud),
-                    child: Container(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        (_isHovered && hasSecondaryTrack) ? 8 : 10,
-                        16,
-                        10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Color(ref.watch(subtitleBgColorProvider)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Minimal Hover Toggle Button — ONLY visible on mouse hover!
-                          if (hasSecondaryTrack)
-                            AnimatedOpacity(
-                              opacity: _isHovered ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 180),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                height: _isHovered ? 26 : 0,
-                                margin:
-                                    EdgeInsets.only(bottom: _isHovered ? 6 : 0),
-                                child: _isHovered
-                                    ? Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () {
-                                            ref
-                                                .read(
-                                                    isSecondarySubtitleVisibleProvider
-                                                        .notifier)
-                                                .state = !isSecondaryVisible;
-                                          },
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white
-                                                  .withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                  color: Colors.white24,
-                                                  width: 0.8),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  isSecondaryVisible
-                                                      ? Icons.visibility_rounded
-                                                      : Icons
-                                                          .visibility_off_rounded,
-                                                  color: isSecondaryVisible
-                                                      ? const Color(0xFFFF5500)
-                                                      : Colors.white60,
-                                                  size: 13,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  isSecondaryVisible
-                                                      ? (isPersian
-                                                          ? 'مخفی‌سازی ترجمه'
-                                                          : 'Hide Translation')
-                                                      : (isPersian
-                                                          ? 'نمایش ترجمه'
-                                                          : 'Show Translation'),
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                              ),
-                            ),
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      (_isHovered && hasSecondaryTrack) ? 8 : 10,
+                      16,
+                      10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Color(ref.watch(subtitleBgColorProvider)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Translation toggle — always visible on touch
+                        // devices, hover-or-focus visible on desktop.
+                        if (hasSecondaryTrack)
+                          _TranslationToggle(
+                            isHovered: _isHovered,
+                            isSecondaryVisible: isSecondaryVisible,
+                            isPersian: isPersian,
+                            onToggle: () {
+                              ref
+                                  .read(
+                                      isSecondarySubtitleVisibleProvider
+                                          .notifier)
+                                  .state = !isSecondaryVisible;
+                            },
+                            onFocusChange: (focused) {
+                              if (focused) {
+                                setState(() => _isHovered = true);
+                              }
+                            },
+                          ),
 
-                          // Interactive Tokenized Primary Subtitle Text
-                          _buildTokens(displayText, spans, ref),
-                        ],
-                      ),
+                        // Interactive Tokenized Primary Subtitle Text
+                        _buildTokens(displayText, spans, ref),
+                      ],
                     ),
                   ),
               ],
@@ -371,36 +313,98 @@ class _InteractiveSubtitleOverlayState
             ],
     );
   }
+}
 
-  Widget _buildDebugHud(WidgetRef ref) {
-    final debug = ref.watch(subtitleDebugProvider);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'SUBTITLE DEBUG HUD (double-tap to dismiss)',
-            style: TextStyle(
-                color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          ...debug.entries.map((e) => Text(
-                '${e.key}: ${e.value}',
-                style: TextStyle(
-                  color: e.value.contains('NULL') ? Colors.amber : Colors.white,
-                  fontSize: 10,
-                  fontFamily: 'Menlo',
+/// Translation visibility toggle.
+///
+/// - Touch / narrow windows: always visible (>=44pt target).
+/// - Desktop: visible on hover *or* keyboard focus, with a text label for
+///   screen readers and a visible focus indicator via [InkWell].
+class _TranslationToggle extends StatelessWidget {
+  final bool isHovered;
+  final bool isSecondaryVisible;
+  final bool isPersian;
+  final VoidCallback onToggle;
+  final ValueChanged<bool> onFocusChange;
+
+  const _TranslationToggle({
+    required this.isHovered,
+    required this.isSecondaryVisible,
+    required this.isPersian,
+    required this.onToggle,
+    required this.onFocusChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isTouchOrNarrow = mq.size.width < 600 ||
+        Theme.of(context).platform == TargetPlatform.android ||
+        Theme.of(context).platform == TargetPlatform.iOS;
+    final visible = isTouchOrNarrow || isHovered;
+    final animMs = mq.disableAnimations ? 0 : 180;
+    final label = isSecondaryVisible
+        ? (isPersian ? 'مخفی‌سازی ترجمه' : 'Hide Translation')
+        : (isPersian ? 'نمایش ترجمه' : 'Show Translation');
+
+    return AnimatedOpacity(
+      opacity: visible ? 1.0 : 0.0,
+      duration: Duration(milliseconds: animMs),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: animMs),
+        height: visible ? 36 : 0,
+        margin: EdgeInsets.only(bottom: visible ? 6 : 0),
+        child: visible
+            ? Semantics(
+                button: true,
+                label: label,
+                child: Focus(
+                  onFocusChange: onFocusChange,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onToggle,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(minHeight: 32, minWidth: 44),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.white24, width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isSecondaryVisible
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                              color: isSecondaryVisible
+                                  ? AppColors.primary
+                                  : Colors.white60,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              )),
-        ],
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }

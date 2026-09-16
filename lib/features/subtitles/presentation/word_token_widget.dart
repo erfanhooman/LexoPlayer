@@ -1,9 +1,11 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/features/dictionary/data/dictionary_providers.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 
@@ -110,9 +112,16 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
     }
 
     // Word tokens — interactive, with hover/tap feedback.
-    final effectiveStyle = _isHovered
+    // Also highlight the currently selected (tapped) token so touch users
+    // get confirmation of which word opened the definition sheet.
+    final selected = ref.watch(selectedTokenProvider);
+    final isSelected = selected != null &&
+        selected.tokenIndex == widget.tokenIndex &&
+        selected.lineTokens.length == widget.lineTokens.length;
+    final highlighted = _isHovered || isSelected;
+    final effectiveStyle = highlighted
         ? baseStyle.copyWith(
-            backgroundColor: const Color(0xFFFF5500).withValues(alpha: 0.25),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.25),
           )
         : baseStyle;
 
@@ -136,26 +145,54 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
   /// Wraps the token in [MouseRegion] (hover) + [GestureDetector] (tap) and
   /// attaches a [CompositedTransformTarget] so popups can anchor to it.
   Widget _buildDesktopToken(Widget child) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        _setHovered(true);
-        ref.read(hoverPlaybackTimerProvider).onHoverEnter(
-              widget.lineTokens,
-              widget.tokenIndex,
-              _layerLink,
-              context,
-            );
-      },
-      onExit: (_) {
-        _setHovered(false);
-        ref.read(hoverPlaybackTimerProvider).onHoverExit();
-      },
-      child: GestureDetector(
-        onTap: _onTap,
-        child: CompositedTransformTarget(
-          link: _layerLink,
-          child: child,
+    return Semantics(
+      button: true,
+      label: 'Look up ${widget.token.text}',
+      child: Focus(
+        onFocusChange: (focused) {
+          _setHovered(focused);
+          if (focused) {
+            ref.read(hoverPlaybackTimerProvider).onHoverEnter(
+                  widget.lineTokens,
+                  widget.tokenIndex,
+                  _layerLink,
+                  context,
+                );
+          } else {
+            ref.read(hoverPlaybackTimerProvider).onHoverExit();
+          }
+        },
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.enter ||
+                  event.logicalKey == LogicalKeyboardKey.space)) {
+            _onTap();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) {
+            _setHovered(true);
+            ref.read(hoverPlaybackTimerProvider).onHoverEnter(
+                  widget.lineTokens,
+                  widget.tokenIndex,
+                  _layerLink,
+                  context,
+                );
+          },
+          onExit: (_) {
+            _setHovered(false);
+            ref.read(hoverPlaybackTimerProvider).onHoverExit();
+          },
+          child: GestureDetector(
+            onTap: _onTap,
+            child: CompositedTransformTarget(
+              link: _layerLink,
+              child: child,
+            ),
+          ),
         ),
       ),
     );
@@ -168,14 +205,18 @@ class _WordTokenWidgetState extends ConsumerState<WordTokenWidget> {
   /// Wraps the token in a [GestureDetector] with extra padding for a larger
   /// touch target.
   Widget _buildMobileToken(Widget child) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-        child: CompositedTransformTarget(
-          link: _layerLink,
-          child: child,
+    return Semantics(
+      button: true,
+      label: 'Look up ${widget.token.text}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          child: CompositedTransformTarget(
+            link: _layerLink,
+            child: child,
+          ),
         ),
       ),
     );

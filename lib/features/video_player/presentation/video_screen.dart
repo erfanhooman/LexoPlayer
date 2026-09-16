@@ -527,6 +527,17 @@ class _LexoVideoControlsState extends ConsumerState<LexoVideoControls> {
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    // Don't hijack typing: if focus is in a text field, let Space/arrows edit.
+    final focused = FocusManager.instance.primaryFocus?.context?.widget;
+    final isEditing = focused is EditableText;
+    if (isEditing &&
+        (event.logicalKey == LogicalKeyboardKey.space ||
+            event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+            event.logicalKey == LogicalKeyboardKey.arrowRight ||
+            event.logicalKey == LogicalKeyboardKey.arrowUp ||
+            event.logicalKey == LogicalKeyboardKey.arrowDown)) {
+      return KeyEventResult.ignored;
+    }
     final player = ref.read(playerProvider);
 
     switch (event.logicalKey) {

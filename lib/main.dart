@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:ui';
 import 'package:window_manager/window_manager.dart';
@@ -22,8 +24,39 @@ import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/services/now_playing_service.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
 
+/// Pending video URI delivered via a native "Open With" event. Set as early as
+/// possible and consumed by `MainMenuScreen` once it mounts, so a file that
+/// arrives while the engine is still loading is not lost.
+String? gPendingVideoUri;
+
+/// Live stream of "Open With" file events delivered while the app is running.
+/// Emitted only when a native file event is seen live on the method channel.
+final StreamController<String> gOpenFileEvents = StreamController<String>.broadcast();
+
+/// Registers the single, global macOS "Open With" handler. Done in `main()`
+/// before `runApp()` so that native `onFileOpened` events are never dropped
+/// just because the UI hasn't mounted yet.
+void _registerOpenFileHandler() {
+  const channel = MethodChannel('com.lexoplayer/open_file');
+  channel.setMethodCallHandler((call) async {
+    if (call.method == 'onFileOpened' && call.arguments is String) {
+      final cleaned = cleanVideoPathOrUri(call.arguments as String);
+      developer.log('onFileOpened received: ${call.arguments} -> $cleaned',
+          name: 'app');
+      if (cleaned != null) {
+        gPendingVideoUri = cleaned;
+        gOpenFileEvents.add(cleaned);
+      }
+    }
+  });
+}
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Register the OS "Open With" handler before anything else, so a file
+  // delivered while the app is still launching is captured, not dropped.
+  _registerOpenFileHandler();
 
   // ── 1. Initialize media_kit native engine & window manager ──────────
   MediaKit.ensureInitialized();
@@ -42,8 +75,17 @@ Future<void> main(List<String> args) async {
   // ── 3. Detect video file passed via OS file association / Open With ──
   String? initialVideoUri;
   for (final arg in args) {
+    // Skip engine/process arguments (e.g. `-psn_0_12345678` added by macOS)
+    // and any existing file that isn't actually a video.
+    if (arg.startsWith('--') || arg.startsWith('-psn')) continue;
     final cleaned = cleanVideoPathOrUri(arg);
-    if (cleaned != null) {
+    if (cleaned == null) continue;
+    final lower = cleaned.toLowerCase();
+    final isStreaming = lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('rtsp://') ||
+        lower.startsWith('rtmp://');
+    if (isStreaming || videoExtensions.any((ext) => lower.endsWith(ext))) {
       initialVideoUri = cleaned;
       break;
     }
@@ -60,6 +102,11 @@ Future<void> main(List<String> args) async {
     } catch (_) {}
   }
 
+  if (initialVideoUri != null) {
+    gPendingVideoUri = initialVideoUri;
+    developer.log('LexoPlayer opening video: $initialVideoUri', name: 'app');
+  }
+
   // ── 4. Launch the application ──────────────────────────────────────
   runApp(
     ProviderScope(
@@ -67,6 +114,26 @@ Future<void> main(List<String> args) async {
     ),
   );
 }
+
+/// Recognized video file extensions (lowercase, with leading dot).
+const videoExtensions = [
+  '.mp4',
+  '.mkv',
+  '.avi',
+  '.mov',
+  '.webm',
+  '.flv',
+  '.m4v',
+  '.3gp',
+  '.ts',
+  '.wmv',
+  '.mpg',
+  '.mpeg',
+  '.vob',
+  '.ogv',
+  '.m2ts',
+  '.divx',
+];
 
 /// Cleans and normalizes a raw file path or URI string passed via command-line
 /// or OS open file event, returning a normalized local file path or URL.
@@ -128,26 +195,7 @@ String? cleanVideoPathOrUri(String rawArg) {
   }
 
   // 5. Video extension check for non-existent or relative paths
-  final extensions = [
-    '.mp4',
-    '.mkv',
-    '.avi',
-    '.mov',
-    '.webm',
-    '.flv',
-    '.m4v',
-    '.3gp',
-    '.ts',
-    '.wmv',
-    '.mpg',
-    '.mpeg',
-    '.vob',
-    '.ogv',
-    '.m2ts',
-    '.divx'
-  ];
-
-  if (extensions.any((ext) => lower.endsWith(ext))) {
+  if (videoExtensions.any((ext) => lower.endsWith(ext))) {
     return cleaned;
   }
   return null;

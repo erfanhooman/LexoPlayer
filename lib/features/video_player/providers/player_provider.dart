@@ -120,10 +120,12 @@ Future<void> _savePlaybackPosition(
 
     if (isNearEnd || position.inSeconds <= 0) {
       await prefs.remove(key);
+      await prefs.remove('${key}_dur');
       developer.log('Cleared saved position for $uri (near end or <= 0)',
           name: 'PlayerPosition');
     } else {
       await prefs.setInt(key, position.inMilliseconds);
+      await prefs.setInt('${key}_dur', totalDuration.inMilliseconds);
       developer.log('Saved position for $uri: ${position.inSeconds}s',
           name: 'PlayerPosition');
     }
@@ -145,6 +147,25 @@ Future<Duration?> _loadPlaybackPosition(String uri) async {
     developer.log('Error loading playback position: $e',
         name: 'PlayerPosition', level: 900);
   }
+  return null;
+}
+
+/// Loads both saved position and total duration for [uri].
+/// Returns `null` if no saved progress exists.
+Future<({Duration position, Duration total})?> loadPlaybackProgress(
+    String uri) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getPlaybackPositionKey(uri);
+    final ms = prefs.getInt(key);
+    final durMs = prefs.getInt('${key}_dur');
+    if (ms != null && durMs != null && durMs > 0) {
+      return (
+        position: Duration(milliseconds: ms),
+        total: Duration(milliseconds: durMs),
+      );
+    }
+  } catch (_) {}
   return null;
 }
 

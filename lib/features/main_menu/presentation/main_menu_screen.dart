@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -73,34 +74,64 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   final TextEditingController _urlController = TextEditingController();
   bool _isDraggingFile = false;
   String _activeNav = 'Home';
+  final GlobalKey<_HeroContinueWatchingCardState> _heroKey = GlobalKey();
+  StreamSubscription<String>? _openFileSub;
+  String? _lastOpenedUri;
+  DateTime _lastOpenedAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialVideoUri != null && widget.initialVideoUri!.isNotEmpty) {
+
+    // Listen for live "Open With" events pushed from the native side.
+    _openFileSub = gOpenFileEvents.stream.listen((uri) {
+      if (mounted) _openQueuedVideo(uri);
+    });
+
+    // A video delivered as a launch argument or buffered natively during
+    // startup is consumed here once the screen mounts.
+    final pending = widget.initialVideoUri ?? gPendingVideoUri;
+    gPendingVideoUri = null;
+    if (pending != null && pending.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _openVideoScreen(widget.initialVideoUri!);
+        _openQueuedVideo(pending);
       });
     }
 
     if (Platform.isMacOS) {
+      // Safety net: pick up a file delivered between main() and UI mount.
       const MethodChannel('com.lexoplayer/open_file')
-          .setMethodCallHandler((call) async {
-        if (call.method == 'onFileOpened' && call.arguments is String) {
-          final rawPath = call.arguments as String;
-          final cleaned = cleanVideoPathOrUri(rawPath);
-          if (cleaned != null && mounted) {
-            _openVideoScreen(cleaned);
+          .invokeMethod<String>('getInitialFile')
+          .then((nativePath) {
+        if (nativePath != null && nativePath.isNotEmpty && mounted) {
+          final cleaned = cleanVideoPathOrUri(nativePath);
+          if (cleaned != null) {
+            _openQueuedVideo(cleaned);
           }
         }
-      });
+      }).catchError((_) {});
     }
   }
 
   @override
   void dispose() {
+    _openFileSub?.cancel();
     _urlController.dispose();
     super.dispose();
+  }
+
+  /// Opens a video delivered by the OS, de-duplicating the same file if it
+  /// arrives through more than one channel within a short window.
+  void _openQueuedVideo(String uri) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (uri == _lastOpenedUri &&
+        now.difference(_lastOpenedAt) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastOpenedUri = uri;
+    _lastOpenedAt = now;
+    _openVideoScreen(uri);
   }
 
   void _openVideoScreen(String uri) {
@@ -133,7 +164,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       MaterialPageRoute(
         builder: (_) => VideoScreen(videoUri: uri),
       ),
-    );
+    ).then((_) {
+      // When user returns from video, reload progress in hero card
+      _heroKey.currentState?.loadProgress();
+    });
   }
 
   Future<void> _pickLocalFile() async {
@@ -226,6 +260,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
         children: [
           // Featured Continue Watching Hero Card
           _HeroContinueWatchingCard(
+            key: _heroKey,
             recentVideos: recentVideos,
             onResume: (uri) => _openVideoScreen(uri),
           ),
@@ -833,24 +868,95 @@ class _MainHeaderWidget extends ConsumerWidget {
 // 3. Featured Hero Continue Watching Banner
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _HeroContinueWatchingCard extends ConsumerWidget {
+class _HeroContinueWatchingCard extends ConsumerStatefulWidget {
   final List<String> recentVideos;
   final ValueChanged<String> onResume;
 
   const _HeroContinueWatchingCard({
+    super.key,
     required this.recentVideos,
     required this.onResume,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HeroContinueWatchingCard> createState() =>
+      _HeroContinueWatchingCardState();
+}
+
+class _HeroContinueWatchingCardState
+    extends ConsumerState<_HeroContinueWatchingCard> {
+  ({Duration position, Duration total})? _progress;
+  List<String> _lastVideos = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadProgress();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _watchRecentVideos();
+    });
+  }
+
+  void _watchRecentVideos() {
+    ref.listen<List<String>>(recentVideosProvider, (prev, next) {
+      if (next != _lastVideos) {
+        _lastVideos = next;
+        loadProgress();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroContinueWatchingCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.recentVideos != widget.recentVideos) loadProgress();
+  }
+
+  Future<void> loadProgress() async {
+    if (widget.recentVideos.isEmpty) {
+      if (mounted) setState(() => _progress = null);
+      return;
+    }
+    final uri = widget.recentVideos.first;
+    final progress = await loadPlaybackProgress(uri);
+    if (mounted) setState(() => _progress = progress);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
-    final String heroUri = recentVideos.isNotEmpty
-        ? recentVideos.first
+    final String heroUri = widget.recentVideos.isNotEmpty
+        ? widget.recentVideos.first
         : '/Users/erfanhooman/Videos/House.of.the.Dragon.S02E05.mp4';
-    final String heroTitle = recentVideos.isNotEmpty
+    final String heroTitle = widget.recentVideos.isNotEmpty
         ? formatMediaTitle(heroUri)
         : 'House of the Dragon - S02E05';
+
+    final double pct;
+    int remainingMinutes;
+    if (_progress != null &&
+        _progress!.total > Duration.zero &&
+        _progress!.position > Duration.zero) {
+      pct = (_progress!.position.inMilliseconds /
+              _progress!.total.inMilliseconds)
+          .clamp(0.0, 1.0);
+      final remaining =
+          _progress!.total - _progress!.position;
+      remainingMinutes = (remaining.inSeconds / 60).ceil();
+    } else {
+      pct = 0.0;
+      remainingMinutes = 0;
+    }
+
+    final pctDisplay = (pct * 100).round();
+    final String remainingText;
+    if (remainingMinutes <= 0 || pct >= 0.95) {
+      remainingText = isPersian ? 'تقریباً تمام شده' : 'Almost done';
+    } else {
+      remainingText = isPersian
+          ? '$remainingMinutes دقیقه باقی‌مانده'
+          : '$remainingMinutes min left';
+    }
 
     return GlassContainer(
       width: double.infinity,
@@ -878,8 +984,8 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
               children: [
                 // Left Circular Progress Ring
                 _CircularProgressWidget(
-                  percentage: 78,
-                  onTap: () => onResume(heroUri),
+                  percentage: pctDisplay,
+                  onTap: () => widget.onResume(heroUri),
                 ),
 
                 const SizedBox(width: 24),
@@ -922,7 +1028,7 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        isPersian ? '۴۲ دقیقه باقی‌مانده' : '42 min left',
+                        remainingText,
                         style: appStyle(
                           isPersian: isPersian,
                           fontSize: 14,
@@ -936,7 +1042,7 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: 0.78,
+                          value: pct,
                           minHeight: 6,
                           backgroundColor: const Color(0xFF2F2A38),
                           valueColor:
@@ -969,7 +1075,7 @@ class _HeroContinueWatchingCard extends ConsumerWidget {
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: () => onResume(heroUri),
+                                onTap: () => widget.onResume(heroUri),
                                 borderRadius: BorderRadius.circular(20),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(

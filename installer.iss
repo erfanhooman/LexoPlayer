@@ -1,7 +1,7 @@
 [Setup]
 AppId={{A7B3C9E2-F4D1-4E6A-8A9F-B2C8D4E6F0A1}
 AppName=LexoPlayer
-AppVersion=1.0.0-beta.1
+AppVersion=2.2.0-beta
 AppPublisher=Erfan Hooman
 DefaultDirName={autopf}\LexoPlayer
 DefaultGroupName=LexoPlayer

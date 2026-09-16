@@ -2,9 +2,11 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/engine_output.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/dictionary/data/span_providers.dart';
 import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
@@ -70,19 +72,22 @@ class _EngineDefinitionPopupState extends ConsumerState<EngineDefinitionPopup> {
     return OverlayEntry(
       builder: (overlayContext) {
         final screenSize = MediaQuery.of(context).size;
-        const popupWidth = 450.0;
+        // Responsive: never wider than viewport minus 16px guards.
+        final popupWidth =
+            (screenSize.width - 16).clamp(0.0, 450.0).toDouble();
 
         var targetAnchor = Alignment.topCenter;
         var followerAnchor = Alignment.bottomCenter;
-        var targetOffset = const Offset(0, -8);
+        var targetOffset = const Offset(0, -12);
+        var showBelow = false;
+        var dx = 0.0;
 
         final renderBox = data.context.findRenderObject() as RenderBox?;
         if (renderBox != null && renderBox.attached) {
           final wordPos = renderBox.localToGlobal(Offset.zero);
           final wordSize = renderBox.size;
 
-          var showBelow = false;
-          if (wordPos.dy < 220) {
+          if (wordPos.dy < 240) {
             showBelow = true;
             targetAnchor = Alignment.bottomCenter;
             followerAnchor = Alignment.topCenter;
@@ -92,14 +97,23 @@ class _EngineDefinitionPopupState extends ConsumerState<EngineDefinitionPopup> {
           final popupLeft = wordCenter - popupWidth / 2;
           final popupRight = popupLeft + popupWidth;
 
-          var dx = 0.0;
           if (popupLeft < 8) {
             dx = 8 - popupLeft;
           } else if (popupRight > screenSize.width - 8) {
             dx = screenSize.width - 8 - popupRight;
           }
 
-          targetOffset = Offset(dx, showBelow ? 8 : -8);
+          targetOffset = Offset(dx, showBelow ? 12 : -12);
+        }
+
+        KeyEventResult handleEsc(FocusNode node, KeyEvent event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.escape) {
+            _removeOverlay();
+            ref.read(spanHoverControllerProvider).closePopup();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         }
 
         return GestureDetector(
@@ -117,9 +131,22 @@ class _EngineDefinitionPopupState extends ConsumerState<EngineDefinitionPopup> {
                   followerAnchor: followerAnchor,
                   offset: targetOffset,
                   showWhenUnlinked: false,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: _EngineDefinitionCard(span: data.span),
+                  child: Focus(
+                    autofocus: true,
+                    onKeyEvent: handleEsc,
+                    child: Semantics(
+                      label:
+                          'Definition for ${data.span.text}. Press Escape to close.',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: _EngineDefinitionCard(
+                          span: data.span,
+                          popupWidth: popupWidth,
+                          caretDx: -dx,
+                          showBelow: showBelow,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -135,27 +162,96 @@ class _EngineDefinitionPopupState extends ConsumerState<EngineDefinitionPopup> {
 //  Mobile bottom sheet listener
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _MobileLookupListener extends ConsumerWidget {
+class _MobileLookupListener extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MobileLookupListener> createState() =>
+      _MobileLookupListenerState();
+}
+
+class _MobileLookupListenerState
+    extends ConsumerState<_MobileLookupListener> {
+  bool _sheetOpen = false;
+  String? _openSpanId;
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen<SelectedSpanData?>(selectedSpanProvider, (prev, next) {
-      if (next == null) return;
+      if (!mounted) return;
+      if (next == null) {
+        // Second tap on the same word (toggle-off) or explicit close while
+        // the sheet is open — dismiss the sheet. Resume was already handled
+        // by [SpanHoverController] for the toggle case.
+        if (_sheetOpen) {
+          _sheetOpen = false;
+          _openSpanId = null;
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+        }
+        return;
+      }
 
-      final player = ref.read(playerProvider);
-      PlayerActions.pause(player);
+      if (_sheetOpen) {
+        // Duplicate event for the already-open word — ignore.
+        if (_openSpanId == next.span.spanId) return;
+        // Different word while a sheet is open (rare: modal blocks taps
+        // behind it). Replace the sheet so the newest tap wins.
+        _sheetOpen = false;
+        _openSpanId = null;
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        final pending = next;
+        Future.microtask(() {
+          if (!mounted || !context.mounted) return;
+          final current = ref.read(selectedSpanProvider);
+          if (current == null || current.span.spanId != pending.span.spanId) {
+            return;
+          }
+          _showSheet(context, ref, pending);
+        });
+        return;
+      }
 
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetContext) => _MobileBottomSheetContent(span: next.span),
-      ).whenComplete(() {
-        final player = ref.read(playerProvider);
-        player.play();
-        ref.read(selectedSpanProvider.notifier).state = null;
-      });
+      _showSheet(context, ref, next);
     });
     return const SizedBox.shrink();
+  }
+
+  void _showSheet(
+    BuildContext context,
+    WidgetRef ref,
+    SelectedSpanData data,
+  ) {
+    final sheetSpanId = data.span.spanId;
+    _sheetOpen = true;
+    _openSpanId = sheetSpanId;
+
+    final player = ref.read(playerProvider);
+    PlayerActions.pause(player);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _MobileBottomSheetContent(span: data.span),
+    ).whenComplete(() {
+      // Stale sheet (replaced by a newer word, or already dismissed via
+      // toggle-off) — the active sheet / controller owns resume now.
+      if (_openSpanId != null && _openSpanId != sheetSpanId) return;
+      _sheetOpen = false;
+      _openSpanId = null;
+      if (!mounted) return;
+      try {
+        final current = ref.read(selectedSpanProvider);
+        // Selection already moved to a different word — don't clear it.
+        if (current != null && current.span.spanId != sheetSpanId) return;
+        // Resumes only if playback was active before the tap/hover.
+        ref.read(spanHoverControllerProvider).closePopup();
+      } catch (_) {
+        // Provider disposed — ignore.
+      }
+    });
   }
 }
 
@@ -250,18 +346,26 @@ class _MobileBottomSheetContentState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    InkWell(
-                      onTap: _popHistory,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                    Semantics(
+                      button: true,
+                      label:
+                          'Back to ${_history[_history.length - 2].text}',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _popHistory,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            constraints:
+                                const BoxConstraints(minHeight: 44),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
                           color:
-                              const Color(0xFFFF5500).withValues(alpha: 0.15),
+                              AppColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                              color: const Color(0xFFFF5500)
+                              color: AppColors.primary
                                   .withValues(alpha: 0.4)),
                         ),
                         child: Row(
@@ -272,7 +376,7 @@ class _MobileBottomSheetContentState
                                   ? Icons.arrow_forward_rounded
                                   : Icons.arrow_back_rounded,
                               size: 14,
-                              color: const Color(0xFFFF5500),
+                              color: AppColors.primary,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -280,12 +384,14 @@ class _MobileBottomSheetContentState
                                   ? 'بازگشت به ${_history[_history.length - 2].text}'
                                   : 'Back to ${_history[_history.length - 2].text}',
                               style: const TextStyle(
-                                color: Color(0xFFFF5500),
+                                color: AppColors.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
+                        ),
+                      ),
                         ),
                       ),
                     ),
@@ -295,7 +401,7 @@ class _MobileBottomSheetContentState
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFFFF5500),
+                          color: AppColors.primary,
                         ),
                       ),
                   ],
@@ -329,7 +435,15 @@ class _MobileBottomSheetContentState
 
 class _EngineDefinitionCard extends ConsumerStatefulWidget {
   final SpanModel span;
-  const _EngineDefinitionCard({required this.span});
+  final double popupWidth;
+  final double caretDx;
+  final bool showBelow;
+  const _EngineDefinitionCard({
+    required this.span,
+    this.popupWidth = 450,
+    this.caretDx = 0,
+    this.showBelow = false,
+  });
 
   @override
   ConsumerState<_EngineDefinitionCard> createState() =>
@@ -391,29 +505,27 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
   Widget build(BuildContext context) {
     final currentSpan = _history.last;
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final mq = MediaQuery.of(context);
+    final highContrast = mq.highContrast;
+    // Responsive: fit narrow windows, cap height to 70% of viewport.
+    final cardWidth = widget.popupWidth.clamp(0.0, 450.0).toDouble();
+    final maxCardHeight =
+        (mq.size.height * 0.7).clamp(200.0, 550.0).toDouble();
+    final cardColor = highContrast
+        ? const Color(0xFF141416)
+        : const Color(0xE6141416);
+    final borderColor = highContrast
+        ? const Color(0xFF5A5A66)
+        : const Color(0xFF2C2C35);
+    final blurSigma = highContrast ? 0.0 : 12.0;
 
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() {
-          _hasMouseEnteredAfterSizeChange = true;
-        });
-        ref.read(spanHoverControllerProvider).onPopupHoverEnter();
-      },
-      onExit: (_) {
-        // If the card shrank and left the cursor outside after nested navigation,
-        // ignore exit until mouse is actually brought inside and then exits.
-        if (_history.length > 1 && !_hasMouseEnteredAfterSizeChange) {
-          return;
-        }
-        ref.read(spanHoverControllerProvider).onPopupHoverExit();
-      },
-      child: Container(
-        width: 450,
-        constraints: const BoxConstraints(maxHeight: 550),
+    final card = Container(
+        width: cardWidth,
+        constraints: BoxConstraints(maxHeight: maxCardHeight),
         decoration: BoxDecoration(
-          color: const Color(0xE6141416),
+          color: cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF2C2C35), width: 1.2),
+          border: Border.all(color: borderColor, width: 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.6),
@@ -425,7 +537,7 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -437,18 +549,24 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        InkWell(
+                        Semantics(
+                          button: true,
+                          label:
+                              'Back to ${_history[_history.length - 2].text}',
+                          child: InkWell(
                           onTap: _popHistory,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                           child: Container(
+                            constraints:
+                                const BoxConstraints(minHeight: 32),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
+                                horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF5500)
+                              color: AppColors.primary
                                   .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                  color: const Color(0xFFFF5500)
+                                  color: AppColors.primary
                                       .withValues(alpha: 0.4)),
                             ),
                             child: Row(
@@ -459,7 +577,7 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
                                       ? Icons.arrow_forward_rounded
                                       : Icons.arrow_back_rounded,
                                   size: 14,
-                                  color: const Color(0xFFFF5500),
+                                  color: AppColors.primary,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -467,13 +585,14 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
                                       ? 'بازگشت به ${_history[_history.length - 2].text}'
                                       : 'Back to ${_history[_history.length - 2].text}',
                                   style: const TextStyle(
-                                    color: Color(0xFFFF5500),
+                                    color: AppColors.primary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
+                          ),
                           ),
                         ),
                         if (_isLoadingNested)
@@ -482,7 +601,7 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
                             height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFFFF5500),
+                              color: AppColors.primary,
                             ),
                           ),
                       ],
@@ -495,7 +614,8 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
                     child: currentSpan.isMultiWord &&
                             currentSpan.childrenSubTokens.isNotEmpty
                         ? ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 470),
+                            constraints: BoxConstraints(
+                                maxHeight: maxCardHeight - 80),
                             child: _HierarchyCarousel(
                               span: currentSpan,
                               onWordTap: _navigateToWord,
@@ -510,6 +630,62 @@ class _EngineDefinitionCardState extends ConsumerState<_EngineDefinitionCard> {
               ),
             ),
           ),
+        ),
+      );
+
+    final content = FocusTraversalGroup(
+      child: Semantics(
+        container: true,
+        label: 'Definition for ${currentSpan.text}',
+        child: card,
+      ),
+    );
+
+    // Caret pointing back at the source word. Token sits -caretDx from
+    // popup center, so clamp the caret inside the card edges.
+    final caretLeft =
+        (cardWidth / 2 + widget.caretDx - 6).clamp(12.0, cardWidth - 24.0).toDouble();
+    final caret = Positioned(
+      left: caretLeft,
+      top: widget.showBelow ? -6 : null,
+      bottom: widget.showBelow ? null : -6,
+      child: IgnorePointer(
+        child: Transform.rotate(
+          angle: 0.7853982,
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                left: BorderSide(color: borderColor, width: 1.2),
+                top: BorderSide(color: borderColor, width: 1.2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {
+          _hasMouseEnteredAfterSizeChange = true;
+        });
+        ref.read(spanHoverControllerProvider).onPopupHoverEnter();
+      },
+      onExit: (_) {
+        if (_history.length > 1 && !_hasMouseEnteredAfterSizeChange) {
+          return;
+        }
+        ref.read(spanHoverControllerProvider).onPopupHoverExit();
+      },
+      child: Padding(
+        // Room for the caret overflowing the card edge.
+        padding: const EdgeInsets.all(8),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [content, caret],
         ),
       ),
     );
@@ -641,25 +817,47 @@ class _InteractiveWordSpan extends StatefulWidget {
 
 class _InteractiveWordSpanState extends State<_InteractiveWordSpan> {
   bool _isHovered = false;
+  bool _isFocused = false;
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.space)) {
+      widget.onTap();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 100),
-          style: _isHovered
-              ? widget.baseStyle.copyWith(
-                  color: const Color(0xFFFF5500),
-                  decoration: TextDecoration.underline,
-                  decorationColor: const Color(0xFFFF5500),
-                )
-              : widget.baseStyle,
-          child: Text(widget.word),
+    final highlighted = _isHovered || _isFocused;
+    final mq = MediaQuery.of(context);
+    return Semantics(
+      button: true,
+      label: 'Look up ${widget.word}',
+      child: Focus(
+        onKeyEvent: _handleKey,
+        onFocusChange: (v) => setState(() => _isFocused = v),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedDefaultTextStyle(
+              duration: Duration(
+                  milliseconds: mq.disableAnimations ? 0 : 100),
+              style: highlighted
+                  ? widget.baseStyle.copyWith(
+                      color: AppColors.primary,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.primary,
+                    )
+                  : widget.baseStyle,
+              child: Text(widget.word),
+            ),
+          ),
         ),
       ),
     );
@@ -1049,19 +1247,33 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFFFF5500).withOpacity(0.15)
-              : const Color(0xFF1E1E24),
+    final mq = MediaQuery.of(context);
+    final isCompact = mq.size.width < 600;
+    final minH = isCompact ? 44.0 : 32.0;
+    final vPad = isCompact ? 12.0 : 8.0;
+    final animMs = mq.disableAnimations ? 0 : 150;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: 'Show definition for $label',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: animMs),
+            constraints: BoxConstraints(minHeight: minH),
+            padding:
+                EdgeInsets.symmetric(horizontal: 14, vertical: vPad),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFFFF5500).withOpacity(0.5)
+                ? AppColors.primary.withValues(alpha: 0.5)
                 : const Color(0xFF2C2C35),
             width: 1,
           ),
@@ -1070,9 +1282,11 @@ class _TabChip extends StatelessWidget {
           label,
           style: TextStyle(
             color:
-                isSelected ? const Color(0xFFFF5500) : const Color(0xFF9E9D9F),
+                isSelected ? AppColors.primary : const Color(0xFF9E9D9F),
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
           ),
         ),
       ),
@@ -1131,23 +1345,26 @@ class _WordHeaderRow extends StatelessWidget {
               ],
               // POS badge
               if (pos != null && pos!.isNotEmpty) ...[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF5500).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: const Color(0xFFFF5500).withOpacity(0.4),
-                      width: 1,
+                Semantics(
+                  label: 'Part of speech: ${pos!}',
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    pos!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF5500),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                    child: Text(
+                      pos!,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1246,7 +1463,7 @@ class _WsdSenseTile extends StatelessWidget {
               Text(
                 '${sense.rank}. ',
                 style: const TextStyle(
-                  color: Color(0xFFFF5500),
+                  color: AppColors.primary,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),

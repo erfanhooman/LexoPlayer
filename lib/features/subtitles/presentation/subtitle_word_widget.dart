@@ -1,18 +1,24 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lexo_player/core/models/engine_output.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/features/dictionary/data/span_providers.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 
 /// Renders a single word inside the subtitle overlay with the legacy
 /// interaction pattern:
 ///
-/// - **Hover** pauses the video and opens the engine definition popup for
-///   the span that contains this word. Exiting resumes playback (debounced).
-/// - **Tap** pins the popup open (no auto-resume).
+/// - **Hover** (desktop) pauses the video and opens the engine definition
+///   popup for the span that contains this word. Exiting resumes playback
+///   (debounced).
+/// - **Tap / click** (all platforms, primary gesture on touch) pauses the
+///   video and pins the engine definition popup open. Tapping the **same**
+///   word again closes the popup and resumes playback if it was playing
+///   (toggle).
 ///
 /// Words belonging to a MULTI_WORD_SPAN are rendered with a subtle
 /// underline so the user can see the idiom/MWE grouping.
@@ -106,9 +112,16 @@ class _SubtitleWordWidgetState extends ConsumerState<SubtitleWordWidget> {
       return Text(widget.text, style: baseStyle);
     }
 
-    final effectiveStyle = _isHovered
+    // Highlight the tapped/selected word (touch feedback — no hover on
+    // phones) in addition to the desktop hover highlight.
+    final selected = ref.watch(selectedSpanProvider);
+    final isSelected = selected != null &&
+        selected.span.spanId == widget.span!.spanId;
+
+    final highlighted = _isHovered || isSelected;
+    final effectiveStyle = highlighted
         ? baseStyle.copyWith(
-            backgroundColor: const Color(0xFFFF5500).withValues(alpha: 0.25),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.25),
           )
         : baseStyle;
 
@@ -116,7 +129,7 @@ class _SubtitleWordWidgetState extends ConsumerState<SubtitleWordWidget> {
     final textStyle = widget.span!.isMultiWord
         ? effectiveStyle.copyWith(
             decoration: TextDecoration.underline,
-            decorationColor: const Color(0xFFFF5500).withOpacity(0.5),
+            decorationColor: AppColors.primary.withOpacity(0.5),
             decorationThickness: 2,
           )
         : effectiveStyle;
@@ -134,39 +147,70 @@ class _SubtitleWordWidgetState extends ConsumerState<SubtitleWordWidget> {
   }
 
   Widget _buildDesktopToken(Widget child) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        _setHovered(true);
-        ref.read(spanHoverControllerProvider).onHoverEnter(
-              span: widget.span!,
-              layerLink: _layerLink,
-              context: context,
-            );
-      },
-      onExit: (_) {
-        _setHovered(false);
-        ref.read(spanHoverControllerProvider).onHoverExit();
-      },
-      child: GestureDetector(
-        onTap: _onTap,
-        child: CompositedTransformTarget(
-          link: _layerLink,
-          child: child,
+    return Semantics(
+      button: true,
+      label: 'Look up ${widget.text}',
+      child: Focus(
+        onFocusChange: (focused) {
+          _setHovered(focused);
+          if (focused) {
+            ref.read(spanHoverControllerProvider).onHoverEnter(
+                  span: widget.span!,
+                  layerLink: _layerLink,
+                  context: context,
+                );
+          } else {
+            ref.read(spanHoverControllerProvider).onHoverExit();
+          }
+        },
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.enter ||
+                  event.logicalKey == LogicalKeyboardKey.space)) {
+            _onTap();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) {
+            _setHovered(true);
+            ref.read(spanHoverControllerProvider).onHoverEnter(
+                  span: widget.span!,
+                  layerLink: _layerLink,
+                  context: context,
+                );
+          },
+          onExit: (_) {
+            _setHovered(false);
+            ref.read(spanHoverControllerProvider).onHoverExit();
+          },
+          child: GestureDetector(
+            onTap: _onTap,
+            child: CompositedTransformTarget(
+              link: _layerLink,
+              child: child,
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildMobileToken(Widget child) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-        child: CompositedTransformTarget(
-          link: _layerLink,
-          child: child,
+    return Semantics(
+      button: true,
+      label: 'Look up ${widget.text}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          child: CompositedTransformTarget(
+            link: _layerLink,
+            child: child,
+          ),
         ),
       ),
     );

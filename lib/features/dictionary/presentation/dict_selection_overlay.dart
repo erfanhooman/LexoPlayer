@@ -17,6 +17,7 @@ import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
 import 'package:lexo_player/features/dictionary/presentation/download_hub_screen.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  Constants
@@ -25,7 +26,7 @@ import 'package:lexo_player/features/dictionary/presentation/download_hub_screen
 const _kOverlayBg = Color(0xE6141418); // 90% Midnight Charcoal
 const _kScaffoldBg = Color(0xFF0C0C0E); // Midnight Charcoal Scaffold
 const _kBorder = Color(0xFF25252B); // Sleek dark border
-const _kAccent = Color(0xFFFF5500); // Burnt Tangerine orange
+const _kAccent = AppColors.primary; // Sunrise Coral — single app accent
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  DictSelectionOverlay

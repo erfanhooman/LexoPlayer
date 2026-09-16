@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
+import 'package:lexo_player/core/theme/app_colors.dart';
 
 /// A widget that parses comma/newline-separated bilingual translation text
 /// into individual interactive chips/pills, hiding them behind a spoiler blur
@@ -48,6 +49,9 @@ class _SpoilerTranslationWidgetState
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final items = _parseItems(widget.rawTranslation);
     if (items.isEmpty) return const SizedBox.shrink();
+    final mq = MediaQuery.of(context);
+    final isCompact = mq.size.width < 600;
+    final minBtnH = isCompact ? 44.0 : 32.0;
 
     final visibleCount = (_isExpanded || items.length <= widget.initialMaxItems)
         ? items.length
@@ -67,55 +71,67 @@ class _SpoilerTranslationWidgetState
               ? MainAxisAlignment.end
               : MainAxisAlignment.start,
           children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                setState(() {
-                  _revealAll = !_revealAll;
-                  if (!_revealAll) {
-                    _revealedIndices.clear();
-                  }
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _revealAll
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 13,
-                      color: const Color(0xFFFF5500),
+            Semantics(
+              button: true,
+              label: _revealAll ? 'Hide translation' : 'Reveal translation',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      _revealAll = !_revealAll;
+                      if (!_revealAll) {
+                        _revealedIndices.clear();
+                      }
+                    });
+                  },
+                  child: Container(
+                    constraints: BoxConstraints(minHeight: minBtnH),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _revealAll
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 13,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _revealAll
+                              ? (isPersian
+                                  ? 'مخفی کردن ترجمه'
+                                  : 'Hide translation')
+                              : (isPersian
+                                  ? 'نمایش ترجمه'
+                                  : 'Reveal translation'),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _revealAll
-                          ? (isPersian ? 'مخفی کردن ترجمه' : 'Hide translation')
-                          : (isPersian ? 'نمایش ترجمه' : 'Reveal translation'),
-                      style: const TextStyle(
-                        color: Color(0xFFFF5500),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
-        // Translation Chips
+        // Translation Chips — inner Directionality is rtl so Persian order
+        // is preserved; WrapAlignment.start == right side in rtl.
         Directionality(
           textDirection: TextDirection.rtl,
           child: Wrap(
             spacing: 6,
             runSpacing: 6,
-            alignment: widget.compactHeaderMode
-                ? WrapAlignment.end
-                : WrapAlignment.start,
+            alignment: WrapAlignment.start,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (int i = 0; i < visibleCount; i++) ...[
@@ -134,45 +150,67 @@ class _SpoilerTranslationWidgetState
                 ),
               ],
               if (remainingCount > 0)
-                GestureDetector(
-                  onTap: () => setState(() => _isExpanded = true),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25252E),
+                Semantics(
+                  button: true,
+                  label: isPersian
+                      ? 'Show $remainingCount more translations'
+                      : 'Show $remainingCount more',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => setState(() => _isExpanded = true),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF3F3F4C)),
-                    ),
-                    child: Text(
-                      isPersian
-                          ? '+$remainingCount مورد دیگر'
-                          : '+$remainingCount more',
-                      style: const TextStyle(
-                        color: Color(0xFFA1A1AA),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
+                      child: Container(
+                        constraints: BoxConstraints(minHeight: minBtnH),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25252E),
+                          borderRadius: BorderRadius.circular(6),
+                          border:
+                              Border.all(color: const Color(0xFF3F3F4C)),
+                        ),
+                        child: Text(
+                          isPersian
+                              ? '+$remainingCount مورد دیگر'
+                              : '+$remainingCount more',
+                          style: const TextStyle(
+                            color: Color(0xFFA1A1AA),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               if (_isExpanded && items.length > widget.initialMaxItems)
-                GestureDetector(
-                  onTap: () => setState(() => _isExpanded = false),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25252E),
+                Semantics(
+                  button: true,
+                  label: 'Show less',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => setState(() => _isExpanded = false),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF3F3F4C)),
-                    ),
-                    child: Text(
-                      isPersian ? 'نمایش کمتر' : 'Show less',
-                      style: const TextStyle(
-                        color: Color(0xFFA1A1AA),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
+                      child: Container(
+                        constraints: BoxConstraints(minHeight: minBtnH),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25252E),
+                          borderRadius: BorderRadius.circular(6),
+                          border:
+                              Border.all(color: const Color(0xFF3F3F4C)),
+                        ),
+                        child: Text(
+                          isPersian ? 'نمایش کمتر' : 'Show less',
+                          style: const TextStyle(
+                            color: Color(0xFFA1A1AA),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -198,19 +236,31 @@ class _SpoilerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    final mq = MediaQuery.of(context);
+    final isCompact = mq.size.width < 600;
+    final minH = isCompact ? 44.0 : 32.0;
+    final animMs = mq.disableAnimations ? 0 : 200;
+    return Semantics(
+      button: true,
+      label: isRevealed ? 'Hide translation $text' : 'Reveal translation $text',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: animMs),
+            constraints: BoxConstraints(minHeight: minH),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isRevealed
-              ? const Color(0xFFFF5500).withOpacity(0.14)
+              ? AppColors.primary.withValues(alpha: 0.14)
               : const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isRevealed
-                ? const Color(0xFFFF5500).withOpacity(0.4)
+                ? AppColors.primary.withValues(alpha: 0.4)
                 : const Color(0xFF33333F),
             width: 1,
           ),
@@ -228,7 +278,7 @@ class _SpoilerChip extends StatelessWidget {
                   text,
                   style: TextStyle(
                     color: isRevealed
-                        ? const Color(0xFFFF7733)
+                        ? AppColors.primaryLight
                         : Colors.white.withOpacity(0.8),
                     fontSize: 13,
                     fontWeight: isRevealed ? FontWeight.bold : FontWeight.w500,
@@ -246,6 +296,8 @@ class _SpoilerChip extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+        ),
           ),
         ),
       ),

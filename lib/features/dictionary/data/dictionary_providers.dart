@@ -165,11 +165,29 @@ class HoverPlaybackTimer {
   Timer? _debounceTimer;
   bool _wasPlaying = false;
 
+  /// Key of the last explicitly tapped word (`index:text`), if pinned.
+  String? _pinnedKey;
+  bool _pinnedWasPlaying = false;
+
   HoverPlaybackTimer(this._ref);
+
+  String _tapKey(List<TokenSpan> lineTokens, int tokenIndex) {
+    final text = (tokenIndex >= 0 && tokenIndex < lineTokens.length)
+        ? lineTokens[tokenIndex].text
+        : '$tokenIndex';
+    return '$tokenIndex:$text:${lineTokens.length}';
+  }
 
   /// Triggered when the pointer enters a word token in the subtitle track.
   void onHoverEnter(List<TokenSpan> lineTokens, int tokenIndex,
       LayerLink layerLink, BuildContext context) {
+    final key = _tapKey(lineTokens, tokenIndex);
+    if (_pinnedKey != null && _pinnedKey == key) {
+      _debounceTimer?.cancel();
+      _debounceTimer = null;
+      return;
+    }
+
     final player = _ref.read(playerProvider);
 
     // If a transition timer was already running, cancel it so we don't
@@ -177,6 +195,10 @@ class HoverPlaybackTimer {
     if (_debounceTimer != null) {
       _debounceTimer!.cancel();
       _debounceTimer = null;
+    } else if (_pinnedKey != null) {
+      _wasPlaying = _pinnedWasPlaying;
+      _pinnedKey = null;
+      _pinnedWasPlaying = false;
     } else {
       _wasPlaying = player.state.playing;
     }
@@ -192,7 +214,9 @@ class HoverPlaybackTimer {
   }
 
   /// Triggered when the pointer exits a word token in the subtitle track.
+  /// Ignored while a tap-pinned popup is open (dismiss via second tap).
   void onHoverExit() {
+    if (_pinnedKey != null) return;
     _startDebounceTimer();
   }
 
@@ -206,27 +230,71 @@ class HoverPlaybackTimer {
   }
 
   /// Triggered when the pointer exits the dictionary popup container.
+  /// Ignored while pinned.
   void onPopupHoverExit() {
+    if (_pinnedKey != null) return;
     _startDebounceTimer();
   }
 
   /// Triggered on an explicit click/tap.
   ///
-  /// Unlike temporary hover popups, explicit clicks pin the popup and disable
-  /// automatic playback resume when the hover exits.
+  /// Tapping the same pinned word again toggles closed + resumes when
+  /// appropriate (touch-friendly, no hover needed).
   void onTap(List<TokenSpan> lineTokens, int tokenIndex, LayerLink layerLink,
       BuildContext context) {
+    final player = _ref.read(playerProvider);
+    final key = _tapKey(lineTokens, tokenIndex);
+    final current = _ref.read(selectedTokenProvider);
+
+    if (_pinnedKey != null &&
+        _pinnedKey == key &&
+        current != null &&
+        current.tokenIndex == tokenIndex) {
+      _debounceTimer?.cancel();
+      _debounceTimer = null;
+      _ref.read(selectedTokenProvider.notifier).state = null;
+      _ref.read(selectedTokenLayerLinkProvider.notifier).state = null;
+      _ref.read(selectedTokenContextProvider.notifier).state = null;
+      final shouldResume = _pinnedWasPlaying;
+      _pinnedKey = null;
+      _pinnedWasPlaying = false;
+      _wasPlaying = false;
+      if (shouldResume) {
+        PlayerActions.play(player);
+      }
+      return;
+    }
+
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    final wasPlayingBefore =
+        player.state.playing || _wasPlaying || _pinnedWasPlaying;
+    _pinnedKey = key;
+    _pinnedWasPlaying = wasPlayingBefore;
     _wasPlaying = false; // Disable auto-resume for explicit clicks.
 
-    final player = _ref.read(playerProvider);
     PlayerActions.pause(player);
 
     _ref.read(selectedTokenProvider.notifier).state =
         SelectedTokenData(lineTokens, tokenIndex);
     _ref.read(selectedTokenLayerLinkProvider.notifier).state = layerLink;
     _ref.read(selectedTokenContextProvider.notifier).state = context;
+  }
+
+  /// Closes the popup and resumes only if playback was active before.
+  void closePopup() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    _ref.read(selectedTokenProvider.notifier).state = null;
+    _ref.read(selectedTokenLayerLinkProvider.notifier).state = null;
+    _ref.read(selectedTokenContextProvider.notifier).state = null;
+    final shouldResume = _wasPlaying || _pinnedWasPlaying;
+    _wasPlaying = false;
+    _pinnedWasPlaying = false;
+    _pinnedKey = null;
+    if (shouldResume) {
+      PlayerActions.play(_ref.read(playerProvider));
+    }
   }
 
   void _startDebounceTimer() {

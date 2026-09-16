@@ -6,62 +6,149 @@ import MediaPlayer
 class AppDelegate: FlutterAppDelegate {
   private var methodChannel: FlutterMethodChannel?
   private var openFileChannel: FlutterMethodChannel?
-  private var initialOpenFile: String?
+
+  /// Queue of files delivered by macOS "Open With". Every incoming file is
+  /// buffered here so none can be lost, even if the Dart side hasn't finished
+  /// launching when the event arrives. The Dart side drains it via
+  /// `getInitialFile` (at startup and again when the UI mounts) and live events
+  /// are pushed over the `onFileOpened` method.
+  private var pendingOpenFiles: [String] = []
+
+  /// Register all channels as early as possible (before the app launches),
+  /// so "Open With" events that arrive between `applicationWillFinishLaunching`
+  /// and `applicationDidFinishLaunching` are captured reliably.
+  override func applicationWillFinishLaunching(_ notification: Notification) {
+    setupChannels()
+    super.applicationWillFinishLaunching(notification)
+    installOpenFileEventHandler()
+  }
+
+  /// Registers a direct handler for the `kAEOpenDocuments` Apple Event.
+  ///
+  /// Whether the app is launched by macOS to open a file (cold start) or an
+  /// "Open With" request arrives while the app is already running (warm start),
+  /// the open-documents Apple Event is delivered to the process. Depending on
+  /// the macOS version it is not always routed to `application(_:openFile:)`,
+  /// so handling the event ourselves guarantees the file is always picked up.
+  private func installOpenFileEventHandler() {
+    NSAppleEventManager.shared().setEventHandler(
+      self,
+      andSelector: #selector(handleOpenDocumentsEvent(_:withReplyEvent:)),
+      forEventClass: AEEventClass(kCoreEventClass),
+      andEventID: AEEventID(kAEOpenDocuments)
+    )
+  }
+
+  @objc private func handleOpenDocumentsEvent(
+    _ event: NSAppleEventDescriptor,
+    withReplyEvent reply: NSAppleEventDescriptor
+  ) {
+    guard let direct = event.paramDescriptor(forKeyword: keyDirectObject) else { return }
+    guard let list = direct.coerce(toDescriptorType: typeAEList) else { return }
+    for index in 1...list.numberOfItems {
+      guard let item = list.atIndex(index) else { continue }
+      if let path = filePath(from: item), !path.isEmpty {
+        enqueueOpenFile(path)
+      }
+    }
+  }
+
+  /// Resolves a file URL, alias, or bookmark descriptor to a filesystem path.
+  private func filePath(from descriptor: NSAppleEventDescriptor) -> String? {
+    if let url = descriptor.fileURLValue {
+      return url.path
+    }
+    // Fallback: resolve raw bookmark data embedded in a 'bmrk' descriptor.
+    let data = descriptor.data
+    do {
+      let url = try NSURL(
+        resolvingBookmarkData: data,
+        options: [],
+        relativeTo: nil,
+        bookmarkDataIsStale: nil
+      )
+      return url.path
+    } catch {
+      return nil
+    }
+  }
 
   override func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-    if let channel = openFileChannel {
-      channel.invokeMethod("onFileOpened", arguments: filename)
-    } else {
-      initialOpenFile = filename
-    }
+    enqueueOpenFile(filename)
     return true
   }
 
   override func application(_ sender: NSApplication, openFiles filenames: [String]) {
-    if let first = filenames.first {
-      _ = application(sender, openFile: first)
+    for filename in filenames {
+      enqueueOpenFile(filename)
+    }
+  }
+
+  private func enqueueOpenFile(_ filename: String) {
+    guard !filename.isEmpty else { return }
+    pendingOpenFiles.append(filename)
+    // Best-effort live delivery. If the Dart handler isn't registered yet the
+    // message is dropped, but the file stays in `pendingOpenFiles` so the Dart
+    // side can still pick it up later via `getInitialFile`.
+    openFileChannel?.invokeMethod("onFileOpened", arguments: filename)
+  }
+
+  private func setupChannels() {
+    guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else {
+      return
+    }
+
+    methodChannel = FlutterMethodChannel(
+      name: "com.lexoplayer/now_playing",
+      binaryMessenger: controller.engine.binaryMessenger
+    )
+
+    methodChannel?.setMethodCallHandler { [weak self] (call, result) in
+      switch call.method {
+      case "updateNowPlayingInfo":
+        if let args = call.arguments as? [String: Any] {
+          self?.updateNowPlayingInfo(args: args)
+        }
+        result(nil)
+      case "clearNowPlayingInfo":
+        self?.clearNowPlayingInfo()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
+    openFileChannel = FlutterMethodChannel(
+      name: "com.lexoplayer/open_file",
+      binaryMessenger: controller.engine.binaryMessenger
+    )
+
+    openFileChannel?.setMethodCallHandler { [weak self] (call, result) in
+      guard let self else {
+        result(nil)
+        return
+      }
+      switch call.method {
+      case "getInitialFile":
+        if pendingOpenFiles.isEmpty {
+          result(nil)
+        } else {
+          let first = pendingOpenFiles.removeFirst()
+          pendingOpenFiles.removeAll(where: { $0 == first })
+          result(first)
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
     }
   }
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
-
-    if let controller = mainFlutterWindow?.contentViewController as? FlutterViewController {
-      methodChannel = FlutterMethodChannel(
-        name: "com.lexoplayer/now_playing",
-        binaryMessenger: controller.engine.binaryMessenger
-      )
-
-      methodChannel?.setMethodCallHandler { [weak self] (call, result) in
-        switch call.method {
-        case "updateNowPlayingInfo":
-          if let args = call.arguments as? [String: Any] {
-            self?.updateNowPlayingInfo(args: args)
-          }
-          result(nil)
-        case "clearNowPlayingInfo":
-          self?.clearNowPlayingInfo()
-          result(nil)
-        default:
-          result(FlutterMethodNotImplemented)
-        }
-      }
-
-      openFileChannel = FlutterMethodChannel(
-        name: "com.lexoplayer/open_file",
-        binaryMessenger: controller.engine.binaryMessenger
-      )
-
-      openFileChannel?.setMethodCallHandler { [weak self] (call, result) in
-        if call.method == "getInitialFile" {
-          result(self?.initialOpenFile)
-          self?.initialOpenFile = nil
-        } else {
-          result(FlutterMethodNotImplemented)
-        }
-      }
+    // Safety net: if the window wasn't ready during applicationWillFinishLaunching.
+    if openFileChannel == nil {
+      setupChannels()
     }
-
+    super.applicationDidFinishLaunching(notification)
     setupRemoteCommandCenter()
   }
 
