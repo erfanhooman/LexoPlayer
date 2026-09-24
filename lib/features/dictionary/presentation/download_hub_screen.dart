@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:lexo_player/core/models/manifest_models.dart';
+import 'package:lexo_player/core/services/auto_update_service.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
 
@@ -380,6 +381,12 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
 
       final ids = await ref.read(dictStorageManagerProvider).getDownloadedIds();
       ref.read(downloadedDictIdsProvider.notifier).state = ids;
+
+      // Persist checksum baseline so auto-update can diff next launch.
+      await AutoUpdateService.recordDictionaryChecksum(
+        widget.entry.id,
+        widget.entry.md5Checksum,
+      );
 
       ref.read(downloadProgressProvider.notifier).state =
           Map<String, double>.from(

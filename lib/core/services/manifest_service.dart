@@ -159,8 +159,11 @@ class ManifestService {
   }
 
   /// Default embedded manifest fallback containing the unified dictionary.
+  /// Kept in sync with the live manifest at
+  /// https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json
+  /// so offline fallback still passes checksum verification.
   static final ManifestData defaultManifest = ManifestData(
-    lastUpdated: DateTime(2026, 8, 18),
+    lastUpdated: DateTime.parse('2026-08-18T17:20:00Z'),
     version: 2,
     monolingual: const [],
     bilingual: const [],
@@ -173,9 +176,9 @@ class ManifestService {
         description:
             'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.',
         remoteUrl:
-            'https://erfanhooman.github.io/LexoPlayer/dictionaries/dictionary.db.zip',
-        fileSizeBytes: 239221480,
-        md5Checksum: 'd862fb14c5477f9900b0f4535d50500c',
+            'https://raw.githubusercontent.com/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip',
+        fileSizeBytes: 30303799,
+        md5Checksum: '761061128742a65087ebb71239f2369c',
         type: DictionaryType.unified,
       ),
     ],

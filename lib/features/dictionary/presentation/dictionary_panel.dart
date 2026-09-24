@@ -61,44 +61,81 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
           GlassContainer(
             borderRadius: BorderRadius.circular(16),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.sync_rounded, color: _accent, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isPersian
-                            ? 'بروزرسانی خودکار واژه‌نامه و زیرنویس'
-                            : 'Auto Update Dictionaries & Subtitles',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                Row(
+                  children: [
+                    Icon(Icons.sync_rounded, color: _accent, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isPersian
+                                ? 'بروزرسانی خودکار واژه‌نامه و زیرنویس'
+                                : 'Auto Update Dictionaries & Subtitles',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isPersian
+                                ? 'دانلود و جایگزینی خودکار آخرین نسخه گیت‌هاب'
+                                : 'Auto-download & replace database from GitHub',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF9E9D9F),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPersian
-                            ? 'دانلود و جایگزینی خودکار آخرین نسخه گیت‌هاب'
-                            : 'Auto-download & replace database from GitHub',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF9E9D9F),
+                    ),
+                    Switch.adaptive(
+                      value: ref.watch(autoUpdateDictProvider),
+                      activeColor: _accent,
+                      onChanged: (val) {
+                        AutoUpdateService.setAutoUpdateDict(ref, val);
+                      },
+                    ),
+                  ],
+                ),
+                // Live auto-update status (was previously written but never shown).
+                Builder(builder: (context) {
+                  final status = ref.watch(dictAutoUpdateStatusProvider);
+                  if (status == null || status.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _accent,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: ref.watch(autoUpdateDictProvider),
-                  activeColor: _accent,
-                  onChanged: (val) {
-                    AutoUpdateService.setAutoUpdateDict(ref, val);
-                  },
-                ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            status,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF9E9D9F),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -620,6 +657,12 @@ class _DownloadHubBox extends ConsumerWidget {
 
       final ids = await ref.read(dictStorageManagerProvider).getDownloadedIds();
       ref.read(downloadedDictIdsProvider.notifier).state = ids;
+
+      // Persist checksum baseline so auto-update can diff next launch.
+      await AutoUpdateService.recordDictionaryChecksum(
+        entry.id,
+        entry.md5Checksum,
+      );
 
       ref.read(downloadProgressProvider.notifier).state =
           Map<String, double>.from(

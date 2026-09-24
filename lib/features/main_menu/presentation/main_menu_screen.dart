@@ -12,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:lexo_player/core/widgets/glass_container.dart';
 import 'package:lexo_player/core/services/history_service.dart';
+import 'package:lexo_player/core/services/auto_update_service.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
 import 'package:lexo_player/features/dictionary/presentation/dictionary_panel.dart';
@@ -111,6 +112,30 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
         }
       }).catchError((_) {});
     }
+
+    // Self-update prompt: AutoUpdateService.init() runs at app startup and
+    // populates appUpdateInfoProvider when the release check completes.
+    // The listener in build() surfaces the dialog event-driven (no polling
+    // timers, which also keeps widget tests hermetic).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybePromptAppUpdate(ref.read(appUpdateInfoProvider));
+    });
+  }
+
+  bool _updatePromptShown = false;
+
+  Future<void> _maybePromptAppUpdate(AppUpdateInfo? info) async {
+    if (_updatePromptShown || !mounted) return;
+    if (info == null || !info.hasUpdate) return;
+    if (!ref.read(autoUpdateAppProvider)) return;
+    if (await AutoUpdateService.wasSkipped(info.latestTag)) return;
+    if (!mounted) return;
+    _updatePromptShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AppUpdateDialog(info: info),
+    );
   }
 
   @override
@@ -160,11 +185,13 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     final nav = Navigator.of(context);
     nav.popUntil((route) => route.isFirst);
 
-    nav.push(
+    nav
+        .push(
       MaterialPageRoute(
         builder: (_) => VideoScreen(videoUri: uri),
       ),
-    ).then((_) {
+    )
+        .then((_) {
       // When user returns from video, reload progress in hero card
       _heroKey.currentState?.loadProgress();
     });
@@ -258,14 +285,16 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Featured Continue Watching Hero Card
-          _HeroContinueWatchingCard(
-            key: _heroKey,
-            recentVideos: recentVideos,
-            onResume: (uri) => _openVideoScreen(uri),
-          ),
-
-          const SizedBox(height: 24),
+          // Featured Continue Watching Hero Card — only when history exists.
+          // No hardcoded fallback: empty history shows no hero.
+          if (recentVideos.isNotEmpty) ...[
+            _HeroContinueWatchingCard(
+              key: _heroKey,
+              recentVideos: recentVideos,
+              onResume: (uri) => _openVideoScreen(uri),
+            ),
+            const SizedBox(height: 24),
+          ],
           _QuickActionsGrid(
             onOpenFile: _pickLocalFile,
             onOpenFolder: _pickLocalFolder,
@@ -324,6 +353,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Event-driven self-update prompt: fires when the background release
+    // check completes (covers the case where init finishes after first frame).
+    ref.listen<AppUpdateInfo?>(appUpdateInfoProvider, (prev, next) {
+      if (next != null && next.hasUpdate) _maybePromptAppUpdate(next);
+    });
     final recentVideos = ref.watch(recentVideosProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobileLayout =
@@ -925,23 +959,21 @@ class _HeroContinueWatchingCardState
   @override
   Widget build(BuildContext context) {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
-    final String heroUri = widget.recentVideos.isNotEmpty
-        ? widget.recentVideos.first
-        : '/Users/erfanhooman/Videos/House.of.the.Dragon.S02E05.mp4';
-    final String heroTitle = widget.recentVideos.isNotEmpty
-        ? formatMediaTitle(heroUri)
-        : 'House of the Dragon - S02E05';
+    if (widget.recentVideos.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final String heroUri = widget.recentVideos.first;
+    final String heroTitle = formatMediaTitle(heroUri);
 
     final double pct;
     int remainingMinutes;
     if (_progress != null &&
         _progress!.total > Duration.zero &&
         _progress!.position > Duration.zero) {
-      pct = (_progress!.position.inMilliseconds /
-              _progress!.total.inMilliseconds)
-          .clamp(0.0, 1.0);
-      final remaining =
-          _progress!.total - _progress!.position;
+      pct =
+          (_progress!.position.inMilliseconds / _progress!.total.inMilliseconds)
+              .clamp(0.0, 1.0);
+      final remaining = _progress!.total - _progress!.position;
       remainingMinutes = (remaining.inSeconds / 60).ceil();
     } else {
       pct = 0.0;
@@ -1913,6 +1945,143 @@ class _StreamLinkModalDialogState
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  App Self-Update Dialog — shown once per new GitHub release
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _AppUpdateDialog extends ConsumerWidget {
+  final AppUpdateInfo info;
+  const _AppUpdateDialog({required this.info});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final downloading = ref.watch(appUpdateDownloadingProvider);
+    final progress = ref.watch(appUpdateProgressProvider);
+
+    return AlertDialog(
+      backgroundColor: const Color(0xFF16151E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: kNeutralAccent.withValues(alpha: 0.35)),
+      ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: kNeutralAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.system_update_rounded,
+                color: kNeutralAccent, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              isPersian ? 'نسخه جدید موجود است' : 'Update available',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${info.currentVersion} → ${info.latestTag}',
+            style: TextStyle(
+                color: kNeutralAccent,
+                fontSize: 13,
+                fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isPersian
+                ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. برای نصب، فایل مخصوص سیستم‌عامل شما دانلود و اجرا می‌شود.'
+                : 'A new LexoPlayer release is available on GitHub. Downloading installs the ${info.assetName ?? 'release file'} for your OS.',
+            style: const TextStyle(color: Color(0xFF9E9D9F), fontSize: 12),
+          ),
+          if (info.releaseNotes.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 120),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  info.releaseNotes.trim().length > 600
+                      ? '${info.releaseNotes.trim().substring(0, 600)}…'
+                      : info.releaseNotes.trim(),
+                  style:
+                      const TextStyle(color: Color(0xFFB9B8BF), fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+          if (downloading && progress != null) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 5,
+              backgroundColor: Colors.white10,
+              valueColor: AlwaysStoppedAnimation<Color>(kNeutralAccent),
+            ),
+            const SizedBox(height: 6),
+            Text('${(progress * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: downloading
+              ? null
+              : () async {
+                  await AutoUpdateService.skipThisVersion(ref);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+          child: Text(isPersian ? 'بعداً' : 'Later',
+              style: const TextStyle(color: Color(0xFF8E8D94))),
+        ),
+        TextButton(
+          onPressed:
+              downloading ? null : () => AutoUpdateService.openReleasePage(ref),
+          child: Text(isPersian ? 'مشاهده تغییرات' : 'View release',
+              style: TextStyle(color: kNeutralAccent)),
+        ),
+        ElevatedButton(
+          onPressed: downloading
+              ? null
+              : () async {
+                  await AutoUpdateService.downloadAndInstallUpdate(ref);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: kNeutralAccent,
+            foregroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: Text(downloading
+              ? (isPersian ? 'در حال دانلود…' : 'Downloading…')
+              : (isPersian ? 'دانلود و نصب' : 'Download & Install')),
+        ),
+      ],
     );
   }
 }

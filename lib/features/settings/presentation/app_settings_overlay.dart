@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
@@ -276,51 +277,8 @@ class AppSettingsOverlay extends ConsumerWidget {
 
                         const SizedBox(height: 20),
 
-                        // ── 4. App Info Section ─────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.06)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.info_outline_rounded,
-                                      color: Colors.white38, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    isPersian ? 'نسخه برنامه' : 'App Version',
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _kAccent.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'v1.0.0',
-                                  style: TextStyle(
-                                    color: _kAccent,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // ── 4. App Info + Self-Update Section ──────────────
+                        const _AppVersionTile(),
                       ],
                     ),
                   ),
@@ -427,6 +385,142 @@ class AppSettingsOverlay extends ConsumerWidget {
             value: value,
             activeTrackColor: _kAccent,
             onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppVersionTile extends ConsumerWidget {
+  const _AppVersionTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final updateInfo = ref.watch(appUpdateInfoProvider);
+    final status = ref.watch(appUpdateStatusProvider);
+    final progress = ref.watch(appUpdateProgressProvider);
+    final downloading = ref.watch(appUpdateDownloadingProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.white38, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    isPersian ? 'نسخه برنامه' : 'App Version',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snap) {
+                  final v = snap.data?.version ?? '…';
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _kAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'v$v',
+                      style: TextStyle(
+                        color: _kAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          if (status != null && status.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              updateInfo != null && updateInfo.hasUpdate && !downloading
+                  ? '${isPersian ? "نسخه جدید" : "New:"} ${updateInfo.latestTag} • $status'
+                  : status,
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+          if (downloading && progress != null) ...[
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 4,
+              backgroundColor: Colors.white10,
+              valueColor: AlwaysStoppedAnimation<Color>(_kAccent),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${((progress) * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: downloading
+                      ? null
+                      : () => AutoUpdateService.checkAndAutoUpdateApp(ref,
+                          manual: true),
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  label:
+                      Text(isPersian ? 'بررسی بروزرسانی' : 'Check for updates'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: const BorderSide(color: Color(0xFF2C2C35)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              if (updateInfo != null && updateInfo.hasUpdate) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: downloading
+                        ? null
+                        : () => AutoUpdateService.downloadAndInstallUpdate(ref),
+                    icon: const Icon(Icons.download_rounded, size: 14),
+                    label:
+                        Text(isPersian ? 'دانلود و نصب' : 'Download & Install'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
