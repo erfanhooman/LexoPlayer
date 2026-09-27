@@ -65,6 +65,11 @@ class PendingUpdate {
 
   /// True for the macOS ZIP flow that installs itself + relaunches.
   bool get isSelfInstall => isSelfInstallAsset(assetName);
+
+  /// True for a Linux AppImage staged on a Linux device (in-place replace +
+  /// relaunch, mirroring the macOS ZIP flow).
+  bool get isInPlaceAppImage =>
+      Platform.isLinux && assetName.toLowerCase().endsWith('.appimage');
 }
 
 /// True when [fileName] is a macOS self-install archive (ZIP picked by
@@ -159,9 +164,15 @@ _NormalizedVersion? _normalize(String raw) {
   return _NormalizedVersion(core.cast<int>(), pre);
 }
 
-/// Picks the installer asset matching the current platform from a
-/// GitHub release `assets` list.
-Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
+/// Pure core of [pickPlatformAsset]: returns the first asset (lowercased
+/// name + url) matching the first satisfied preference test.
+///
+/// Split out so every platform's selection rule is unit-testable without
+/// running on that OS.
+Map<String, String>? matchAsset(
+  List<dynamic> assets,
+  List<bool Function(String name)> preferences,
+) {
   final names = assets
       .whereType<Map<String, dynamic>>()
       .map((a) => (
@@ -171,36 +182,45 @@ Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
       .where((e) => e.url.isNotEmpty)
       .toList();
   if (names.isEmpty) return null;
-
-  String? want;
-  if (Platform.isMacOS) {
-    // Prefer the self-install ZIP (auto-install + relaunch, no drag needed).
-    // Fall back to the DMG (manual drag-to-Applications) when no ZIP exists
-    // — e.g. releases published before the ZIP asset was added.
+  for (final test in preferences) {
     for (final e in names) {
-      if (e.name.endsWith('.zip') && e.name.contains('mac')) {
-        return {'name': e.name, 'url': e.url};
-      }
-    }
-    want = '.dmg';
-  } else if (Platform.isWindows) {
-    want = '.exe';
-  } else if (Platform.isLinux) {
-    want = '.appimage';
-  } else if (Platform.isAndroid) {
-    want = '.apk';
-  } else if (Platform.isIOS) {
-    want = '.ipa';
-  }
-  if (want != null) {
-    for (final e in names) {
-      if (e.name.endsWith(want)) {
-        return {'name': e.name, 'url': e.url};
-      }
+      if (test(e.name)) return {'name': e.name, 'url': e.url};
     }
   }
   return null;
 }
+
+/// Picks the installer asset matching the current platform from a
+/// GitHub release `assets` list.
+Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
+  if (Platform.isMacOS) {
+    // Prefer the self-install ZIP (auto-install + relaunch, no drag needed).
+    // Fall back to the DMG (manual drag-to-Applications) when no ZIP exists
+    // — e.g. releases published before the ZIP asset was added.
+    return matchAsset(assets, [
+      (n) => n.endsWith('.zip') && n.contains('mac'),
+      (n) => n.endsWith('.dmg'),
+    ]);
+  } else if (Platform.isWindows) {
+    return matchAsset(assets, [(n) => n.endsWith('.exe')]);
+  } else if (Platform.isLinux) {
+    return matchAsset(assets, [(n) => n.endsWith('.appimage')]);
+  } else if (Platform.isAndroid) {
+    return matchAsset(assets, [(n) => n.endsWith('.apk')]);
+  } else if (Platform.isIOS) {
+    return matchAsset(assets, [(n) => n.endsWith('.ipa')]);
+  }
+  return null;
+}
+
+/// True when staged in-app downloads are supported on a platform.
+///
+/// Android/iOS are excluded: shared Downloads is not writable via raw file
+/// APIs (scoped storage, Android 10+) and installing a package needs native
+/// FileProvider + install-intent code — so those platforms hand the asset
+/// URL to the system browser/Download Manager instead.
+bool stagedDownloadSupported({required bool isAndroid, required bool isIOS}) =>
+    !isAndroid && !isIOS;
 
 String dictMd5Key(String dictId) => 'dict_md5_$dictId';
 
@@ -216,6 +236,22 @@ String? findMacAppBundle(String executablePath) {
       return p.joinAll(parts.sublist(0, i + 1));
     }
   }
+  return null;
+}
+
+/// Resolves the currently running Linux AppImage file, if any.
+///
+/// Prefers the `APPIMAGE` env var set by the AppImage runtime; otherwise
+/// accepts the resolved executable itself when it is an `.AppImage` file.
+/// Returns null for dev/bundle runs (nothing to replace in place).
+/// [environment]/[executablePath] are injectable for unit tests.
+String? resolveLinuxAppImagePath(
+    {Map<String, String>? environment, String? executablePath}) {
+  final env = environment ?? Platform.environment;
+  final fromEnv = env['APPIMAGE'];
+  if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+  final exe = executablePath ?? Platform.resolvedExecutable;
+  if (exe.toLowerCase().endsWith('.appimage')) return exe;
   return null;
 }
 
@@ -564,6 +600,18 @@ class AutoUpdateService {
       await openReleasePage(ref);
       return null;
     }
+    if (!stagedDownloadSupported(
+        isAndroid: Platform.isAndroid, isIOS: Platform.isIOS)) {
+      // Mobile: no reliable in-app staging (scoped storage blocks raw writes
+      // to shared Downloads; installing needs native FileProvider code).
+      // Hand the asset URL to the system browser/Download Manager — the OS
+      // package installer takes it from there (tap the APK, allow
+      // "install unknown apps" once when asked).
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Opening browser to download ${info.latestTag} — tap the downloaded file to install.';
+      await _openWebUrl(info.assetUrl!);
+      return null;
+    }
     ref.read(appUpdateDownloadingProvider.notifier).state = true;
     ref.read(appUpdateProgressProvider.notifier).state = 0.0;
     try {
@@ -596,6 +644,17 @@ class AutoUpdateService {
         },
       );
       ref.read(appUpdateProgressProvider.notifier).state = 1.0;
+
+      // Linux: a downloaded AppImage has no executable bit — without this
+      // neither double-click nor xdg-open can launch it.
+      if (Platform.isLinux && savePath.toLowerCase().endsWith('.appimage')) {
+        try {
+          await Process.run('chmod', ['+x', savePath]);
+        } catch (e) {
+          developer.log('chmod +x failed for $savePath: $e',
+              name: 'AutoUpdateService');
+        }
+      }
 
       final pending = PendingUpdate(
           tag: info.latestTag, path: savePath, assetName: fileName);
@@ -647,8 +706,85 @@ class AutoUpdateService {
       await revealInFinder(pending.path);
       return true;
     }
+    if (pending.isInPlaceAppImage) {
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Installing ${pending.tag} & restarting…';
+      final launched = await _installLinuxAppImageUpdate(ref, pending.path);
+      if (launched != null) {
+        await _clearPendingRecord();
+        await Process.start(launched, const [],
+            mode: ProcessStartMode.detached);
+        exit(0);
+      }
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Automatic install needs write access — opening the file for manual install…';
+      await revealInFinder(pending.path);
+      return true;
+    }
+    // Windows EXE / DMG / APK etc: open the staged file so the OS
+    // installer (Inno wizard, disk image mounter, package installer)
+    // takes over. The wizard handles the running-app case itself.
     await _openFile(pending.path);
     return true;
+  }
+
+  /// Replaces the currently running Linux AppImage with [newPath] and
+  /// returns its path for the caller to launch (then exit).
+  ///
+  /// Returns null when self-install isn't possible (not running as an
+  /// AppImage, or its folder isn't writable).
+  static Future<String?> _installLinuxAppImageUpdate(
+      dynamic ref, String newPath) async {
+    try {
+      final current = resolveLinuxAppImagePath();
+      if (current == null || !File(current).existsSync()) return null;
+      final dir = p.dirname(current);
+
+      final probe = File(p.join(
+          dir, '.lexo_write_test_${DateTime.now().millisecondsSinceEpoch}'));
+      try {
+        await probe.create();
+        await probe.delete();
+      } catch (_) {
+        developer.log('Self-install skipped: $dir not writable',
+            name: 'AutoUpdateService');
+        return null;
+      }
+
+      // Rename aside first (same dir ⇒ same volume, and avoids ETXTBSY from
+      // overwriting a running executable), then copy the new file in.
+      final backupPath = '$current.before-update';
+      try {
+        if (File(backupPath).existsSync()) await File(backupPath).delete();
+        await File(current).rename(backupPath);
+        await File(newPath).copy(current);
+        await Process.run('chmod', ['+x', current]);
+      } catch (e) {
+        try {
+          if (File(backupPath).existsSync() && !File(current).existsSync()) {
+            await File(backupPath).rename(current);
+          }
+        } catch (_) {}
+        developer.log('Linux self-install swap failed: $e',
+            name: 'AutoUpdateService');
+        return null;
+      }
+
+      try {
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Installed — restarting…';
+      } catch (_) {}
+      try {
+        if (File(backupPath).existsSync()) await File(backupPath).delete();
+      } catch (_) {}
+      try {
+        await File(newPath).delete();
+      } catch (_) {}
+      return current;
+    } catch (e) {
+      developer.log('Linux self-install failed: $e', name: 'AutoUpdateService');
+      return null;
+    }
   }
 
   /// Replaces the currently running macOS bundle with the app from [zipPath].
@@ -781,9 +917,19 @@ class AutoUpdateService {
     final url = info?.htmlUrl.isNotEmpty == true
         ? info!.htmlUrl
         : 'https://github.com/erfanhooman/LexoPlayer/releases/latest';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await _openWebUrl(url);
+  }
+
+  /// Opens an https URL in the system browser (used for release pages and
+  /// mobile asset downloads handed to the OS Download Manager).
+  static Future<void> _openWebUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      developer.log('Could not open $url: $e', name: 'AutoUpdateService');
     }
   }
 

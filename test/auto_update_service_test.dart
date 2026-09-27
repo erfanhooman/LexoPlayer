@@ -72,38 +72,141 @@ void main() {
   });
 
   group(
-    'pickPlatformAsset (macOS self-install ZIP)',
+    'matchAsset (per-platform selection rules)',
     () {
-      test('prefers macOS ZIP over DMG', () {
-        final assets = [
-          {
-            'name': 'LexoPlayer-macOS.dmg',
-            'browser_download_url': 'https://example.com/LexoPlayer-macOS.dmg'
-          },
-          {
-            'name': 'LexoPlayer-macOS.zip',
-            'browser_download_url': 'https://example.com/LexoPlayer-macOS.zip'
-          },
-        ];
-        final picked = pickPlatformAsset(assets);
+      List<Map<String, String>> assets(List<String> names) => [
+            for (final n in names)
+              {
+                'name': n,
+                'browser_download_url': 'https://example.com/$n',
+              }
+          ];
+
+      test('macOS: prefers ZIP over DMG', () {
+        final picked = matchAsset(
+          assets(['LexoPlayer-macOS.dmg', 'LexoPlayer-macOS.zip']),
+          [
+            (n) => n.endsWith('.zip') && n.contains('mac'),
+            (n) => n.endsWith('.dmg'),
+          ],
+        );
         expect(picked, isNotNull);
         expect(picked!['name'], contains('.zip'));
       });
 
-      test('falls back to DMG when no ZIP exists (old releases)', () {
-        final assets = [
-          {
-            'name': 'LexoPlayer-macOS.dmg',
-            'browser_download_url': 'https://example.com/LexoPlayer-macOS.dmg'
-          },
-        ];
-        final picked = pickPlatformAsset(assets);
+      test('macOS: falls back to DMG when no ZIP exists', () {
+        final picked = matchAsset(
+          assets(['LexoPlayer-macOS.dmg']),
+          [
+            (n) => n.endsWith('.zip') && n.contains('mac'),
+            (n) => n.endsWith('.dmg'),
+          ],
+        );
         expect(picked, isNotNull);
         expect(picked!['name'], contains('.dmg'));
       });
+
+      test('windows: picks SETUP exe', () {
+        final picked = matchAsset(
+          assets(['LexoPlayer-macOS.dmg', 'LexoPlayer-Setup-x64.exe']),
+          [(n) => n.endsWith('.exe')],
+        );
+        expect(picked, isNotNull);
+        expect(picked!['name'], contains('.exe'));
+      });
+
+      test('linux: picks AppImage', () {
+        final picked = matchAsset(
+          assets(['LexoPlayer-macOS.dmg', 'LexoPlayer-Linux.AppImage']),
+          [(n) => n.endsWith('.appimage')],
+        );
+        expect(picked, isNotNull);
+        expect(picked!['name'], contains('.appimage'));
+      });
+
+      test('android: picks APK', () {
+        final picked = matchAsset(
+          assets(['LexoPlayer-macOS.dmg', 'LexoPlayer-Android.apk']),
+          [(n) => n.endsWith('.apk')],
+        );
+        expect(picked, isNotNull);
+        expect(picked!['name'], contains('.apk'));
+      });
+
+      test('empty or no match returns null', () {
+        expect(matchAsset([], [(n) => n.endsWith('.exe')]), isNull);
+        expect(
+            matchAsset(
+                assets(['LexoPlayer-macOS.dmg']), [(n) => n.endsWith('.exe')]),
+            isNull);
+      });
+
+      test('live v2.3.3-beta asset set resolves every platform', () {
+        final live = assets([
+          'LexoPlayer-Android.apk',
+          'LexoPlayer-Linux.AppImage',
+          'LexoPlayer-macOS.dmg',
+          'LexoPlayer-macOS.zip',
+          'LexoPlayer-Setup-x64.exe',
+        ]);
+        expect(matchAsset(live, [(n) => n.endsWith('.apk')])!['name'],
+            contains('.apk'));
+        expect(matchAsset(live, [(n) => n.endsWith('.appimage')])!['name'],
+            contains('.appimage'));
+        expect(matchAsset(live, [(n) => n.endsWith('.exe')])!['name'],
+            contains('.exe'));
+        expect(
+            matchAsset(live, [
+              (n) => n.endsWith('.zip') && n.contains('mac'),
+              (n) => n.endsWith('.dmg'),
+            ])!['name'],
+            contains('.zip'));
+      });
     },
-    // Asset preference is Platform-dependent; these expectations only hold
-    // where Platform.isMacOS is true.
-    skip: !Platform.isMacOS,
   );
+
+  group('staged downloads + linux self-install routing', () {
+    test('staged downloads only on desktop', () {
+      expect(stagedDownloadSupported(isAndroid: false, isIOS: false), isTrue);
+      expect(stagedDownloadSupported(isAndroid: true, isIOS: false), isFalse);
+      expect(stagedDownloadSupported(isAndroid: false, isIOS: true), isFalse);
+    });
+
+    test('resolveLinuxAppImagePath prefers APPIMAGE env', () {
+      expect(
+        resolveLinuxAppImagePath(
+          environment: {'APPIMAGE': '/home/u/Apps/LexoPlayer-Linux.AppImage'},
+          executablePath: '/tmp/.mount_XYZ/usr/bin/lexo_player',
+        ),
+        '/home/u/Apps/LexoPlayer-Linux.AppImage',
+      );
+    });
+
+    test('resolveLinuxAppImagePath falls back to .AppImage executable', () {
+      expect(
+        resolveLinuxAppImagePath(
+          environment: {},
+          executablePath: '/home/u/LexoPlayer-Linux.AppImage',
+        ),
+        '/home/u/LexoPlayer-Linux.AppImage',
+      );
+    });
+
+    test('resolveLinuxAppImagePath null for bundle/dev runs', () {
+      expect(
+        resolveLinuxAppImagePath(
+          environment: {},
+          executablePath: '/tmp/.mount_XYZ/usr/bin/lexo_player',
+        ),
+        isNull,
+      );
+      expect(
+        resolveLinuxAppImagePath(
+          environment: {},
+          executablePath: r'C:\Program Files\LexoPlayer\lexo_player.exe',
+        ),
+        isNull,
+      );
+    });
+  });
 }

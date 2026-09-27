@@ -406,7 +406,8 @@ class _AppVersionTile extends ConsumerWidget {
     final pendingReady = pending != null &&
         updateInfo != null &&
         pending.tag == updateInfo.latestTag;
-    final selfInstall = pendingReady && pending.isSelfInstall;
+    final restartInstall =
+        pendingReady && (pending.isSelfInstall || pending.isInPlaceAppImage);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -518,11 +519,11 @@ class _AppVersionTile extends ConsumerWidget {
                               : () =>
                                   AutoUpdateService.installPendingUpdate(ref),
                           icon: Icon(
-                              selfInstall
+                              restartInstall
                                   ? Icons.restart_alt_rounded
                                   : Icons.file_open_rounded,
                               size: 14),
-                          label: Text(selfInstall
+                          label: Text(restartInstall
                               ? (isPersian
                                   ? 'نصب و اجرای مجدد'
                                   : 'Install & Restart')

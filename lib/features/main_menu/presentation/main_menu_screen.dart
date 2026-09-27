@@ -1971,7 +1971,9 @@ class _AppUpdateDialog extends ConsumerWidget {
     final progress = ref.watch(appUpdateProgressProvider);
     final pending = ref.watch(pendingUpdateProvider);
     final pendingReady = pending != null && pending.tag == info.latestTag;
-    final selfInstall = pendingReady && pending.isSelfInstall;
+    final restartInstall =
+        pendingReady && (pending.isSelfInstall || pending.isInPlaceAppImage);
+    final browserOnly = Platform.isAndroid || Platform.isIOS;
 
     return AlertDialog(
       backgroundColor: const Color(0xFF16151E),
@@ -2019,11 +2021,16 @@ class _AppUpdateDialog extends ConsumerWidget {
                 ? (isPersian
                     ? 'فایل نصب در پوشه Downloads/LexoPlayer-Updates ذخیره شده و در فایندر قابل مشاهده است. هر وقت آماده بودید نصب کنید — نیاز به دانلود دوباره نیست.'
                     : 'The installer is saved in Downloads/LexoPlayer-Updates and revealed in Finder. Install whenever you are ready — no need to download again.')
-                : (isPersian
-                    ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. با دانلود، فایل نصب در پوشه LexoPlayer-Updates ذخیره و در فایندر نمایش داده می‌شود.'
-                    : (info.assetName?.toLowerCase().endsWith('.zip') == true
-                        ? 'A new LexoPlayer release is available on GitHub. Downloading saves it to the LexoPlayer-Updates folder and reveals it in Finder — then one click installs it and restarts the app.'
-                        : 'A new LexoPlayer release is available on GitHub. Downloading saves the ${info.assetName ?? 'release file'} to the LexoPlayer-Updates folder and reveals it in Finder.')),
+                : browserOnly
+                    ? (isPersian
+                        ? 'نسخه جدید در گیت‌هاب منتشر شده است. با دانلود، فایل در مرورگر دانلود می‌شود؛ سپس روی آن بزنید تا نصب شود.'
+                        : 'A new LexoPlayer release is available on GitHub. Downloading fetches the file in your browser — then tap it to install (allow “install unknown apps” once when asked).')
+                    : (isPersian
+                        ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. با دانلود، فایل نصب در پوشه LexoPlayer-Updates ذخیره و در فایندر نمایش داده می‌شود.'
+                        : (info.assetName?.toLowerCase().endsWith('.zip') ==
+                                true
+                            ? 'A new LexoPlayer release is available on GitHub. Downloading saves it to the LexoPlayer-Updates folder and reveals it in Finder — then one click installs it and restarts the app.'
+                            : 'A new LexoPlayer release is available on GitHub. Downloading saves the ${info.assetName ?? 'release file'} to the LexoPlayer-Updates folder and reveals it in Finder.')),
             style: const TextStyle(color: Color(0xFF9E9D9F), fontSize: 12),
           ),
           if (info.releaseNotes.trim().isNotEmpty) ...[
@@ -2116,10 +2123,12 @@ class _AppUpdateDialog extends ConsumerWidget {
           child: Text(downloading
               ? (isPersian ? 'در حال دانلود…' : 'Downloading…')
               : pendingReady
-                  ? (selfInstall
+                  ? (restartInstall
                       ? (isPersian ? 'نصب و اجرای مجدد' : 'Install & Restart')
                       : (isPersian ? 'باز کردن نصب‌کننده' : 'Open Installer'))
-                  : (isPersian ? 'دانلود' : 'Download')),
+                  : browserOnly
+                      ? (isPersian ? 'دانلود در مرورگر' : 'Download in Browser')
+                      : (isPersian ? 'دانلود' : 'Download')),
         ),
       ],
     );
