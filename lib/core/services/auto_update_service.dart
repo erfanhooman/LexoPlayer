@@ -386,18 +386,7 @@ class AutoUpdateService {
         if (!downloadedIds.contains(entry.id)) continue;
 
         final savedMd5 = prefs.getString(dictMd5Key(entry.id));
-
-        // Missing saved MD5 (e.g. installed before this tracking existed):
-        // record it only when it already matches, otherwise update.
-        if (savedMd5 == null) {
-          if (entry.md5Checksum.isEmpty) continue;
-          // File on disk was verified at download time against an older
-          // manifest; without a baseline we cannot prove staleness, so we
-          // baseline it now instead of forcing a 30 MB re-download.
-          await recordDictionaryChecksum(ref, entry.id, entry.md5Checksum);
-          continue;
-        }
-        if (savedMd5 == entry.md5Checksum) continue;
+        if (savedMd5 != null && savedMd5 == entry.md5Checksum) continue;
 
         developer.log(
           'New dictionary version detected for "${entry.displayName}". Auto-updating from GitHub...',

@@ -1,6 +1,6 @@
 {
-  "last_updated": "2026-08-18T17:20:00Z",
-  "version": 2,
+  "last_updated": "2026-09-27T13:00:00Z",
+  "version": 3,
   "dictionaries": {
     "monolingual": [],
     "bilingual": [],
@@ -10,10 +10,10 @@
         "source_language": "en",
         "native_language": "fa",
         "display_name": "LexoEngine Unified Dictionary (EN-FA)",
-        "description": "Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.",
-        "remote_url": "https://raw.githubusercontent.com/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip",
-        "file_size_bytes": 30303799,
-        "md5_checksum": "761061128742a65087ebb71239f2369c"
+        "description": "Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, 246k+ word senses, 268k+ idioms, and complete Persian translations.",
+        "remote_url": "https://media.githubusercontent.com/media/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip",
+        "file_size_bytes": 274299372,
+        "md5_checksum": "4e9a3296424e5869fcc9f0784f3168b1"
       }
     ]
   }

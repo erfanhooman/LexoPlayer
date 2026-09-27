@@ -16,6 +16,7 @@ import 'package:lexo_player/core/services/auto_update_service.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
 import 'package:lexo_player/features/dictionary/presentation/dictionary_panel.dart';
+import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/features/settings/presentation/app_settings_overlay.dart';
 
@@ -279,12 +280,89 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   }
 
   Widget _buildDashboard(List<String> recentVideos) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final staleDicts = ref.watch(dictUpdatesAvailableProvider);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 0, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Dictionary Update Notification Banner on Dashboard ───────────
+          if (staleDicts.isNotEmpty) ...[
+            GestureDetector(
+              onTap: () => setState(() => _activeNav = 'Dictionaries'),
+              child: GlassContainer(
+                borderRadius: BorderRadius.circular(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: kNeutralAccent.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: kNeutralAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: Icon(Icons.sync_rounded, color: kNeutralAccent, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isPersian
+                                ? 'بروزرسانی جدید واژه‌نامه موجود است'
+                                : 'Dictionary update available',
+                            style: appStyle(
+                              isPersian: isPersian,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isPersian
+                                ? '${staleDicts.length} نسخه جدید واژه‌نامه آماده دانلود و نصب است'
+                                : '${staleDicts.length} new dictionary update(s) ready to install.',
+                            style: appStyle(
+                              isPersian: isPersian,
+                              fontSize: 12,
+                              color: const Color(0xFF9E9D9F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => setState(() => _activeNav = 'Dictionaries'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kNeutralAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.download_rounded, size: 16),
+                      label: Text(
+                        isPersian ? 'بروزرسانی' : 'Update',
+                        style: appStyle(
+                          isPersian: isPersian,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
           // Featured Continue Watching Hero Card — only when history exists.
           // No hardcoded fallback: empty history shows no hero.
           if (recentVideos.isNotEmpty) ...[
@@ -424,7 +502,12 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                       label: isPersian ? 'خانه' : 'Home',
                     ),
                     BottomNavigationBarItem(
-                      icon: const Icon(Icons.menu_book_rounded),
+                      icon: Badge(
+                        isLabelVisible: ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
+                        backgroundColor: kNeutralAccent,
+                        smallSize: 8,
+                        child: const Icon(Icons.menu_book_rounded),
+                      ),
                       label: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
                     ),
                     BottomNavigationBarItem(
@@ -486,6 +569,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                       _MainHeaderWidget(
                         activeNav: _activeNav,
                         onOpenSettings: () => AppSettingsOverlay.show(context),
+                        onOpenDictionaries: () => setState(() => _activeNav = 'Dictionaries'),
                       ),
 
                       // Main Scrollable Dashboard Area
@@ -688,6 +772,7 @@ class _SidebarWidget extends ConsumerWidget {
                     title: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
                     icon: Icons.menu_book_rounded,
                     isActive: activeNav == 'Dictionaries',
+                    hasBadge: ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
                     onTap: () => onNavSelect('Dictionaries'),
                   ),
                   const SizedBox(height: 4),
@@ -712,12 +797,14 @@ class _SidebarNavItem extends StatelessWidget {
   final IconData icon;
   final bool isActive;
   final VoidCallback onTap;
+  final bool hasBadge;
 
   const _SidebarNavItem({
     required this.title,
     required this.icon,
     required this.isActive,
     required this.onTap,
+    this.hasBadge = false,
   });
 
   @override
@@ -741,10 +828,15 @@ class _SidebarNavItem extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isActive ? kNeutralAccent : const Color(0xFF9E9D9F),
+                Badge(
+                  isLabelVisible: hasBadge,
+                  backgroundColor: kNeutralAccent,
+                  smallSize: 8,
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isActive ? kNeutralAccent : const Color(0xFF9E9D9F),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -771,10 +863,12 @@ class _SidebarNavItem extends StatelessWidget {
 class _MainHeaderWidget extends ConsumerWidget {
   final String activeNav;
   final VoidCallback onOpenSettings;
+  final VoidCallback? onOpenDictionaries;
 
   const _MainHeaderWidget({
     required this.activeNav,
     required this.onOpenSettings,
+    this.onOpenDictionaries,
   });
 
   String _getTimeBasedGreeting(bool isPersian) {
@@ -796,6 +890,11 @@ class _MainHeaderWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(appLanguageProvider);
     final isPersian = lang == 'fa';
+    final staleDicts = ref.watch(dictUpdatesAvailableProvider);
+    final appUpdate = ref.watch(appUpdateInfoProvider);
+    final hasDictUpdate = staleDicts.isNotEmpty;
+    final hasAppUpdate = appUpdate?.hasUpdate ?? false;
+    final hasNotification = hasDictUpdate || hasAppUpdate;
 
     return DragToMoveArea(
       child: Padding(
@@ -839,38 +938,74 @@ class _MainHeaderWidget extends ConsumerWidget {
 
                 const SizedBox(width: 12),
 
-                // Notification Bell Icon with Badge
-                Stack(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                // Interactive Notification Bell Icon Button with Badge
+                IconButton(
+                  onPressed: () {
+                    if (hasDictUpdate) {
+                      onOpenDictionaries?.call();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isPersian
+                                ? 'بروزرسانی واژه‌نامه موجود است (${staleDicts.length})'
+                                : 'Dictionary update available (${staleDicts.length})',
+                          ),
+                          backgroundColor: const Color(0xFF1E1E26),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 3),
                         ),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_none_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    Positioned(
-                      right: 9,
-                      top: 9,
-                      child: Container(
-                        width: 7,
-                        height: 7,
+                      );
+                    } else if (hasAppUpdate) {
+                      onOpenSettings();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isPersian
+                                ? 'همه بخش‌ها (برنامه و واژه‌نامه‌ها) بروز هستند'
+                                : 'Everything is up to date (App & Dictionaries)',
+                          ),
+                          backgroundColor: const Color(0xFF1E1E26),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  tooltip: isPersian ? 'اعلانات' : 'Notifications',
+                  icon: Stack(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: kNeutralAccent,
+                          color: Colors.white.withValues(alpha: 0.06),
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                          size: 20,
                         ),
                       ),
-                    ),
-                  ],
+                      if (hasNotification)
+                        Positioned(
+                          right: 9,
+                          top: 9,
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: kNeutralAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(width: 12),

@@ -41,6 +41,8 @@ class ManifestService {
   /// Change this to point to your production or staging server.
   static const String _manifestUrl =
       'https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json';
+  static const String _fallbackManifestUrl =
+      'https://raw.githubusercontent.com/erfanhooman/LexoPlayer/main/dictionaries/manifest.json';
 
   /// File name used when persisting the manifest to local storage.
   static const String _cacheFileName = 'manifest_cache.json';
@@ -80,64 +82,46 @@ class ManifestService {
   /// Throws an [Exception] only when *both* the network request and the local
   /// cache are unavailable.
   Future<ManifestData> fetchManifest() async {
-    try {
-      developer.log(
-        'Fetching manifest from $_manifestUrl …',
-        name: 'ManifestService',
-      );
-
-      final response = await _dio.get<String>(_manifestUrl);
-
-      if (response.statusCode == 200 && response.data != null) {
-        final Map<String, dynamic> json =
-            jsonDecode(response.data!) as Map<String, dynamic>;
-
-        final manifestData = ManifestData.fromJson(json);
-
-        // Persist in the background – don't block the caller.
-        _cacheManifest(json).catchError((Object e) {
-          developer.log(
-            'Non-critical: failed to cache manifest – $e',
-            name: 'ManifestService',
-            level: 900, // WARNING
-          );
-        });
-
+    for (final url in [_manifestUrl, _fallbackManifestUrl]) {
+      try {
         developer.log(
-          'Manifest fetched successfully '
-          '(version ${manifestData.version}, '
-          '${manifestData.all.length} dictionaries).',
+          'Fetching manifest from $url …',
           name: 'ManifestService',
         );
 
-        return manifestData;
-      }
+        final response = await _dio.get<String>(url);
 
-      // Unexpected status code – fall through to cache fallback.
-      developer.log(
-        'Unexpected status ${response.statusCode}. '
-        'Falling back to cached manifest.',
-        name: 'ManifestService',
-        level: 900,
-      );
-    } on DioException catch (e) {
-      developer.log(
-        'Network error while fetching manifest: ${e.message}',
-        name: 'ManifestService',
-        level: 900,
-      );
-    } on FormatException catch (e) {
-      developer.log(
-        'Failed to parse remote manifest JSON: $e',
-        name: 'ManifestService',
-        level: 1000, // SEVERE
-      );
-    } catch (e) {
-      developer.log(
-        'Unexpected error fetching manifest: $e',
-        name: 'ManifestService',
-        level: 1000,
-      );
+        if (response.statusCode == 200 && response.data != null) {
+          final Map<String, dynamic> json =
+              jsonDecode(response.data!) as Map<String, dynamic>;
+
+          final manifestData = ManifestData.fromJson(json);
+
+          // Persist in the background – don't block the caller.
+          _cacheManifest(json).catchError((Object e) {
+            developer.log(
+              'Non-critical: failed to cache manifest – $e',
+              name: 'ManifestService',
+              level: 900, // WARNING
+            );
+          });
+
+          developer.log(
+            'Manifest fetched successfully '
+            '(version ${manifestData.version}, '
+            '${manifestData.all.length} dictionaries).',
+            name: 'ManifestService',
+          );
+
+          return manifestData;
+        }
+      } catch (e) {
+        developer.log(
+          'Error fetching manifest from $url: $e. Trying next source...',
+          name: 'ManifestService',
+          level: 900,
+        );
+      }
     }
 
     // ---- Fallback: try the local cache ----
@@ -163,8 +147,8 @@ class ManifestService {
   /// https://erfanhooman.github.io/LexoPlayer/dictionaries/manifest.json
   /// so offline fallback still passes checksum verification.
   static final ManifestData defaultManifest = ManifestData(
-    lastUpdated: DateTime.parse('2026-08-18T17:20:00Z'),
-    version: 2,
+    lastUpdated: DateTime.parse('2026-09-27T13:00:00Z'),
+    version: 3,
     monolingual: const [],
     bilingual: const [],
     unified: const [
@@ -174,11 +158,11 @@ class ManifestService {
         nativeLanguage: 'fa',
         displayName: 'LexoEngine Unified Dictionary (EN-FA)',
         description:
-            'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, word senses, and Persian translations.',
+            'Comprehensive unified dictionary featuring fast Aho-Corasick automaton lookup, 246k+ word senses, 268k+ idioms, and complete Persian translations.',
         remoteUrl:
-            'https://raw.githubusercontent.com/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip',
-        fileSizeBytes: 30303799,
-        md5Checksum: '761061128742a65087ebb71239f2369c',
+            'https://media.githubusercontent.com/media/erfanhooman/LexoPlayer/main/dictionaries/dictionary.db.zip',
+        fileSizeBytes: 274299372,
+        md5Checksum: '4e9a3296424e5869fcc9f0784f3168b1',
         type: DictionaryType.unified,
       ),
     ],
