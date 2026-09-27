@@ -773,124 +773,282 @@ class _DownloadHubBox extends ConsumerWidget {
               final progress = progressMap[entry.id];
               final isDownloading = progress != null;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: isStale
+                      ? Colors.amber.withValues(alpha: 0.06)
+                      : isDownloaded
+                          ? Colors.teal.withValues(alpha: 0.05)
+                          : Colors.white.withValues(alpha: 0.03),
+                  border: Border.all(
+                    color: isStale
+                        ? Colors.amber.withValues(alpha: 0.3)
+                        : isDownloaded
+                            ? Colors.teal.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.08),
+                    width: isStale ? 1.5 : 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: _accent.withValues(alpha: 0.12),
-                        border:
-                            Border.all(color: _accent.withValues(alpha: 0.3)),
-                      ),
-                      child: Icon(
-                        isStale
-                            ? Icons.update_rounded
-                            : isDownloaded
-                                ? Icons.check_circle_rounded
-                                : Icons.cloud_download_outlined,
-                        color: isStale
-                            ? Colors.amber
-                            : isDownloaded
-                                ? Colors.tealAccent
-                                : _accent,
-                        size: 20,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: isStale
+                                ? Colors.amber.withValues(alpha: 0.15)
+                                : isDownloaded
+                                    ? Colors.teal.withValues(alpha: 0.15)
+                                    : _accent.withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: isStale
+                                  ? Colors.amber.withValues(alpha: 0.4)
+                                  : isDownloaded
+                                      ? Colors.teal.withValues(alpha: 0.4)
+                                      : _accent.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Icon(
+                            isStale
+                                ? Icons.update_rounded
+                                : isDownloaded
+                                    ? Icons.check_circle_rounded
+                                    : Icons.cloud_download_outlined,
+                            color: isStale
+                                ? Colors.amber
+                                : isDownloaded
+                                    ? Colors.tealAccent
+                                    : _accent,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    entry.displayName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  // Size Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.15)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.folder_zip_outlined,
+                                            size: 11, color: Colors.white70),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          entry.formattedFileSize,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isStale)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color: Colors.amber.withValues(alpha: 0.5)),
+                                      ),
+                                      child: Text(
+                                        isPersian ? 'بروزرسانی جدید' : 'UPDATE AVAILABLE',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.amber,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                entry.description,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: Color(0xFFB0B0B8),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+                    // Action footer
+                    if (isDownloading) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                          backgroundColor: Colors.white10,
+                          color: _accent,
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(entry.displayName,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white)),
-                          const SizedBox(height: 2),
                           Text(
-                              '${entry.description} • ${entry.formattedFileSize}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: Color(0xFF9E9D9F)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
+                            isPersian ? 'در حال دریافت…' : 'Downloading…',
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF9E9D9F)),
+                          ),
+                          Text(
+                            progress > 0
+                                ? '${(progress * 100).toStringAsFixed(0)}%'
+                                : '',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _accent,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    if (isDownloading)
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          value: progress > 0 ? progress : null,
-                          strokeWidth: 2.5,
-                          color: _accent,
-                        ),
-                      )
-                    else if (isStale)
-                      ElevatedButton.icon(
-                        onPressed: () => downloadDictionaryWithUi(
-                          ref,
-                          context,
-                          entry,
-                          successMessage: isPersian
-                              ? '"${entry.displayName}" به آخرین نسخه بروز شد!'
-                              : '"${entry.displayName}" updated to the latest version!',
-                        ),
-                        icon: const Icon(Icons.update_rounded, size: 14),
-                        label: Text(isPersian ? 'بروزرسانی' : 'Update'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          textStyle: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      )
-                    else if (isDownloaded)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.teal.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: Colors.teal.withValues(alpha: 0.4)),
-                        ),
-                        child: Text(
-                          isPersian ? 'نصب شده' : 'Installed',
-                          style: const TextStyle(
-                              color: Colors.tealAccent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      )
-                    else
-                      ElevatedButton.icon(
-                        onPressed: () =>
-                            _downloadDictionary(ref, context, entry),
-                        icon: const Icon(Icons.download_rounded, size: 14),
-                        label: Text(isPersian ? 'دانلود' : 'Download'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          textStyle: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                    ] else ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (isStale)
+                            ElevatedButton.icon(
+                              onPressed: () => downloadDictionaryWithUi(
+                                ref,
+                                context,
+                                entry,
+                                successMessage: isPersian
+                                    ? '"${entry.displayName}" به آخرین نسخه بروز شد!'
+                                    : '"${entry.displayName}" updated to the latest version!',
+                              ),
+                              icon: const Icon(Icons.upgrade_rounded, size: 16),
+                              label: Text(
+                                isPersian
+                                    ? 'بروزرسانی واژه‌نامه (${entry.formattedFileSize})'
+                                    : 'Update Dictionary (${entry.formattedFileSize})',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                textStyle: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 3,
+                              ),
+                            )
+                          else if (isDownloaded) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: Colors.teal.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_rounded,
+                                      size: 14, color: Colors.tealAccent),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isPersian
+                                        ? 'نصب شده و به‌روز است'
+                                        : 'Installed & Up to Date',
+                                    style: const TextStyle(
+                                      color: Colors.tealAccent,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: () =>
+                                  _downloadDictionary(ref, context, entry),
+                              icon: const Icon(Icons.refresh_rounded, size: 13),
+                              label: Text(isPersian ? 'نصب مجدد' : 'Reinstall'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white60,
+                                side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.15)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                textStyle: const TextStyle(fontSize: 11),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ] else
+                            ElevatedButton.icon(
+                              onPressed: () =>
+                                  _downloadDictionary(ref, context, entry),
+                              icon: const Icon(Icons.download_rounded, size: 16),
+                              label: Text(
+                                isPersian
+                                    ? 'دانلود واژه‌نامه (${entry.formattedFileSize})'
+                                    : 'Download Dictionary (${entry.formattedFileSize})',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _accent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                textStyle: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                    ],
                   ],
                 ),
               );
