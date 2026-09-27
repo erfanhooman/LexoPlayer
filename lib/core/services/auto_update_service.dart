@@ -141,6 +141,14 @@ Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
 
   String? want;
   if (Platform.isMacOS) {
+    // Prefer the self-install ZIP (auto-install + relaunch, no drag needed).
+    // Fall back to the DMG (manual drag-to-Applications) when no ZIP exists
+    // — e.g. releases published before the ZIP asset was added.
+    for (final e in names) {
+      if (e.name.endsWith('.zip') && e.name.contains('mac')) {
+        return {'name': e.name, 'url': e.url};
+      }
+    }
     want = '.dmg';
   } else if (Platform.isWindows) {
     want = '.exe';
@@ -162,6 +170,21 @@ Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
 }
 
 String dictMd5Key(String dictId) => 'dict_md5_$dictId';
+
+/// Resolves the running `<Name>.app` bundle from an executable path.
+///
+/// E.g. `/Applications/Lexo.app/Contents/MacOS/lexo_player` →
+/// `/Applications/Lexo.app`. Returns null when no `.app` ancestor exists
+/// (Windows/Linux/Android layouts).
+String? findMacAppBundle(String executablePath) {
+  final parts = p.split(executablePath);
+  for (var i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].toLowerCase().endsWith('.app')) {
+      return p.joinAll(parts.sublist(0, i + 1));
+    }
+  }
+  return null;
+}
 
 class AutoUpdateService {
   static final Dio _dio = Dio(BaseOptions(
@@ -417,9 +440,12 @@ class AutoUpdateService {
     }
   }
 
-  /// Downloads the platform installer for the pending update and opens it
-  /// so the OS installer takes over (DMG on macOS, Setup EXE on Windows,
-  /// AppImage on Linux, APK on Android).
+  /// Downloads the platform installer for the pending update and installs it.
+  ///
+  /// macOS + ZIP asset: fully automatic — the running bundle is replaced in
+  /// place and the app relaunches itself (no drag-to-Applications needed).
+  /// Anything else (DMG/EXE/AppImage/APK): downloads and opens the file so
+  /// the OS installer / user takes over, as before.
   static Future<String?> downloadAndInstallUpdate(
     dynamic ref, {
     void Function(int received, int total)? onProgress,
@@ -451,8 +477,25 @@ class AutoUpdateService {
         },
       );
       ref.read(appUpdateProgressProvider.notifier).state = 1.0;
-      ref.read(appUpdateStatusProvider.notifier).state =
-          'Downloaded ${info.latestTag} — opening installer…';
+
+      // macOS self-install path (ZIP preferred by pickPlatformAsset).
+      if (Platform.isMacOS && savePath.toLowerCase().endsWith('.zip')) {
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Downloaded ${info.latestTag} — installing & restarting…';
+        final newBundle = await _installMacZipUpdate(ref, savePath);
+        if (newBundle != null) {
+          // Swap succeeded — launch the new bundle, terminate this process.
+          await Process.start('open', [newBundle]);
+          exit(0);
+        }
+        // Self-install not possible here (e.g. running from a DMG, or
+        // /Applications isn't writable) — fall through to manual flow.
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Automatic install needs write access — opening the download for manual install…';
+      } else {
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Downloaded ${info.latestTag} — opening installer…';
+      }
       await _openFile(savePath);
       return savePath;
     } catch (e) {
@@ -464,6 +507,104 @@ class AutoUpdateService {
       return null;
     } finally {
       ref.read(appUpdateDownloadingProvider.notifier).state = false;
+    }
+  }
+
+  /// Replaces the currently running macOS bundle with the app from [zipPath].
+  ///
+  /// Returns the new bundle path on success (the caller launches it and
+  /// exits), or null when self-install isn't possible (the caller falls back
+  /// to opening the file for a manual install).
+  static Future<String?> _installMacZipUpdate(
+      dynamic ref, String zipPath) async {
+    try {
+      final bundlePath = findMacAppBundle(Platform.resolvedExecutable);
+      if (bundlePath == null) return null;
+      // Running straight from a mounted DMG — can't replace in place.
+      if (bundlePath.startsWith('/Volumes/')) return null;
+      final parentDir = p.dirname(bundlePath);
+
+      // The bundle's parent must be writable (no admin rights to escalate to
+      // silently — a password prompt here would be worse than the old drag).
+      final probe = File(p.join(parentDir,
+          '.lexo_write_test_${DateTime.now().millisecondsSinceEpoch}'));
+      try {
+        await probe.create();
+        await probe.delete();
+      } catch (_) {
+        developer.log('Self-install skipped: $parentDir not writable',
+            name: 'AutoUpdateService');
+        return null;
+      }
+
+      final tmp = await Directory.systemTemp.createTemp('lexo_update_');
+      try {
+        // ditto preserves symlinks, permissions and resource forks inside
+        // the .app bundle — safer than a pure-Dart unzip for app bundles.
+        final extract =
+            await Process.run('ditto', ['-x', '-k', zipPath, tmp.path]);
+        if (extract.exitCode != 0) return null;
+
+        Directory? newApp;
+        for (final e in tmp.listSync()) {
+          if (e is Directory && e.path.toLowerCase().endsWith('.app')) {
+            newApp = e;
+            break;
+          }
+        }
+        if (newApp == null) return null;
+
+        // Belt-and-braces: in-app downloads carry no quarantine flag, but if
+        // one is present the relaunched app would hit Gatekeeper.
+        try {
+          await Process.run(
+              'xattr', ['-dr', 'com.apple.quarantine', newApp.path]);
+        } catch (_) {}
+
+        // Swap aside → copy new in (ditto, same fidelity as extract).
+        final backupPath = '$bundlePath.before-update';
+        try {
+          if (Directory(backupPath).existsSync()) {
+            await Directory(backupPath).delete(recursive: true);
+          }
+          await Directory(bundlePath).rename(backupPath);
+          final copy = await Process.run('ditto', [newApp.path, bundlePath]);
+          if (copy.exitCode != 0) throw Exception('ditto copy failed');
+        } catch (e) {
+          // Restore the old bundle so the user is never left app-less.
+          try {
+            if (Directory(backupPath).existsSync() &&
+                !Directory(bundlePath).existsSync()) {
+              await Directory(backupPath).rename(bundlePath);
+            }
+          } catch (_) {}
+          developer.log('Self-install swap failed: $e',
+              name: 'AutoUpdateService');
+          return null;
+        }
+
+        try {
+          ref.read(appUpdateStatusProvider.notifier).state =
+              'Installed — restarting…';
+        } catch (_) {}
+
+        try {
+          if (Directory(backupPath).existsSync()) {
+            await Directory(backupPath).delete(recursive: true);
+          }
+        } catch (_) {}
+        try {
+          await File(zipPath).delete();
+        } catch (_) {}
+        return bundlePath;
+      } finally {
+        try {
+          if (tmp.existsSync()) await tmp.delete(recursive: true);
+        } catch (_) {}
+      }
+    } catch (e) {
+      developer.log('macOS self-install failed: $e', name: 'AutoUpdateService');
+      return null;
     }
   }
 

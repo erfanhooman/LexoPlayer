@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
 
@@ -33,4 +35,60 @@ void main() {
       expect(compareVersions('2.2.0-beta+4', 'v2.2.0-beta'), 0);
     });
   });
+
+  group('findMacAppBundle', () {
+    test('resolves .app ancestor from executable path', () {
+      expect(
+        findMacAppBundle('/Applications/Lexo.app/Contents/MacOS/lexo_player'),
+        '/Applications/Lexo.app',
+      );
+      expect(
+        findMacAppBundle(
+            '/Users/me/Downloads/LexoPlayer-macOS/Lexo.app/Contents/MacOS/Lexo'),
+        '/Users/me/Downloads/LexoPlayer-macOS/Lexo.app',
+      );
+    });
+
+    test('returns null without .app ancestor', () {
+      expect(findMacAppBundle('/usr/bin/lexo_player'), isNull);
+      expect(
+          findMacAppBundle('C:\\Program Files\\Lexo\\lexo_player.exe'), isNull);
+    });
+  });
+
+  group(
+    'pickPlatformAsset (macOS self-install ZIP)',
+    () {
+      test('prefers macOS ZIP over DMG', () {
+        final assets = [
+          {
+            'name': 'LexoPlayer-macOS.dmg',
+            'browser_download_url': 'https://example.com/LexoPlayer-macOS.dmg'
+          },
+          {
+            'name': 'LexoPlayer-macOS.zip',
+            'browser_download_url': 'https://example.com/LexoPlayer-macOS.zip'
+          },
+        ];
+        final picked = pickPlatformAsset(assets);
+        expect(picked, isNotNull);
+        expect(picked!['name'], contains('.zip'));
+      });
+
+      test('falls back to DMG when no ZIP exists (old releases)', () {
+        final assets = [
+          {
+            'name': 'LexoPlayer-macOS.dmg',
+            'browser_download_url': 'https://example.com/LexoPlayer-macOS.dmg'
+          },
+        ];
+        final picked = pickPlatformAsset(assets);
+        expect(picked, isNotNull);
+        expect(picked!['name'], contains('.dmg'));
+      });
+    },
+    // Asset preference is Platform-dependent; these expectations only hold
+    // where Platform.isMacOS is true.
+    skip: !Platform.isMacOS,
+  );
 }

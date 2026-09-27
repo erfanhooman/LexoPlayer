@@ -2006,8 +2006,10 @@ class _AppUpdateDialog extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             isPersian
-                ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. برای نصب، فایل مخصوص سیستم‌عامل شما دانلود و اجرا می‌شود.'
-                : 'A new LexoPlayer release is available on GitHub. Downloading installs the ${info.assetName ?? 'release file'} for your OS.',
+                ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. با دانلود، نسخه جدید به‌صورت خودکار نصب و برنامه دوباره اجرا می‌شود.'
+                : (info.assetName?.toLowerCase().endsWith('.zip') == true
+                    ? 'A new LexoPlayer release is available on GitHub. Downloading installs it automatically and restarts the app — no drag needed.'
+                    : 'A new LexoPlayer release is available on GitHub. Downloading installs the ${info.assetName ?? 'release file'} for your OS.'),
             style: const TextStyle(color: Color(0xFF9E9D9F), fontSize: 12),
           ),
           if (info.releaseNotes.trim().isNotEmpty) ...[

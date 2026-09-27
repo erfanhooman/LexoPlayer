@@ -83,6 +83,11 @@ jobs:
           cd build/macos/Build/Products/Release
           hdiutil create -volname "LexoPlayer" -srcfolder Lexo.app -ov -format UDZO "$GITHUB_WORKSPACE/output/LexoPlayer-macOS.dmg"
 
+      - name: Create macOS ZIP Artifact (for in-app auto-install)
+        run: |
+          cd build/macos/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent Lexo.app "$GITHUB_WORKSPACE/output/LexoPlayer-macOS.zip"
+
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
         with:
