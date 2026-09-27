@@ -1,11 +1,19 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/manifest_service.dart';
 import 'package:lexo_player/core/services/dict_storage_manager.dart';
 import 'package:lexo_player/core/services/dict_download_service.dart';
+
+/// SharedPreferences key prefix for installed manifest checksums
+/// (`dict_md5_<dictId>` → md5 hex of the installed file).
+const kDictMd5Prefix = 'dict_md5_';
+
+/// Builds the checksum prefs key for [dictId].
+String dictMd5Key(String dictId) => '$kDictMd5Prefix$dictId';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service singletons
@@ -69,6 +77,37 @@ final manualDictEntriesProvider =
 final downloadProgressProvider =
     StateProvider<Map<String, double>>((ref) => const {});
 
+/// Manifest MD5 recorded at install time, per downloaded dictionary ID.
+///
+/// Compared against the remote manifest to detect available updates.
+/// Hydrated at startup; updated on every successful install.
+final dictChecksumProvider =
+    StateProvider<Map<String, String>>((ref) => const {});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Available updates (installed but stale vs the remote manifest)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Dictionaries that are installed locally but whose manifest checksum has
+/// changed since install — i.e. a newer version is available to install.
+///
+/// Empty while the manifest is loading, when nothing is installed, or when
+/// everything is up to date (including right after a silent auto-update).
+final dictUpdatesAvailableProvider = Provider<List<DictionaryEntry>>((ref) {
+  final manifest = ref.watch(manifestDataProvider).valueOrNull;
+  if (manifest == null) return const [];
+  final downloaded = ref.watch(downloadedDictIdsProvider);
+  if (downloaded.isEmpty) return const [];
+  final checksums = ref.watch(dictChecksumProvider);
+  return manifest.all
+      .where((e) =>
+          downloaded.contains(e.id) &&
+          e.md5Checksum.isNotEmpty &&
+          checksums[e.id] != null &&
+          checksums[e.id] != e.md5Checksum)
+      .toList();
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Download helper actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,4 +123,22 @@ Future<void> hydrateDownloadedIds(WidgetRef ref) async {
 
   final manualEntries = await storageManager.getManualDictEntries();
   ref.read(manualDictEntriesProvider.notifier).state = manualEntries;
+
+  // Installed manifest checksums (baseline for update detection).
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final checksums = <String, String>{};
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith(kDictMd5Prefix)) {
+        final value = prefs.getString(key);
+        if (value != null && value.isNotEmpty) {
+          checksums[key.substring(kDictMd5Prefix.length)] = value;
+        }
+      }
+    }
+    ref.read(dictChecksumProvider.notifier).state = checksums;
+  } catch (e) {
+    developer.log('Failed to hydrate dictionary checksums: $e',
+        name: 'ManifestProviders');
+  }
 }

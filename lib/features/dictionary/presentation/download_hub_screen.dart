@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
+import 'package:lexo_player/features/dictionary/data/dict_download_actions.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
 import 'package:lexo_player/features/dictionary/data/dict_selection_providers.dart';
 
@@ -384,6 +385,7 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
 
       // Persist checksum baseline so auto-update can diff next launch.
       await AutoUpdateService.recordDictionaryChecksum(
+        ref,
         widget.entry.id,
         widget.entry.md5Checksum,
       );
@@ -483,6 +485,10 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
   Widget build(BuildContext context) {
     final installedList = ref.watch(downloadedDictIdsProvider);
     final isInstalled = installedList.contains(widget.entry.id);
+    final isStale = isInstalled &&
+        ref
+            .watch(dictUpdatesAvailableProvider)
+            .any((e) => e.id == widget.entry.id);
 
     final progressMap = ref.watch(downloadProgressProvider);
     final progress = progressMap[widget.entry.id];
@@ -530,17 +536,23 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
           width: isDownloading ? 100 : 110,
           child: _isProcessing && isDownloading
               ? _DownloadProgressBar(progress: progress)
-              : isInstalled
+              : isStale
                   ? Align(
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
-                        onPressed: _handleDelete,
-                        icon: Icon(Icons.delete_outline_rounded,
-                            size: 16, color: theme.colorScheme.error),
-                        label: Text(
-                          'REMOVE',
+                        onPressed: () => downloadDictionaryWithUi(
+                          ref,
+                          context,
+                          widget.entry,
+                          successMessage:
+                              '"${widget.entry.displayName}" updated to the latest version!',
+                        ),
+                        icon: const Icon(Icons.update_rounded,
+                            size: 16, color: Colors.amber),
+                        label: const Text(
+                          'UPDATE',
                           style: TextStyle(
-                            color: theme.colorScheme.error,
+                            color: Colors.amber,
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
                             letterSpacing: 0.5,
@@ -549,50 +561,81 @@ class _MarketItemState extends ConsumerState<_MarketItem> {
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 8),
-                          backgroundColor: theme.colorScheme.errorContainer
-                              .withValues(alpha: 0.1),
+                          backgroundColor: Colors.amber.withValues(alpha: 0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: theme.colorScheme.error
-                                  .withValues(alpha: 0.3),
+                              color: Colors.amber.withValues(alpha: 0.4),
                               width: 1,
                             ),
                           ),
                         ),
                       ),
                     )
-                  : Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: _handleDownload,
-                        icon: Icon(Icons.file_download_outlined,
-                            size: 16, color: theme.colorScheme.primary),
-                        label: Text(
-                          'GET',
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            letterSpacing: 0.5,
+                  : isInstalled
+                      ? Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: _handleDelete,
+                            icon: Icon(Icons.delete_outline_rounded,
+                                size: 16, color: theme.colorScheme.error),
+                            label: Text(
+                              'REMOVE',
+                              style: TextStyle(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 8),
+                              backgroundColor: theme.colorScheme.errorContainer
+                                  .withValues(alpha: 0.1),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: theme.colorScheme.error
+                                      .withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          backgroundColor: theme.colorScheme.primaryContainer
-                              .withValues(alpha: 0.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(
-                              color: theme.colorScheme.primary
-                                  .withValues(alpha: 0.3),
-                              width: 1,
+                        )
+                      : Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: _handleDownload,
+                            icon: Icon(Icons.file_download_outlined,
+                                size: 16, color: theme.colorScheme.primary),
+                            label: Text(
+                              'GET',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              backgroundColor: theme
+                                  .colorScheme.primaryContainer
+                                  .withValues(alpha: 0.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: theme.colorScheme.primary
+                                      .withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
         ),
       ),
     );

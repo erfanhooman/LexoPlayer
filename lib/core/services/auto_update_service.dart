@@ -222,8 +222,6 @@ Map<String, String>? pickPlatformAsset(List<dynamic> assets) {
 bool stagedDownloadSupported({required bool isAndroid, required bool isIOS}) =>
     !isAndroid && !isIOS;
 
-String dictMd5Key(String dictId) => 'dict_md5_$dictId';
-
 /// Resolves the running `<Name>.app` bundle from an executable path.
 ///
 /// E.g. `/Applications/Lexo.app/Contents/MacOS/lexo_player` →
@@ -311,11 +309,20 @@ class AutoUpdateService {
 
   /// Persists the manifest checksum after ANY successful dictionary install
   /// (manual hub download or auto-update) so the next auto-check can diff.
+  ///
+  /// Also syncs [dictChecksumProvider] so the updates-available list and
+  /// Dictionary UI react immediately (no restart needed).
   static Future<void> recordDictionaryChecksum(
-      String dictId, String md5) async {
+      dynamic ref, String dictId, String md5) async {
     if (md5.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(dictMd5Key(dictId), md5);
+    try {
+      ref.read(dictChecksumProvider.notifier).state = {
+        ...ref.read(dictChecksumProvider),
+        dictId: md5,
+      };
+    } catch (_) {}
   }
 
   /// Auto-discovery + auto-update for dictionaries:
@@ -346,7 +353,7 @@ class AutoUpdateService {
             'Downloading ${entry.displayName}…';
         try {
           await downloadService.downloadDictionary(entry);
-          await prefs.setString(dictMd5Key(entry.id), entry.md5Checksum);
+          await recordDictionaryChecksum(ref, entry.id, entry.md5Checksum);
           downloadedIds = await storage.getDownloadedIds();
           _syncDownloadedIds(ref, downloadedIds);
 
@@ -387,7 +394,7 @@ class AutoUpdateService {
           // File on disk was verified at download time against an older
           // manifest; without a baseline we cannot prove staleness, so we
           // baseline it now instead of forcing a 30 MB re-download.
-          await prefs.setString(dictMd5Key(entry.id), entry.md5Checksum);
+          await recordDictionaryChecksum(ref, entry.id, entry.md5Checksum);
           continue;
         }
         if (savedMd5 == entry.md5Checksum) continue;
@@ -401,7 +408,7 @@ class AutoUpdateService {
             'Auto-updating ${entry.displayName}...';
 
         await downloadService.downloadDictionary(entry);
-        await prefs.setString(dictMd5Key(entry.id), entry.md5Checksum);
+        await recordDictionaryChecksum(ref, entry.id, entry.md5Checksum);
         updatedAny = true;
 
         // If this dictionary is currently active, reload the engine.

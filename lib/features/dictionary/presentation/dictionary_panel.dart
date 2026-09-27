@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/widgets/glass_container.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
+import 'package:lexo_player/features/dictionary/data/dict_download_actions.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
@@ -53,6 +54,9 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
             ],
           ),
           const SizedBox(height: 24),
+
+          // ── Dictionary update banner (installed but stale) ──────────
+          const _DictUpdateBanner(),
 
           _DictionaryMainBox(),
           const SizedBox(height: 24),
@@ -141,12 +145,44 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
           ),
           const SizedBox(height: 28),
 
-          _buildSectionLabel(isPersian ? 'مرکز دانلود' : 'Download Hub'),
+          Row(
+            children: [
+              Expanded(
+                  child: _buildSectionLabel(
+                      isPersian ? 'مرکز دانلود' : 'Download Hub')),
+              _CheckDictUpdatesButton(onCheck: _checkDictionaryUpdates),
+            ],
+          ),
           const SizedBox(height: 12),
           _DownloadHubBox(),
         ],
       ),
     );
+  }
+
+  Future<void> _checkDictionaryUpdates() async {
+    final isPersian = ref.read(appLanguageProvider) == 'fa';
+    ref.read(dictAutoUpdateStatusProvider.notifier).state = isPersian
+        ? 'در حال بررسی بروزرسانی واژه‌نامه‌ها…'
+        : 'Checking for dictionary updates…';
+    ref.invalidate(manifestDataProvider);
+    try {
+      final manifest = await ref.read(manifestDataProvider.future);
+      final stale = ref.read(dictUpdatesAvailableProvider);
+      if (!mounted) return;
+      ref.read(dictAutoUpdateStatusProvider.notifier).state = stale.isEmpty
+          ? (isPersian
+              ? 'واژه‌نامه‌ها به‌روز هستند.'
+              : 'Dictionaries are up to date (v${manifest.version}).')
+          : (isPersian
+              ? '${stale.length} بروزرسانی واژه‌نامه آماده نصب است.'
+              : '${stale.length} dictionary update(s) ready to install.');
+    } catch (_) {
+      if (!mounted) return;
+      ref.read(dictAutoUpdateStatusProvider.notifier).state = isPersian
+          ? 'بررسی ناموفق بود — اتصال اینترنت را بررسی کنید.'
+          : 'Check failed — are you offline?';
+    }
   }
 
   Widget _buildSectionLabel(String label) {
@@ -157,6 +193,213 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
         fontWeight: FontWeight.w600,
         color: Color(0xFF9E9D9F),
         letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Dictionary Update Banner — tells the user a used dictionary has an update
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Shows when one or more installed dictionaries are stale vs the manifest.
+/// The active dictionary is highlighted first; every stale entry gets its own
+/// Update button that downloads + installs the new version in place.
+class _DictUpdateBanner extends ConsumerWidget {
+  const _DictUpdateBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stale = ref.watch(dictUpdatesAvailableProvider);
+    if (stale.isEmpty) return const SizedBox.shrink();
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final activeId = ref.watch(selectedUnifiedDictIdProvider);
+    final progressMap = ref.watch(downloadProgressProvider);
+
+    // Active dictionary first so the one in use is impossible to miss.
+    final ordered = [...stale]..sort((a, b) =>
+        ((b.id == activeId) ? 1 : 0).compareTo((a.id == activeId) ? 1 : 0));
+
+    return Column(
+      children: [
+        GlassContainer(
+          borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: const Icon(Icons.update_rounded,
+                        color: Colors.amber, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isPersian
+                          ? 'بروزرسانی واژه‌نامه موجود است'
+                          : 'Dictionary update available',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${stale.length}',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...ordered.map((entry) {
+                final isActive = entry.id == activeId;
+                final progress = progressMap[entry.id];
+                final isDownloading = progress != null;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    entry.displayName,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isActive) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _accent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      isPersian ? 'فعال' : 'ACTIVE',
+                                      style: TextStyle(
+                                        color: _accent,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${entry.formattedFileSize} • ${isPersian ? 'نسخه جدید آماده نصب است' : 'new version ready to install'}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF9E9D9F),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      if (isDownloading)
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            value: progress > 0 ? progress : null,
+                            strokeWidth: 2.5,
+                            color: _accent,
+                          ),
+                        )
+                      else
+                        ElevatedButton.icon(
+                          onPressed: () => downloadDictionaryWithUi(
+                            ref,
+                            context,
+                            entry,
+                            successMessage: isPersian
+                                ? '"${entry.displayName}" به آخرین نسخه بروز شد!'
+                                : '"${entry.displayName}" updated to the latest version!',
+                          ),
+                          icon: const Icon(Icons.download_rounded, size: 14),
+                          label: Text(isPersian ? 'بروزرسانی' : 'Update'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            textStyle: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+/// Small "check for updates" action next to the Download Hub header.
+class _CheckDictUpdatesButton extends ConsumerWidget {
+  final Future<void> Function() onCheck;
+  const _CheckDictUpdatesButton({required this.onCheck});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    return OutlinedButton.icon(
+      onPressed: onCheck,
+      icon: const Icon(Icons.refresh_rounded, size: 13),
+      label: Text(isPersian ? 'بررسی بروزرسانی' : 'Check for updates'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white70,
+        side: const BorderSide(color: Color(0xFF2C2C35)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }
@@ -520,10 +763,13 @@ class _DownloadHubBox extends ConsumerWidget {
           }
           final downloadedIds = ref.watch(downloadedDictIdsProvider);
           final progressMap = ref.watch(downloadProgressProvider);
+          final staleIds =
+              ref.watch(dictUpdatesAvailableProvider).map((e) => e.id).toSet();
 
           return Column(
             children: manifest.unified.map((entry) {
               final isDownloaded = downloadedIds.contains(entry.id);
+              final isStale = isDownloaded && staleIds.contains(entry.id);
               final progress = progressMap[entry.id];
               final isDownloading = progress != null;
 
@@ -541,10 +787,16 @@ class _DownloadHubBox extends ConsumerWidget {
                             Border.all(color: _accent.withValues(alpha: 0.3)),
                       ),
                       child: Icon(
-                        isDownloaded
-                            ? Icons.check_circle_rounded
-                            : Icons.cloud_download_outlined,
-                        color: isDownloaded ? Colors.tealAccent : _accent,
+                        isStale
+                            ? Icons.update_rounded
+                            : isDownloaded
+                                ? Icons.check_circle_rounded
+                                : Icons.cloud_download_outlined,
+                        color: isStale
+                            ? Colors.amber
+                            : isDownloaded
+                                ? Colors.tealAccent
+                                : _accent,
                         size: 20,
                       ),
                     ),
@@ -569,7 +821,41 @@ class _DownloadHubBox extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    if (isDownloaded)
+                    if (isDownloading)
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                          strokeWidth: 2.5,
+                          color: _accent,
+                        ),
+                      )
+                    else if (isStale)
+                      ElevatedButton.icon(
+                        onPressed: () => downloadDictionaryWithUi(
+                          ref,
+                          context,
+                          entry,
+                          successMessage: isPersian
+                              ? '"${entry.displayName}" به آخرین نسخه بروز شد!'
+                              : '"${entry.displayName}" updated to the latest version!',
+                        ),
+                        icon: const Icon(Icons.update_rounded, size: 14),
+                        label: Text(isPersian ? 'بروزرسانی' : 'Update'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      )
+                    else if (isDownloaded)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
@@ -585,16 +871,6 @@ class _DownloadHubBox extends ConsumerWidget {
                               color: Colors.tealAccent,
                               fontSize: 11,
                               fontWeight: FontWeight.w600),
-                        ),
-                      )
-                    else if (isDownloading)
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          value: progress > 0 ? progress : null,
-                          strokeWidth: 2.5,
-                          color: _accent,
                         ),
                       )
                     else
@@ -660,6 +936,7 @@ class _DownloadHubBox extends ConsumerWidget {
 
       // Persist checksum baseline so auto-update can diff next launch.
       await AutoUpdateService.recordDictionaryChecksum(
+        ref,
         entry.id,
         entry.md5Checksum,
       );
