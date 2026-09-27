@@ -103,8 +103,7 @@ final dictUpdatesAvailableProvider = Provider<List<DictionaryEntry>>((ref) {
       .where((e) =>
           downloaded.contains(e.id) &&
           e.md5Checksum.isNotEmpty &&
-          checksums[e.id] != null &&
-          checksums[e.id] != e.md5Checksum)
+          (checksums[e.id] == null || checksums[e.id] != e.md5Checksum))
       .toList();
 });
 
