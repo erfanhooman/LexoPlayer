@@ -16,6 +16,9 @@ const String kAutoUpdateAppKey = 'auto_update_app';
 const String kAutoUpdateDictKey = 'auto_update_dict';
 const String kSkippedAppVersionKey = 'skipped_app_version';
 const String kLastSeenAppVersionKey = 'last_seen_app_version';
+const String kPendingUpdateTagKey = 'pending_update_tag';
+const String kPendingUpdatePathKey = 'pending_update_path';
+const String kPendingUpdateAssetKey = 'pending_update_asset';
 
 /// State provider for Auto Update App toggle (default: true)
 final autoUpdateAppProvider = StateProvider<bool>((ref) => true);
@@ -38,6 +41,36 @@ final appUpdateProgressProvider = StateProvider<double?>((ref) => null);
 
 /// True while the installer file is being downloaded.
 final appUpdateDownloadingProvider = StateProvider<bool>((ref) => false);
+
+/// A fully downloaded update file waiting for the user to install it.
+/// Null = nothing staged. Survives restarts via SharedPreferences.
+final pendingUpdateProvider = StateProvider<PendingUpdate?>((ref) => null);
+
+/// A downloaded installer file staged in the updates folder.
+class PendingUpdate {
+  /// Release tag the file belongs to (e.g. `v2.3.3-beta`).
+  final String tag;
+
+  /// Absolute file path of the staged installer.
+  final String path;
+
+  /// Original asset file name (e.g. `LexoPlayer-macOS.zip`).
+  final String assetName;
+
+  const PendingUpdate({
+    required this.tag,
+    required this.path,
+    required this.assetName,
+  });
+
+  /// True for the macOS ZIP flow that installs itself + relaunches.
+  bool get isSelfInstall => isSelfInstallAsset(assetName);
+}
+
+/// True when [fileName] is a macOS self-install archive (ZIP picked by
+/// [pickPlatformAsset] that the app can install + relaunch from).
+bool isSelfInstallAsset(String fileName) =>
+    Platform.isMacOS && fileName.toLowerCase().endsWith('.zip');
 
 /// Structured description of the latest GitHub release vs the installed build.
 class AppUpdateInfo {
@@ -210,6 +243,7 @@ class AutoUpdateService {
       if (autoDict) {
         await checkAndAutoUpdateDictionaries(ref);
       }
+      await loadPendingUpdate(ref);
       if (autoApp) {
         await checkAndAutoUpdateApp(ref);
       }
@@ -412,6 +446,7 @@ class AutoUpdateService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(kLastSeenAppVersionKey, tagName);
+      await _reconcilePending(ref, tagName);
 
       if (info.hasUpdate) {
         ref.read(appUpdateStatusProvider.notifier).state =
@@ -440,31 +475,115 @@ class AutoUpdateService {
     }
   }
 
-  /// Downloads the platform installer for the pending update and installs it.
+  /// Folder where downloaded updates are staged, so the user can always find
+  /// them in Finder: `~/Downloads/LexoPlayer-Updates/`.
+  static Future<Directory> updatesDirectory() async {
+    final base = await getDownloadsDirectory() ?? await getTemporaryDirectory();
+    final dir = Directory(p.join(base.path, 'LexoPlayer-Updates'));
+    if (!dir.existsSync()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  /// Restores a previously staged update file (if it still exists on disk).
+  static Future<void> loadPendingUpdate(dynamic ref) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tag = prefs.getString(kPendingUpdateTagKey);
+      final path = prefs.getString(kPendingUpdatePathKey);
+      final asset = prefs.getString(kPendingUpdateAssetKey) ?? '';
+      if (tag != null && path != null && File(path).existsSync()) {
+        ref.read(pendingUpdateProvider.notifier).state =
+            PendingUpdate(tag: tag, path: path, assetName: asset);
+      } else if (tag != null || path != null) {
+        await _clearPendingRecord();
+        ref.read(pendingUpdateProvider.notifier).state = null;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _savePendingRecord(PendingUpdate pending) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kPendingUpdateTagKey, pending.tag);
+    await prefs.setString(kPendingUpdatePathKey, pending.path);
+    await prefs.setString(kPendingUpdateAssetKey, pending.assetName);
+  }
+
+  static Future<void> _clearPendingRecord() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(kPendingUpdateTagKey);
+    await prefs.remove(kPendingUpdatePathKey);
+    await prefs.remove(kPendingUpdateAssetKey);
+  }
+
+  /// Drops a staged update that no longer matches the latest release
+  /// (deletes the stale file so the folder never fills with old installers).
+  static Future<void> _reconcilePending(dynamic ref, String latestTag) async {
+    try {
+      final pending = ref.read(pendingUpdateProvider) as PendingUpdate?;
+      if (pending != null && pending.tag != latestTag) {
+        try {
+          final f = File(pending.path);
+          if (f.existsSync()) await f.delete();
+        } catch (_) {}
+        await _clearPendingRecord();
+        ref.read(pendingUpdateProvider.notifier).state = null;
+      }
+    } catch (_) {}
+  }
+
+  /// Reveals [path] in the OS file manager (Finder on macOS).
+  static Future<void> revealInFinder(String path) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', ['-R', path]);
+      } else if (Platform.isWindows) {
+        await Process.start('explorer', ['/select,', path]);
+      } else if (Platform.isLinux) {
+        await Process.start('xdg-open', [p.dirname(path)]);
+      } else {
+        final uri = Uri.file(p.dirname(path));
+        if (await canLaunchUrl(uri)) await launchUrl(uri);
+      }
+    } catch (e) {
+      developer.log('Could not reveal $path: $e', name: 'AutoUpdateService');
+    }
+  }
+
+  /// Step 1 — downloads the pending update into the `LexoPlayer-Updates`
+  /// folder, records it, and reveals it in Finder.
   ///
-  /// macOS + ZIP asset: fully automatic — the running bundle is replaced in
-  /// place and the app relaunches itself (no drag-to-Applications needed).
-  /// Anything else (DMG/EXE/AppImage/APK): downloads and opens the file so
-  /// the OS installer / user takes over, as before.
-  static Future<String?> downloadAndInstallUpdate(
+  /// When the file for this tag is already staged, it is NOT re-downloaded —
+  /// the existing file is simply revealed and reported as ready.
+  static Future<String?> downloadUpdate(
     dynamic ref, {
     void Function(int received, int total)? onProgress,
   }) async {
     final info = ref.read(appUpdateInfoProvider) as AppUpdateInfo?;
     if (info == null || !info.hasUpdate) return null;
     if (info.assetUrl == null) {
-      // No direct asset for this platform — open the release page instead.
       await openReleasePage(ref);
       return null;
     }
     ref.read(appUpdateDownloadingProvider.notifier).state = true;
     ref.read(appUpdateProgressProvider.notifier).state = 0.0;
     try {
-      final dir =
-          await getDownloadsDirectory() ?? await getTemporaryDirectory();
+      final dir = await updatesDirectory();
       final fileName =
           info.assetName ?? 'LexoPlayer-update${_extForPlatform()}';
       final savePath = p.join(dir.path, fileName);
+
+      if (File(savePath).existsSync()) {
+        // Already downloaded (e.g. from a previous launch) — reuse it.
+        final pending = PendingUpdate(
+            tag: info.latestTag, path: savePath, assetName: fileName);
+        await _savePendingRecord(pending);
+        ref.read(pendingUpdateProvider.notifier).state = pending;
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Update ${info.latestTag} is already downloaded — ready to install.';
+        await revealInFinder(savePath);
+        return savePath;
+      }
+
       await _dio.download(
         info.assetUrl!,
         savePath,
@@ -478,25 +597,13 @@ class AutoUpdateService {
       );
       ref.read(appUpdateProgressProvider.notifier).state = 1.0;
 
-      // macOS self-install path (ZIP preferred by pickPlatformAsset).
-      if (Platform.isMacOS && savePath.toLowerCase().endsWith('.zip')) {
-        ref.read(appUpdateStatusProvider.notifier).state =
-            'Downloaded ${info.latestTag} — installing & restarting…';
-        final newBundle = await _installMacZipUpdate(ref, savePath);
-        if (newBundle != null) {
-          // Swap succeeded — launch the new bundle, terminate this process.
-          await Process.start('open', [newBundle]);
-          exit(0);
-        }
-        // Self-install not possible here (e.g. running from a DMG, or
-        // /Applications isn't writable) — fall through to manual flow.
-        ref.read(appUpdateStatusProvider.notifier).state =
-            'Automatic install needs write access — opening the download for manual install…';
-      } else {
-        ref.read(appUpdateStatusProvider.notifier).state =
-            'Downloaded ${info.latestTag} — opening installer…';
-      }
-      await _openFile(savePath);
+      final pending = PendingUpdate(
+          tag: info.latestTag, path: savePath, assetName: fileName);
+      await _savePendingRecord(pending);
+      ref.read(pendingUpdateProvider.notifier).state = pending;
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Downloaded ${info.latestTag} — ready to install from LexoPlayer-Updates.';
+      await revealInFinder(savePath);
       return savePath;
     } catch (e) {
       developer.log('App update download failed: $e',
@@ -508,6 +615,40 @@ class AutoUpdateService {
     } finally {
       ref.read(appUpdateDownloadingProvider.notifier).state = false;
     }
+  }
+
+  /// Step 2 — installs a previously staged update (no re-download).
+  ///
+  /// macOS ZIP: swaps the running bundle in place and relaunches the app.
+  /// Anything else: opens the staged file so the OS installer takes over.
+  /// Returns true when an install was started.
+  static Future<bool> installPendingUpdate(dynamic ref) async {
+    final pending = ref.read(pendingUpdateProvider) as PendingUpdate?;
+    if (pending == null) return false;
+    if (!File(pending.path).existsSync()) {
+      await _clearPendingRecord();
+      ref.read(pendingUpdateProvider.notifier).state = null;
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Staged update file is gone — please download again.';
+      return false;
+    }
+    if (pending.isSelfInstall) {
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Installing ${pending.tag} & restarting…';
+      final newBundle = await _installMacZipUpdate(ref, pending.path);
+      if (newBundle != null) {
+        await _clearPendingRecord();
+        await Process.start('open', [newBundle]);
+        exit(0);
+      }
+      // Self-install not possible here — fall through to reveal for manual.
+      ref.read(appUpdateStatusProvider.notifier).state =
+          'Automatic install needs write access — opening the file for manual install…';
+      await revealInFinder(pending.path);
+      return true;
+    }
+    await _openFile(pending.path);
+    return true;
   }
 
   /// Replaces the currently running macOS bundle with the app from [zipPath].

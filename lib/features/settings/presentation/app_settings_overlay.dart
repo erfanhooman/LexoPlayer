@@ -402,6 +402,11 @@ class _AppVersionTile extends ConsumerWidget {
     final status = ref.watch(appUpdateStatusProvider);
     final progress = ref.watch(appUpdateProgressProvider);
     final downloading = ref.watch(appUpdateDownloadingProvider);
+    final pending = ref.watch(pendingUpdateProvider);
+    final pendingReady = pending != null &&
+        updateInfo != null &&
+        pending.tag == updateInfo.latestTag;
+    final selfInstall = pendingReady && pending.isSelfInstall;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -457,9 +462,13 @@ class _AppVersionTile extends ConsumerWidget {
           if (status != null && status.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              updateInfo != null && updateInfo.hasUpdate && !downloading
-                  ? '${isPersian ? "نسخه جدید" : "New:"} ${updateInfo.latestTag} • $status'
-                  : status,
+              pendingReady
+                  ? (isPersian
+                      ? 'آماده نصب: ${pending.tag} • ذخیره در LexoPlayer-Updates'
+                      : 'Ready to install: ${pending.tag} • saved in LexoPlayer-Updates')
+                  : updateInfo != null && updateInfo.hasUpdate && !downloading
+                      ? '${isPersian ? "نسخه جدید" : "New:"} ${updateInfo.latestTag} • $status'
+                      : status,
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -502,26 +511,75 @@ class _AppVersionTile extends ConsumerWidget {
               if (updateInfo != null && updateInfo.hasUpdate) ...[
                 const SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: downloading
-                        ? null
-                        : () => AutoUpdateService.downloadAndInstallUpdate(ref),
-                    icon: const Icon(Icons.download_rounded, size: 14),
-                    label:
-                        Text(isPersian ? 'دانلود و نصب' : 'Download & Install'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _kAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
+                  child: pendingReady
+                      ? ElevatedButton.icon(
+                          onPressed: downloading
+                              ? null
+                              : () =>
+                                  AutoUpdateService.installPendingUpdate(ref),
+                          icon: Icon(
+                              selfInstall
+                                  ? Icons.restart_alt_rounded
+                                  : Icons.file_open_rounded,
+                              size: 14),
+                          label: Text(selfInstall
+                              ? (isPersian
+                                  ? 'نصب و اجرای مجدد'
+                                  : 'Install & Restart')
+                              : (isPersian
+                                  ? 'باز کردن نصب‌کننده'
+                                  : 'Open Installer')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: downloading
+                              ? null
+                              : () => AutoUpdateService.downloadUpdate(ref),
+                          icon: const Icon(Icons.download_rounded, size: 14),
+                          label: Text(isPersian ? 'دانلود' : 'Download'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
                 ),
               ],
             ],
           ),
+          if (pendingReady) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => AutoUpdateService.revealInFinder(pending.path),
+                icon: const Icon(Icons.folder_open_rounded, size: 14),
+                label: Text(
+                  isPersian
+                      ? 'نمایش فایل در فایندر (LexoPlayer-Updates)'
+                      : 'Show file in Finder (LexoPlayer-Updates)',
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Color(0xFF2C2C35)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

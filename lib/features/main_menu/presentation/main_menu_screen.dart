@@ -354,9 +354,16 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   @override
   Widget build(BuildContext context) {
     // Event-driven self-update prompt: fires when the background release
-    // check completes (covers the case where init finishes after first frame).
+    // check completes (covers the case where init finishes after first frame),
+    // or when a download finishes staging while the dialog is closed — next
+    // time only the install step is offered (no re-download).
     ref.listen<AppUpdateInfo?>(appUpdateInfoProvider, (prev, next) {
       if (next != null && next.hasUpdate) _maybePromptAppUpdate(next);
+    });
+    ref.listen<PendingUpdate?>(pendingUpdateProvider, (prev, next) {
+      if (prev == null && next != null) {
+        _maybePromptAppUpdate(ref.read(appUpdateInfoProvider));
+      }
     });
     final recentVideos = ref.watch(recentVideosProvider);
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1962,6 +1969,9 @@ class _AppUpdateDialog extends ConsumerWidget {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final downloading = ref.watch(appUpdateDownloadingProvider);
     final progress = ref.watch(appUpdateProgressProvider);
+    final pending = ref.watch(pendingUpdateProvider);
+    final pendingReady = pending != null && pending.tag == info.latestTag;
+    final selfInstall = pendingReady && pending.isSelfInstall;
 
     return AlertDialog(
       backgroundColor: const Color(0xFF16151E),
@@ -2005,11 +2015,15 @@ class _AppUpdateDialog extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            isPersian
-                ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. با دانلود، نسخه جدید به‌صورت خودکار نصب و برنامه دوباره اجرا می‌شود.'
-                : (info.assetName?.toLowerCase().endsWith('.zip') == true
-                    ? 'A new LexoPlayer release is available on GitHub. Downloading installs it automatically and restarts the app — no drag needed.'
-                    : 'A new LexoPlayer release is available on GitHub. Downloading installs the ${info.assetName ?? 'release file'} for your OS.'),
+            pendingReady
+                ? (isPersian
+                    ? 'فایل نصب در پوشه Downloads/LexoPlayer-Updates ذخیره شده و در فایندر قابل مشاهده است. هر وقت آماده بودید نصب کنید — نیاز به دانلود دوباره نیست.'
+                    : 'The installer is saved in Downloads/LexoPlayer-Updates and revealed in Finder. Install whenever you are ready — no need to download again.')
+                : (isPersian
+                    ? 'نسخه جدید برنامه در گیت‌هاب منتشر شده است. با دانلود، فایل نصب در پوشه LexoPlayer-Updates ذخیره و در فایندر نمایش داده می‌شود.'
+                    : (info.assetName?.toLowerCase().endsWith('.zip') == true
+                        ? 'A new LexoPlayer release is available on GitHub. Downloading saves it to the LexoPlayer-Updates folder and reveals it in Finder — then one click installs it and restarts the app.'
+                        : 'A new LexoPlayer release is available on GitHub. Downloading saves the ${info.assetName ?? 'release file'} to the LexoPlayer-Updates folder and reveals it in Finder.')),
             style: const TextStyle(color: Color(0xFF9E9D9F), fontSize: 12),
           ),
           if (info.releaseNotes.trim().isNotEmpty) ...[
@@ -2066,12 +2080,32 @@ class _AppUpdateDialog extends ConsumerWidget {
           child: Text(isPersian ? 'مشاهده تغییرات' : 'View release',
               style: TextStyle(color: kNeutralAccent)),
         ),
+        if (pendingReady)
+          TextButton(
+            onPressed: downloading
+                ? null
+                : () {
+                    final p = ref.read(pendingUpdateProvider);
+                    if (p != null) AutoUpdateService.revealInFinder(p.path);
+                  },
+            child: Text(isPersian ? 'نمایش در فایندر' : 'Show in Finder',
+                style: TextStyle(color: kNeutralAccent)),
+          ),
         ElevatedButton(
           onPressed: downloading
               ? null
               : () async {
-                  await AutoUpdateService.downloadAndInstallUpdate(ref);
-                  if (context.mounted) Navigator.of(context).pop();
+                  if (pendingReady) {
+                    final ok =
+                        await AutoUpdateService.installPendingUpdate(ref);
+                    // ZIP success exits the app; DMG/manual opens the file.
+                    // Stay open when nothing happened (e.g. file was deleted).
+                    if (ok && context.mounted) Navigator.of(context).pop();
+                  } else {
+                    // Stay open: the dialog rebuilds into the Install state
+                    // once the download is staged (no re-download next time).
+                    await AutoUpdateService.downloadUpdate(ref);
+                  }
                 },
           style: ElevatedButton.styleFrom(
             backgroundColor: kNeutralAccent,
@@ -2081,7 +2115,11 @@ class _AppUpdateDialog extends ConsumerWidget {
           ),
           child: Text(downloading
               ? (isPersian ? 'در حال دانلود…' : 'Downloading…')
-              : (isPersian ? 'دانلود و نصب' : 'Download & Install')),
+              : pendingReady
+                  ? (selfInstall
+                      ? (isPersian ? 'نصب و اجرای مجدد' : 'Install & Restart')
+                      : (isPersian ? 'باز کردن نصب‌کننده' : 'Open Installer'))
+                  : (isPersian ? 'دانلود' : 'Download')),
         ),
       ],
     );

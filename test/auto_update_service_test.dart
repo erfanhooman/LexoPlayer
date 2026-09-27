@@ -36,7 +36,22 @@ void main() {
     });
   });
 
-  group('findMacAppBundle', () {
+  group('macOS bundle + staged-update helpers', () {
+    test('staged-update asset detection', () {
+      // On macOS hosts the ZIP is a self-installer; DMG/others are not.
+      expect(
+          isSelfInstallAsset('LexoPlayer-macOS.zip'), equals(Platform.isMacOS));
+      expect(isSelfInstallAsset('LexoPlayer-macOS.dmg'), isFalse);
+      expect(isSelfInstallAsset('LexoPlayer-Setup-x64.exe'), isFalse);
+
+      const pending = PendingUpdate(
+        tag: 'v2.3.3-beta',
+        path: '/tmp/LexoPlayer-macOS.zip',
+        assetName: 'LexoPlayer-macOS.zip',
+      );
+      expect(pending.isSelfInstall, equals(Platform.isMacOS));
+    });
+
     test('resolves .app ancestor from executable path', () {
       expect(
         findMacAppBundle('/Applications/Lexo.app/Contents/MacOS/lexo_player'),
