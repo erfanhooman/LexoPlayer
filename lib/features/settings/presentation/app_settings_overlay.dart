@@ -241,6 +241,42 @@ class AppSettingsOverlay extends ConsumerWidget {
 
                         const SizedBox(height: 20),
 
+                        // ── Learning & Practice Section ─────────────────────
+                        _buildSectionHeader(
+                          isPersian ? 'یادگیری و تمرین' : 'Learning & Practice',
+                          Icons.record_voice_over_rounded,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSettingTile(
+                          title: isPersian
+                              ? 'حالت تمرین سایه‌خوانی (Shadowing)'
+                              : 'Shadowing Practice Mode',
+                          subtitle: isPersian
+                              ? 'دکمه ضبط صدا روی زیرنویس برای تمرین صحبت و تلفظ'
+                              : 'Show mic button to speak & repeat subtitles with live feedback',
+                          value: ref.watch(isShadowingModeEnabledProvider),
+                          onChanged: (val) {
+                            ref.read(isShadowingModeEnabledProvider.notifier).state = val;
+                            saveShadowingMode(val);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSettingTile(
+                          title: isPersian
+                              ? 'مخفی‌سازی زیرنویس (حالت اسپویلر)'
+                              : 'Spoiler Subtitles (Blur by default)',
+                          subtitle: isPersian
+                              ? 'مات کردن زیرنویس تا زمان کلیک برای تقویت مهارت شنیداری'
+                              : 'Blurs subtitles until clicked to train listening comprehension',
+                          value: ref.watch(isSubtitleSpoilerModeEnabledProvider),
+                          onChanged: (val) {
+                            ref.read(isSubtitleSpoilerModeEnabledProvider.notifier).state = val;
+                            saveSubtitleSpoilerMode(val);
+                          },
+                        ),
+
+                        const SizedBox(height: 20),
+
                         // ── 3. Auto Updates Section ────────────────────────
                         _buildSectionHeader(
                           isPersian

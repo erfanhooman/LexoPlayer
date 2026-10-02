@@ -17,6 +17,8 @@ import 'package:lexo_player/features/video_player/providers/player_provider.dart
 import 'package:lexo_player/features/video_player/presentation/video_screen.dart';
 import 'package:lexo_player/features/dictionary/presentation/dictionary_panel.dart';
 import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
+import 'package:lexo_player/features/review_later/presentation/review_later_panel.dart';
+import 'package:lexo_player/core/services/saved_review_service.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/features/settings/presentation/app_settings_overlay.dart';
 
@@ -482,13 +484,19 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                   ),
                 ),
                 child: BottomNavigationBar(
-                  currentIndex: _activeNav == 'Dictionaries' ? 1 : 0,
+                  currentIndex: _activeNav == 'Dictionaries'
+                      ? 2
+                      : _activeNav == 'ReviewLater'
+                          ? 1
+                          : 0,
                   onTap: (index) {
                     if (index == 0) {
                       setState(() => _activeNav = 'Home');
                     } else if (index == 1) {
-                      setState(() => _activeNav = 'Dictionaries');
+                      setState(() => _activeNav = 'ReviewLater');
                     } else if (index == 2) {
+                      setState(() => _activeNav = 'Dictionaries');
+                    } else if (index == 3) {
                       AppSettingsOverlay.show(context);
                     }
                   },
@@ -500,6 +508,15 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     BottomNavigationBarItem(
                       icon: const Icon(Icons.home_rounded),
                       label: isPersian ? 'خانه' : 'Home',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Badge(
+                        isLabelVisible: ref.watch(savedSentencesProvider).any((s) => !s.isMastered),
+                        backgroundColor: kNeutralAccent,
+                        smallSize: 8,
+                        child: const Icon(Icons.bookmark_added_rounded),
+                      ),
+                      label: isPersian ? 'مرور جملات' : 'Review Later',
                     ),
                     BottomNavigationBarItem(
                       icon: Badge(
@@ -576,7 +593,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                       Expanded(
                         child: _activeNav == 'Dictionaries'
                             ? const DictionaryPanel()
-                            : _buildDashboard(recentVideos),
+                            : _activeNav == 'ReviewLater'
+                                ? const ReviewLaterPanel()
+                                : _buildDashboard(recentVideos),
                       ),
                     ],
                   ),
@@ -769,6 +788,14 @@ class _SidebarWidget extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   _SidebarNavItem(
+                    title: isPersian ? 'مرور جملات' : 'Review Later',
+                    icon: Icons.bookmark_added_rounded,
+                    isActive: activeNav == 'ReviewLater',
+                    hasBadge: ref.watch(savedSentencesProvider).any((s) => !s.isMastered),
+                    onTap: () => onNavSelect('ReviewLater'),
+                  ),
+                  const SizedBox(height: 4),
+                  _SidebarNavItem(
                     title: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
                     icon: Icons.menu_book_rounded,
                     isActive: activeNav == 'Dictionaries',
@@ -901,8 +928,8 @@ class _MainHeaderWidget extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 20, 24, 24),
         child: Row(
           children: [
-            // Greeting & Subtitle (hidden on Dictionaries page)
-            if (activeNav != 'Dictionaries')
+            // Greeting & Subtitle (hidden on Dictionaries & ReviewLater pages)
+            if (activeNav != 'Dictionaries' && activeNav != 'ReviewLater')
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

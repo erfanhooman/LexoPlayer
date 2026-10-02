@@ -11,6 +11,8 @@ import 'package:lexo_player/features/dictionary/data/dict_download_actions.dart'
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/models/manifest_models.dart';
 import 'package:lexo_player/core/services/auto_update_service.dart';
+import 'package:lexo_player/core/services/saved_review_service.dart';
+import 'package:lexo_player/core/services/tts_service.dart';
 
 Color get _accent => AppColors.primary;
 
@@ -143,6 +145,10 @@ class _DictionaryPanelState extends ConsumerState<DictionaryPanel> {
               ],
             ),
           ),
+          const SizedBox(height: 28),
+
+          // ── Saved Vocabulary Section ─────────────────────────────────
+          const _SavedWordsSection(),
           const SizedBox(height: 28),
 
           Row(
@@ -1325,3 +1331,181 @@ class _DictEntryInfo {
     required this.isSelected,
   });
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Saved Words Section
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _SavedWordsSection extends ConsumerWidget {
+  const _SavedWordsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+    final savedWords = ref.watch(savedWordsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                isPersian ? 'واژه‌های ذخیره شده' : 'Saved Vocabulary',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _accent.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                '${savedWords.length}',
+                style: TextStyle(
+                  color: _accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (savedWords.isEmpty)
+          GlassContainer(
+            borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: Column(
+                children: [
+                  const Icon(Icons.bookmark_border_rounded, color: Colors.white38, size: 28),
+                  const SizedBox(height: 8),
+                  Text(
+                    isPersian
+                        ? 'هیچ واژه‌ای ذخیره نشده است. هنگام مشاهده زیرنویس، روی کلمه کلیک کرده و "ذخیره کلمه" را بزنید.'
+                        : 'No saved words yet. Click on any word in subtitles and choose "Save Word" to add vocabulary here.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFF8A8A93), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          GlassContainer(
+            borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.all(16),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: savedWords.length,
+              separatorBuilder: (_, __) => const Divider(color: Color(0xFF282732), height: 16),
+              itemBuilder: (context, index) {
+                final w = savedWords[index];
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                w.word,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (w.lemma != null && w.lemma!.isNotEmpty)
+                                Text(
+                                  w.lemma!,
+                                  style: const TextStyle(
+                                    color: Color(0xFF8A8A93),
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              if (w.pos != null && w.pos!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: _accent.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    w.pos!,
+                                    style: TextStyle(
+                                      color: _accent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (w.translation != null && w.translation!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              w.translation!,
+                              style: const TextStyle(
+                                color: Color(0xFFD2D1DD),
+                                fontSize: 13,
+                                fontFamily: 'Parastoo',
+                              ),
+                            ),
+                          ],
+                          if (w.contextSentence != null && w.contextSentence!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '"${w.contextSentence!}"',
+                              style: const TextStyle(
+                                color: Color(0xFF757480),
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: isPersian ? 'تلفظ کلمه' : 'Pronounce word',
+                      icon: Icon(Icons.volume_up_rounded, color: _accent, size: 20),
+                      onPressed: () {
+                        ref.read(ttsServiceProvider).speak(w.word);
+                      },
+                    ),
+                    IconButton(
+                      tooltip: isPersian ? 'حذف کلمه' : 'Delete word',
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
+                      onPressed: () {
+                        if (w.id != null) {
+                          ref.read(savedWordsProvider.notifier).removeWord(w.id!);
+                        }
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+

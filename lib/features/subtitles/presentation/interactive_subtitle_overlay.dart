@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,8 @@ import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/subtitles/presentation/subtitle_word_widget.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
+import 'package:lexo_player/features/video_player/providers/player_provider.dart';
+import 'package:lexo_player/features/subtitles/presentation/shadowing_box_widget.dart';
 
 /// Displays the active subtitle text at the bottom of the video player.
 ///
@@ -62,6 +66,38 @@ class _InteractiveSubtitleOverlayState
 
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
 
+    // ── Active Shadowing Box View ───────────────────────────────────────────
+    final isShadowingActive = ref.watch(activeShadowingStateProvider);
+    if (isShadowingActive && displayText.isNotEmpty) {
+      return AnimatedPositioned(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        bottom: bottomOffset,
+        left: 0,
+        right: 0,
+        child: Center(
+          child: ShadowingBoxWidget(
+            targetSentence: displayText,
+            onResume: () {
+              ref.read(activeShadowingStateProvider.notifier).state = false;
+              final player = ref.read(playerProvider);
+              PlayerActions.play(player);
+            },
+            onClose: () {
+              ref.read(activeShadowingStateProvider.notifier).state = false;
+            },
+          ),
+        ),
+      );
+    }
+
+    final isShadowingEnabled = ref.watch(isShadowingModeEnabledProvider);
+    final isSpoilerMode = ref.watch(isSubtitleSpoilerModeEnabledProvider);
+    final activeIndex = ref.watch(activeSubtitleIndexProvider);
+    final revealedIndex = ref.watch(activeRevealedSubtitleCueIndexProvider);
+    final isSpoilerBlurred = isSpoilerMode &&
+        (activeIndex == null || revealedIndex != activeIndex);
+
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -110,7 +146,7 @@ class _InteractiveSubtitleOverlayState
                   Container(
                     padding: EdgeInsets.fromLTRB(
                       16,
-                      (_isHovered && hasSecondaryTrack) ? 8 : 10,
+                      (_isHovered && (hasSecondaryTrack || isShadowingEnabled)) ? 8 : 10,
                       16,
                       10,
                     ),
@@ -121,29 +157,99 @@ class _InteractiveSubtitleOverlayState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Translation toggle — always visible on touch
-                        // devices, hover-or-focus visible on desktop.
-                        if (hasSecondaryTrack)
-                          _TranslationToggle(
-                            isHovered: _isHovered,
-                            isSecondaryVisible: isSecondaryVisible,
-                            isPersian: isPersian,
-                            onToggle: () {
-                              ref
-                                  .read(
-                                      isSecondarySubtitleVisibleProvider
-                                          .notifier)
-                                  .state = !isSecondaryVisible;
-                            },
-                            onFocusChange: (focused) {
-                              if (focused) {
-                                setState(() => _isHovered = true);
-                              }
-                            },
+                        // Action row: Secondary subtitle toggle & Shadowing mic button
+                        if (hasSecondaryTrack || isShadowingEnabled)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (hasSecondaryTrack)
+                                _TranslationToggle(
+                                  isHovered: _isHovered,
+                                  isSecondaryVisible: isSecondaryVisible,
+                                  isPersian: isPersian,
+                                  onToggle: () {
+                                    ref
+                                        .read(
+                                            isSecondarySubtitleVisibleProvider
+                                                .notifier)
+                                        .state = !isSecondaryVisible;
+                                  },
+                                  onFocusChange: (focused) {
+                                    if (focused) {
+                                      setState(() => _isHovered = true);
+                                    }
+                                  },
+                                ),
+                              if (hasSecondaryTrack && isShadowingEnabled)
+                                const SizedBox(width: 8),
+                              if (isShadowingEnabled)
+                                _ShadowingButton(
+                                  isHovered: _isHovered,
+                                  isPersian: isPersian,
+                                  onTap: () {
+                                    final player = ref.read(playerProvider);
+                                    PlayerActions.pause(player);
+                                    ref
+                                        .read(activeShadowingStateProvider.notifier)
+                                        .state = true;
+                                  },
+                                ),
+                            ],
                           ),
 
-                        // Interactive Tokenized Primary Subtitle Text
-                        _buildTokens(displayText, spans, ref),
+                        // Interactive Primary Subtitle Text (with optional Spoiler Blur)
+                        if (isSpoilerBlurred)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (activeIndex != null) {
+                                ref
+                                    .read(activeRevealedSubtitleCueIndexProvider
+                                        .notifier)
+                                    .state = activeIndex;
+                              }
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                ImageFiltered(
+                                  imageFilter: ImageFilter.blur(
+                                      sigmaX: 7.0, sigmaY: 7.0),
+                                  child: _buildTokens(displayText, spans, ref),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.white24, width: 0.8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.visibility_off_rounded,
+                                          color: Colors.white70, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isPersian
+                                            ? 'کلیک کنید برای مشاهده'
+                                            : 'Click to reveal subtitle',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          _buildTokens(displayText, spans, ref),
                       ],
                     ),
                   ),
@@ -409,3 +515,78 @@ class _TranslationToggle extends StatelessWidget {
     );
   }
 }
+
+class _ShadowingButton extends StatelessWidget {
+  final bool isHovered;
+  final bool isPersian;
+  final VoidCallback onTap;
+
+  const _ShadowingButton({
+    required this.isHovered,
+    required this.isPersian,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final visible = isHovered || isMobile;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: visible ? 1.0 : 0.0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: visible ? 36 : 0,
+        margin: EdgeInsets.only(bottom: visible ? 6 : 0),
+        child: visible
+            ? Semantics(
+                button: true,
+                label: isPersian ? 'تمرین سایه‌خوانی' : 'Shadow practice',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minHeight: 32, minWidth: 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.record_voice_over_rounded,
+                            color: AppColors.primary,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isPersian ? 'تمرین سایه‌خوانی' : 'Shadow',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+

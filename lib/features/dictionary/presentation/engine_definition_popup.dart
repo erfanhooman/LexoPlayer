@@ -11,6 +11,9 @@ import 'package:lexo_player/core/utils/word_tokenizer.dart';
 import 'package:lexo_player/features/dictionary/data/span_providers.dart';
 import 'package:lexo_player/features/dictionary/presentation/spoiler_translation_widget.dart';
 import 'package:lexo_player/features/video_player/providers/player_provider.dart';
+import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
+import 'package:lexo_player/features/main_menu/presentation/main_menu_screen.dart';
+import 'package:lexo_player/core/services/saved_review_service.dart';
 
 /// Engine-powered definition popup for displaying hierarchical span data.
 ///
@@ -894,11 +897,12 @@ class _SingleWordView extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Header: word + lemma + POS + thunder ──────────────────────
+        // ── Header: word + lemma + POS + bookmark ────────────────────
         _WordHeaderRow(
           title: span.text,
           lemma: span.lemma,
           pos: span.pos,
+          span: span,
         ),
 
         if (note != null && note.isNotEmpty) ...[
@@ -1298,20 +1302,24 @@ class _TabChip extends StatelessWidget {
 //  Shared building blocks
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// Header row: word title + lemma (italic) + POS badge + thunder button.
-class _WordHeaderRow extends StatelessWidget {
+/// Header row: word title + lemma (italic) + POS badge + bookmark/save action button.
+class _WordHeaderRow extends ConsumerWidget {
   final String title;
   final String? lemma;
   final String? pos;
+  final SpanModel? span;
 
   const _WordHeaderRow({
     required this.title,
     this.lemma,
     this.pos,
+    this.span,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPersian = ref.watch(appLanguageProvider) == 'fa';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1371,6 +1379,139 @@ class _WordHeaderRow extends StatelessWidget {
               ],
             ],
           ),
+        ),
+
+        // Bookmark / Save action button
+        PopupMenuButton<String>(
+          tooltip: isPersian ? 'ذخیره' : 'Save',
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              Icons.bookmark_add_outlined,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          color: const Color(0xFF1E1E24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFF33333E), width: 1),
+          ),
+          onSelected: (value) async {
+            if (value == 'sentence') {
+              final player = ref.read(playerProvider);
+              String videoPath = '';
+              String videoTitle = 'Video';
+              final playlist = player.state.playlist;
+              if (playlist.index >= 0 && playlist.index < playlist.medias.length) {
+                videoPath = playlist.medias[playlist.index].uri;
+                videoTitle = formatMediaTitle(videoPath);
+              }
+              final activeBlock = ref.read(activeSubtitleBlockProvider);
+              final subtitleText =
+                  activeBlock?.text ?? ref.read(activeSubtitleTextProvider) ?? title;
+              final startTimeMs = activeBlock?.startTime.inMilliseconds ??
+                  player.state.position.inMilliseconds;
+              final endTimeMs = activeBlock?.endTime.inMilliseconds ??
+                  (startTimeMs + 4000);
+              final translation = ref.read(activeSecondarySubtitleTextProvider);
+
+              final saved = SavedSentence(
+                videoPath: videoPath,
+                videoTitle: videoTitle,
+                sentenceText: subtitleText,
+                targetWord: title,
+                startTimeMs: startTimeMs,
+                endTimeMs: endTimeMs,
+                translation: translation,
+                createdAt: DateTime.now().toIso8601String(),
+              );
+              await ref.read(savedSentencesProvider.notifier).addSentence(saved);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isPersian
+                          ? 'جمله برای مرور ذخیره شد'
+                          : 'Sentence saved for Review Later',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFF1B1923),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            } else if (value == 'word') {
+              final savedWord = SavedWord(
+                word: title,
+                lemma: lemma,
+                pos: pos,
+                translation: span?.primaryTranslationFa ?? '',
+                wsdMeaning: span?.wsd.firstOrNull?.definitionEn,
+                contextSentence: ref.read(activeSubtitleTextProvider),
+                createdAt: DateTime.now().toIso8601String(),
+              );
+              await ref.read(savedWordsProvider.notifier).addWord(savedWord);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isPersian
+                          ? 'کلمه در دیکشنری ذخیره شد'
+                          : 'Word saved to Dictionary',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFF1B1923),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'sentence',
+              child: Row(
+                children: [
+                  const Icon(Icons.subtitles_rounded,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 10),
+                  Text(
+                    isPersian
+                        ? 'ذخیره جمله (برای مرور)'
+                        : 'Save Sentence (Review Later)',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'word',
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_book_rounded,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 10),
+                  Text(
+                    isPersian
+                        ? 'ذخیره کلمه (در دیکشنری)'
+                        : 'Save Word (Dictionary)',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

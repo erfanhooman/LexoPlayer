@@ -5,12 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lexo_player/main.dart';
 import 'package:lexo_player/features/subtitles/providers/subtitle_providers.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
-
 import 'package:lexo_player/core/services/now_playing_service.dart';
+import 'package:lexo_player/core/services/auto_update_service.dart';
+import 'package:lexo_player/features/dictionary/data/manifest_providers.dart';
+import 'package:lexo_player/core/models/manifest_models.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      kAutoUpdateAppKey: false,
+      kAutoUpdateDictKey: false,
+    });
   });
 
   testWidgets('App smoke test - renders LexoPlayer app',
@@ -20,6 +25,7 @@ void main() {
       if (details.exceptionAsString().contains('overflowed')) return;
       originalOnError?.call(details);
     };
+
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(
       ProviderScope(
@@ -28,6 +34,13 @@ void main() {
           nowPlayingSyncProvider.overrideWith((ref) {}),
           unifiedDictSwitcherProvider.overrideWith((ref) async {}),
           engineInitProvider.overrideWith((ref) async {}),
+          manifestDataProvider.overrideWith((ref) async => ManifestData(
+                lastUpdated: DateTime(2026),
+                version: 1,
+                monolingual: const [],
+                bilingual: const [],
+                unified: const [],
+              )),
         ],
         child: const LexoPlayerApp(),
       ),
@@ -38,3 +51,4 @@ void main() {
     expect(find.byType(LexoPlayerApp), findsOneWidget);
   });
 }
+

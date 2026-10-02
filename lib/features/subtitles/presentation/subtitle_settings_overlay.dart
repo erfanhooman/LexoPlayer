@@ -469,6 +469,114 @@ class SubtitleSettingsOverlay extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // ── Shadowing Practice Mode Toggle ─────────────────────────
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _kScaffoldBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _kBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isPersian
+                                          ? 'حالت تمرین سایه‌خوانی (Shadowing)'
+                                          : 'Shadowing Practice Mode',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isPersian
+                                          ? 'دکمه ضبط صدا روی زیرنویس برای تمرین تلفظ'
+                                          : 'Show mic button to speak & repeat subtitles',
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch.adaptive(
+                                value: ref.watch(isShadowingModeEnabledProvider),
+                                activeTrackColor: _kAccent,
+                                onChanged: (val) {
+                                  ref
+                                      .read(isShadowingModeEnabledProvider.notifier)
+                                      .state = val;
+                                  saveShadowingMode(val);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ── Subtitle Spoiler Mode Toggle ───────────────────────────
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _kScaffoldBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _kBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isPersian
+                                          ? 'مخفی‌سازی زیرنویس (حالت اسپویلر)'
+                                          : 'Spoiler Subtitles (Blur by default)',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isPersian
+                                          ? 'مات کردن زیرنویس تا زمان کلیک برای تقویت شنیداری'
+                                          : 'Blurs subtitles until clicked for listening practice',
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch.adaptive(
+                                value: ref.watch(isSubtitleSpoilerModeEnabledProvider),
+                                activeTrackColor: _kAccent,
+                                onChanged: (val) {
+                                  ref
+                                      .read(isSubtitleSpoilerModeEnabledProvider.notifier)
+                                      .state = val;
+                                  saveSubtitleSpoilerMode(val);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

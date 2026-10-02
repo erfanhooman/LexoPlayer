@@ -209,6 +209,31 @@ final activeSubtitleTextProvider = Provider<String?>((ref) {
   }
 });
 
+/// Derives the active primary [SubtitleBlock] with start/end duration and text.
+final activeSubtitleBlockProvider = Provider<SubtitleBlock?>((ref) {
+  final selected = ref.watch(selectedSubtitleProvider);
+  if (selected != null && selected.isExternal) {
+    final blocks = ref.watch(subtitleListProvider);
+    final index = ref.watch(activeSubtitleIndexProvider);
+    if (index != null && index >= 0 && index < blocks.length) {
+      return blocks[index];
+    }
+  }
+
+  // Fallback for embedded softsubs: construct block from active text and current position
+  final text = ref.watch(activeSubtitleTextProvider);
+  if (text != null && text.isNotEmpty) {
+    final player = ref.watch(playerProvider);
+    final pos = player.state.position;
+    return SubtitleBlock(
+      startTime: pos,
+      endTime: pos + const Duration(seconds: 4),
+      text: text,
+    );
+  }
+  return null;
+});
+
 /// Derives the active secondary (translation) subtitle text.
 final activeSecondarySubtitleTextProvider = Provider<String?>((ref) {
   final isVisible = ref.watch(isSecondarySubtitleVisibleProvider);
@@ -466,6 +491,8 @@ const String _kSubtitleBgColorKey = 'subtitle_bg_color';
 const String _kSubtitleOutlineWidthKey = 'subtitle_outline_width';
 const String _kSubtitleFontKey = 'subtitle_font';
 const String _kSmartSubtitleSeekKey = 'smart_subtitle_seek';
+const String _kShadowingModeKey = 'lexo_shadowing_mode';
+const String _kSubtitleSpoilerModeKey = 'lexo_subtitle_spoiler_mode';
 
 /// Size of the subtitle text. Defaults to `22.0` (Medium).
 final subtitleSizeProvider = StateProvider<double>((ref) => 22.0);
@@ -486,6 +513,18 @@ final subtitleFontFamilyProvider = StateProvider<String>((ref) => 'System');
 /// or performs fixed time-based seeking (±10s). Defaults to `true`.
 final smartSubtitleSeekProvider = StateProvider<bool>((ref) => true);
 
+/// Controls whether shadowing practice mode is active. Defaults to `false`.
+final isShadowingModeEnabledProvider = StateProvider<bool>((ref) => false);
+
+/// Controls whether subtitle spoiler (blur until click) mode is active. Defaults to `false`.
+final isSubtitleSpoilerModeEnabledProvider = StateProvider<bool>((ref) => false);
+
+/// Tracks which subtitle cue index has been unblurred by the user in spoiler mode.
+final activeRevealedSubtitleCueIndexProvider = StateProvider<int?>((ref) => null);
+
+/// Tracks whether shadowing practice is actively being performed for the current subtitle.
+final activeShadowingStateProvider = StateProvider<bool>((ref) => false);
+
 /// Loads all subtitle customization options from local device persistent storage.
 Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
   try {
@@ -496,6 +535,8 @@ Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
     final outline = prefs.getDouble(_kSubtitleOutlineWidthKey);
     final font = prefs.getString(_kSubtitleFontKey);
     final smartSeek = prefs.getBool(_kSmartSubtitleSeekKey);
+    final shadowing = prefs.getBool(_kShadowingModeKey);
+    final spoiler = prefs.getBool(_kSubtitleSpoilerModeKey);
 
     if (size != null) ref.read(subtitleSizeProvider.notifier).state = size;
     if (color != null) ref.read(subtitleColorProvider.notifier).state = color;
@@ -506,6 +547,10 @@ Future<void> hydrateSubtitleSettings(WidgetRef ref) async {
       ref.read(subtitleFontFamilyProvider.notifier).state = font;
     if (smartSeek != null)
       ref.read(smartSubtitleSeekProvider.notifier).state = smartSeek;
+    if (shadowing != null)
+      ref.read(isShadowingModeEnabledProvider.notifier).state = shadowing;
+    if (spoiler != null)
+      ref.read(isSubtitleSpoilerModeEnabledProvider.notifier).state = spoiler;
   } catch (e) {
     // Fail silently in case preferences are uninitialised
   }
@@ -539,6 +584,16 @@ Future<void> saveSubtitleFontFamily(String font) async {
 Future<void> saveSmartSubtitleSeek(bool enabled) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(_kSmartSubtitleSeekKey, enabled);
+}
+
+Future<void> saveShadowingMode(bool enabled) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_kShadowingModeKey, enabled);
+}
+
+Future<void> saveSubtitleSpoilerMode(bool enabled) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_kSubtitleSpoilerModeKey, enabled);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
