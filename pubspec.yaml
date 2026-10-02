@@ -36,7 +36,7 @@ dependencies:
 
   # Speech & Audio
   flutter_tts: ^4.2.2
-  speech_to_text: ^6.6.1
+  speech_to_text: ^7.5.0
 
   # Networking & Downloads
   dio: ^5.7.0
