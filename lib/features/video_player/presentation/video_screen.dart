@@ -50,14 +50,17 @@ class _VideoScreenState extends ConsumerState<VideoScreen> {
   @override
   void dispose() {
     // Pause and stop the player before the widget tree is torn down.
-    // Use ref.read synchronously — microtask runs too late.
+    // NOTE: `ref` cannot be used here (Riverpod detaches it before
+    // State.dispose runs, throwing StateError), so resolve the player
+    // through the element tree instead — and tolerate teardown races.
     try {
-      final player = ref.read(playerProvider);
+      final container = ProviderScope.containerOf(context, listen: false);
+      final player = container.read(playerProvider);
       player.pause();
       PlayerActions.stop(player);
-      ref.read(isVideoLoadedProvider.notifier).state = false;
     } catch (_) {
-      // Provider may already be disposed — ignore.
+      // Tree already torn down — the autoDispose provider cleans up
+      // the native player itself.
     }
     super.dispose();
   }

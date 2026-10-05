@@ -38,12 +38,20 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
   int _countdownSeconds = 2;
   final TextEditingController _fallbackController = TextEditingController();
 
+  // Captured in initState: `ref` must NOT be used in dispose() (Riverpod
+  // detaches it before State.dispose runs, throwing StateError and crashing
+  // the app on every exit from this widget).
+  late final SttService _stt;
+  late final TtsService _tts;
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    _stt = ref.read(sttServiceProvider);
+    _tts = ref.read(ttsServiceProvider);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -55,8 +63,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
   }
 
   Future<void> _startListening() async {
-    final stt = ref.read(sttServiceProvider);
-    final available = await stt.initialize();
+    final available = await _stt.initialize();
 
     if (!mounted) return;
 
@@ -74,7 +81,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
       _isMicUnavailable = false;
     });
 
-    await stt.startListening(
+    await _stt.startListening(
       onResult: (recognized) {
         if (!mounted) return;
         setState(() {
@@ -101,7 +108,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
       _countdownSeconds = 2;
     });
 
-    ref.read(sttServiceProvider).stopListening();
+    _stt.stopListening();
 
     _autoResumeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -132,7 +139,9 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
     _autoResumeTimer?.cancel();
     _pulseController.dispose();
     _fallbackController.dispose();
-    ref.read(sttServiceProvider).stopListening();
+    // NOTE: no `ref` use here by design (see field docs above).
+    _stt.stopListening();
+    _tts.stop();
     super.dispose();
   }
 
@@ -162,7 +171,9 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
             Row(
               children: [
                 ScaleTransition(
-                  scale: _isListening ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
+                  scale: _isListening
+                      ? _pulseAnimation
+                      : const AlwaysStoppedAnimation(1.0),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -175,7 +186,8 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                       _isComplete
                           ? Icons.check_circle_rounded
                           : Icons.record_voice_over_rounded,
-                      color: _isComplete ? Colors.greenAccent : AppColors.primary,
+                      color:
+                          _isComplete ? Colors.greenAccent : AppColors.primary,
                       size: 18,
                     ),
                   ),
@@ -183,7 +195,9 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isPersian ? 'تمرین سایه‌خوانی (Shadowing)' : 'Shadowing Practice',
+                    isPersian
+                        ? 'تمرین سایه‌خوانی (Shadowing)'
+                        : 'Shadowing Practice',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -194,17 +208,20 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
 
                 // TTS Speaker to listen to model pronunciation
                 IconButton(
-                  tooltip: isPersian ? 'شنیدن تلفظ الگو' : 'Hear target sentence',
-                  icon: const Icon(Icons.volume_up_rounded, color: Colors.white70, size: 20),
+                  tooltip:
+                      isPersian ? 'شنیدن تلفظ الگو' : 'Hear target sentence',
+                  icon: const Icon(Icons.volume_up_rounded,
+                      color: Colors.white70, size: 20),
                   onPressed: () {
-                    ref.read(ttsServiceProvider).speak(widget.targetSentence);
+                    _tts.speak(widget.targetSentence);
                   },
                 ),
 
                 // Close Button
                 IconButton(
                   tooltip: isPersian ? 'بستن' : 'Close',
-                  icon: const Icon(Icons.close_rounded, color: Colors.white60, size: 20),
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.white60, size: 20),
                   onPressed: widget.onClose,
                 ),
               ],
@@ -243,7 +260,9 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                 border: Border.all(
                   color: _isComplete
                       ? Colors.greenAccent.withValues(alpha: 0.5)
-                      : (_spokenText.isNotEmpty ? const Color(0xFF383745) : const Color(0xFF24232C)),
+                      : (_spokenText.isNotEmpty
+                          ? const Color(0xFF383745)
+                          : const Color(0xFF24232C)),
                 ),
               ),
               child: _isMicUnavailable
@@ -260,16 +279,24 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _isListening
-                        ? (isPersian ? 'در حال گوش دادن... صحبت کنید' : 'Listening... speak now')
-                        : (isPersian ? 'متوقف شد' : 'Paused'),
-                    style: TextStyle(
-                      color: _isListening ? AppColors.primary : Colors.white38,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  Flexible(
+                    child: Text(
+                      _isListening
+                          ? (isPersian
+                              ? 'در حال گوش دادن... صحبت کنید'
+                              : 'Listening... speak now')
+                          : (isPersian ? 'متوقف شد' : 'Paused'),
+                      style: TextStyle(
+                        color:
+                            _isListening ? AppColors.primary : Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
                     children: [
                       TextButton.icon(
@@ -286,7 +313,8 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white12,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           textStyle: const TextStyle(fontSize: 12),
                         ),
                         onPressed: widget.onResume,
@@ -306,8 +334,13 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
     if (_spokenText.isEmpty) {
       return Center(
         child: Text(
-          isPersian ? 'جمله را تکرار کنید (صحبت کنید)...' : 'Repeat the sentence into your microphone...',
-          style: const TextStyle(color: Color(0xFF6B6A75), fontSize: 13, fontStyle: FontStyle.italic),
+          isPersian
+              ? 'جمله را تکرار کنید (صحبت کنید)...'
+              : 'Repeat the sentence into your microphone...',
+          style: const TextStyle(
+              color: Color(0xFF6B6A75),
+              fontSize: 13,
+              fontStyle: FontStyle.italic),
         ),
       );
     }
@@ -380,7 +413,8 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 20),
+          const Icon(Icons.check_circle_rounded,
+              color: Colors.greenAccent, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -399,7 +433,8 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
               _autoResumeTimer?.cancel();
               _retry();
             },
-            child: Text(isPersian ? 'تکرار' : 'Retry', style: const TextStyle(color: Colors.white70)),
+            child: Text(isPersian ? 'تکرار' : 'Retry',
+                style: const TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -411,7 +446,8 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
               _autoResumeTimer?.cancel();
               widget.onResume();
             },
-            child: Text(isPersian ? 'ادامه' : 'Resume Now', style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(isPersian ? 'ادامه' : 'Resume Now',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
