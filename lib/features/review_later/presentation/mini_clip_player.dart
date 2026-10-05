@@ -43,29 +43,37 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
   }
 
   Future<void> _initPlayer() async {
-    // Check if local file exists
-    if (!widget.videoPath.startsWith('http://') &&
-        !widget.videoPath.startsWith('https://')) {
-      final file = File(widget.videoPath);
-      if (!await file.exists()) {
-        setState(() => _fileMissing = true);
-        return;
-      }
+    final path = _normalizeVideoPath(widget.videoPath);
+    if (!_isRemotePath(path) && !await File(path).exists()) {
+      if (!mounted) return;
+      setState(() => _fileMissing = true);
+      return;
     }
 
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        title: 'ClipPractice',
-        logLevel: MPVLogLevel.error,
-      ),
-    );
-    final controller = VideoController(player);
+    // Native player creation itself can fail (missing codecs/plugins) —
+    // never let that escape as an unhandled async error.
+    Player? player;
+    try {
+      player = Player(
+        configuration: const PlayerConfiguration(
+          title: 'ClipPractice',
+          logLevel: MPVLogLevel.error,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _fileMissing = true);
+      return;
+    }
+    final newPlayer = player;
+    final controller = VideoController(newPlayer);
 
-    _posSub = player.stream.position.listen((pos) {
+    _posSub = newPlayer.stream.position.listen((pos) {
       if (!mounted) return;
       setState(() => _currentPos = pos);
       if (pos >= widget.endTime && _isPlaying) {
-        player.pause();
+        newPlayer.pause();
+        if (!mounted) return;
         setState(() {
           _isPlaying = false;
           _reachedEnd = true;
@@ -73,46 +81,108 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
       }
     });
 
-    _playingSub = player.stream.playing.listen((playing) {
+    _playingSub = newPlayer.stream.playing.listen((playing) {
       if (!mounted) return;
       setState(() => _isPlaying = playing);
     });
 
+    // The widget may have been disposed while the native player was being
+    // created (e.g. clip closed instantly or another clip opened) — release
+    // the orphan instead of leaking a background player.
+    if (!mounted) {
+      await _posSub?.cancel();
+      await _playingSub?.cancel();
+      await _disposeQuietly(newPlayer);
+      return;
+    }
     setState(() {
-      _player = player;
+      _player = newPlayer;
       _controller = controller;
     });
 
-    await player.open(Media(widget.videoPath), play: false);
-    await player.seek(widget.startTime);
-    await player.play();
+    try {
+      await newPlayer.open(Media(path), play: false);
+      if (!mounted) {
+        await _disposeQuietly(newPlayer);
+        return;
+      }
+      await newPlayer.seek(widget.startTime);
+      if (!mounted) {
+        await _disposeQuietly(newPlayer);
+        return;
+      }
+      await newPlayer.play();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _fileMissing = true);
+    }
+  }
+
+  /// `file://` URIs (from drag-drop / open-with flows) → plain paths so the
+  /// existence check and the media engine agree on the same file.
+  String _normalizeVideoPath(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.startsWith('file://')) {
+      try {
+        return Uri.parse(trimmed).toFilePath();
+      } catch (_) {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+
+  bool _isRemotePath(String path) =>
+      path.startsWith('http://') || path.startsWith('https://');
+
+  /// Dispose that tolerates an already-disposed player (teardown may have
+  /// run first when init and dispose race each other).
+  Future<void> _disposeQuietly(Player player) async {
+    try {
+      await player.dispose();
+    } catch (_) {}
   }
 
   Future<void> _replay() async {
-    if (_player == null) return;
+    final player = _player;
+    if (player == null || !mounted) return;
     setState(() => _reachedEnd = false);
-    await _player!.seek(widget.startTime);
-    await _player!.play();
+    try {
+      await player.seek(widget.startTime);
+      if (!mounted) return;
+      await player.play();
+    } catch (_) {}
   }
 
   Future<void> _togglePlayPause() async {
-    if (_player == null) return;
-    if (_isPlaying) {
-      await _player!.pause();
-    } else {
-      if (_reachedEnd || _currentPos >= widget.endTime) {
-        await _player!.seek(widget.startTime);
-        setState(() => _reachedEnd = false);
+    final player = _player;
+    if (player == null || !mounted) return;
+    try {
+      if (_isPlaying) {
+        await player.pause();
+      } else {
+        if (_reachedEnd || _currentPos >= widget.endTime) {
+          await player.seek(widget.startTime);
+          if (!mounted) return;
+          setState(() => _reachedEnd = false);
+        }
+        await player.play();
       }
-      await _player!.play();
-    }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _posSub?.cancel();
-    _playingSub?.cancel();
-    _player?.dispose();
+    try {
+      _posSub?.cancel();
+      _playingSub?.cancel();
+    } catch (_) {}
+    // Null first so in-flight init cannot double-dispose through this path.
+    final player = _player;
+    _player = null;
+    if (player != null) {
+      _disposeQuietly(player);
+    }
     super.dispose();
   }
 
@@ -131,11 +201,13 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.broken_image_rounded, color: Colors.redAccent, size: 36),
+              const Icon(Icons.broken_image_rounded,
+                  color: Colors.redAccent, size: 36),
               const SizedBox(height: 8),
               const Text(
                 'Video file not found or moved',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -158,7 +230,8 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+          child: CircularProgressIndicator(
+              color: AppColors.primary, strokeWidth: 2),
         ),
       );
     }
@@ -217,7 +290,8 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
                   value: progress,
                   minHeight: 3,
                   backgroundColor: Colors.white24,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               ),
             ),
@@ -232,7 +306,9 @@ class _MiniClipPlayerState extends State<MiniClipPlayer> {
                   // Play / Pause
                   IconButton(
                     icon: Icon(
-                      _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      _isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       color: Colors.white,
                       size: 24,
                     ),

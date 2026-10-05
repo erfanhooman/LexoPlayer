@@ -243,7 +243,8 @@ class SavedReviewService {
 
   Future<void> deleteSentencesForVideo(String videoPath) async {
     final db = await database;
-    await db.delete('saved_sentences', where: 'video_path = ?', whereArgs: [videoPath]);
+    await db.delete('saved_sentences',
+        where: 'video_path = ?', whereArgs: [videoPath]);
   }
 
   Future<void> toggleMastered(int id, bool isMastered) async {
@@ -301,7 +302,15 @@ class SavedSentencesNotifier extends StateNotifier<List<SavedSentence>> {
     state = items;
   }
 
+  /// Saves a sentence unless the exact same sentence (video + text + word)
+  /// is already saved — tapping "Save Sentence" twice no longer creates
+  /// duplicate review cards.
   Future<void> addSentence(SavedSentence sentence) async {
+    final duplicate = state.any((s) =>
+        s.videoPath == sentence.videoPath &&
+        s.sentenceText == sentence.sentenceText &&
+        s.targetWord == sentence.targetWord);
+    if (duplicate) return;
     final saved = await _service.saveSentence(sentence);
     state = [saved, ...state];
   }
@@ -317,10 +326,21 @@ class SavedSentencesNotifier extends StateNotifier<List<SavedSentence>> {
   }
 
   Future<void> toggleMastered(int id) async {
-    final current = state.firstWhere((s) => s.id == id);
+    SavedSentence? current;
+    for (final s in state) {
+      if (s.id == id) {
+        current = s;
+        break;
+      }
+    }
+    // The row may have been removed (e.g. batch delete) since this frame
+    // was built — silently ignore instead of throwing StateError.
+    if (current == null) return;
     final updated = !current.isMastered;
     await _service.toggleMastered(id, updated);
-    state = state.map((s) => s.id == id ? s.copyWith(isMastered: updated) : s).toList();
+    state = state
+        .map((s) => s.id == id ? s.copyWith(isMastered: updated) : s)
+        .toList();
   }
 }
 
@@ -342,7 +362,12 @@ class SavedWordsNotifier extends StateNotifier<List<SavedWord>> {
     state = items;
   }
 
+  /// Saves a word unless the same word in the same context is already saved.
   Future<void> addWord(SavedWord word) async {
+    final duplicate = state.any((w) =>
+        w.word.toLowerCase() == word.word.toLowerCase() &&
+        (w.contextSentence ?? '') == (word.contextSentence ?? ''));
+    if (duplicate) return;
     final saved = await _service.saveWord(word);
     state = [saved, ...state];
   }
