@@ -26,8 +26,15 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
-	<key>NSPrincipalClass</key>
+ 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+
+	<!-- Microphone + speech recognition (shadowing practice). macOS kills
+	     the process on first use when these descriptions are missing. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LexoPlayer needs microphone access for shadowing practice (listen-and-repeat pronunciation training).</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>LexoPlayer uses on-device speech recognition to compare your pronunciation with the subtitle during shadowing practice.</string>
 
 	<!-- macOS Document Types (File Associations for Video Player) -->
 	<key>CFBundleDocumentTypes</key>

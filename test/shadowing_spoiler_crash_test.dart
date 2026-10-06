@@ -7,9 +7,11 @@
 //  4. the overlay transitions shadowing <-> spoiler-blurred subtitle.
 //
 // Any exception during pump/dispose fails the test.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lexo_player/core/engine/engine_providers.dart';
 import 'package:lexo_player/core/services/stt_service.dart';
@@ -66,6 +68,8 @@ Widget _harness(Widget child, List<Override> overrides) {
 }
 
 void main() {
+  SharedPreferences.setMockInitialValues({});
+
   group('shadowing + spoiler exit crash', () {
     testWidgets('shadowing box opens, spoiler toggles, box closes cleanly',
         (tester) async {
@@ -190,6 +194,53 @@ void main() {
       await tester.pump();
       container.read(subtitleVisibilityProvider.notifier).state = true;
       await tester.pump();
+    });
+
+    testWidgets('spoiler button on the subtitle bar toggles blur',
+        (tester) async {
+      await tester.pumpWidget(_harness(
+        const InteractiveSubtitleOverlay(),
+        [
+          activeSubtitleTextProvider.overrideWith((ref) => 'Hello world'),
+          activeSecondarySubtitleTextProvider.overrideWith((ref) => null),
+          engineOutputProvider.overrideWith((ref) async => null),
+        ],
+      ));
+      await tester.pump();
+
+      final container = ProviderScope.containerOf(
+          tester.element(find.byType(InteractiveSubtitleOverlay)));
+
+      // Hover the subtitle area so the action row appears (desktop pattern).
+      // NOTE: several small pumps, not one big pump — implicit reveal
+      // animations need consecutive frames to progress past their initial
+      // value (a single pump leaves the button at height 0, unhittable).
+      // The pointer stays down throughout: removing it un-hovers and
+      // collapses the action row before the taps below.
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      await gesture
+          .moveTo(tester.getCenter(find.byType(InteractiveSubtitleOverlay)));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      // The spoiler toggle is now hittable next to the subtitle.
+      expect(find.text('Spoiler'), findsOneWidget);
+      await tester.tap(find.text('Spoiler'));
+      await tester.pump();
+      expect(container.read(isSubtitleSpoilerModeEnabledProvider), isTrue);
+      expect(find.text('Click to reveal subtitle'), findsOneWidget);
+
+      // Current cue blurs immediately (revealed index cleared on enable).
+      expect(container.read(activeRevealedSubtitleCueIndexProvider), isNull);
+
+      // Toggle back off from the same button.
+      await tester.tap(find.text('Spoiler on'));
+      await tester.pump();
+      expect(container.read(isSubtitleSpoilerModeEnabledProvider), isFalse);
+      expect(find.text('Click to reveal subtitle'), findsNothing);
+      await gesture.removePointer();
     });
   });
 }

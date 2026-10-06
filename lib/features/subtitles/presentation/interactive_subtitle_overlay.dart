@@ -95,8 +95,8 @@ class _InteractiveSubtitleOverlayState
     final isSpoilerMode = ref.watch(isSubtitleSpoilerModeEnabledProvider);
     final activeIndex = ref.watch(activeSubtitleIndexProvider);
     final revealedIndex = ref.watch(activeRevealedSubtitleCueIndexProvider);
-    final isSpoilerBlurred = isSpoilerMode &&
-        (activeIndex == null || revealedIndex != activeIndex);
+    final isSpoilerBlurred =
+        isSpoilerMode && (activeIndex == null || revealedIndex != activeIndex);
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
@@ -146,7 +146,7 @@ class _InteractiveSubtitleOverlayState
                   Container(
                     padding: EdgeInsets.fromLTRB(
                       16,
-                      (_isHovered && (hasSecondaryTrack || isShadowingEnabled)) ? 8 : 10,
+                      _isHovered ? 8 : 10,
                       16,
                       10,
                     ),
@@ -157,45 +157,70 @@ class _InteractiveSubtitleOverlayState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Action row: Secondary subtitle toggle & Shadowing mic button
-                        if (hasSecondaryTrack || isShadowingEnabled)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (hasSecondaryTrack)
-                                _TranslationToggle(
-                                  isHovered: _isHovered,
-                                  isSecondaryVisible: isSecondaryVisible,
-                                  isPersian: isPersian,
-                                  onToggle: () {
-                                    ref
-                                        .read(
-                                            isSecondarySubtitleVisibleProvider
-                                                .notifier)
-                                        .state = !isSecondaryVisible;
-                                  },
-                                  onFocusChange: (focused) {
-                                    if (focused) {
-                                      setState(() => _isHovered = true);
-                                    }
-                                  },
-                                ),
-                              if (hasSecondaryTrack && isShadowingEnabled)
-                                const SizedBox(width: 8),
-                              if (isShadowingEnabled)
-                                _ShadowingButton(
-                                  isHovered: _isHovered,
-                                  isPersian: isPersian,
-                                  onTap: () {
-                                    final player = ref.read(playerProvider);
-                                    PlayerActions.pause(player);
-                                    ref
-                                        .read(activeShadowingStateProvider.notifier)
-                                        .state = true;
-                                  },
-                                ),
-                            ],
-                          ),
+                        // Action row: translation toggle, shadowing mic & spoiler blur.
+                        // Always present so the spoiler toggle is discoverable
+                        // right on the video (buttons self-hide off-hover).
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasSecondaryTrack)
+                              _TranslationToggle(
+                                isHovered: _isHovered,
+                                isSecondaryVisible: isSecondaryVisible,
+                                isPersian: isPersian,
+                                onToggle: () {
+                                  ref
+                                      .read(isSecondarySubtitleVisibleProvider
+                                          .notifier)
+                                      .state = !isSecondaryVisible;
+                                },
+                                onFocusChange: (focused) {
+                                  if (focused) {
+                                    setState(() => _isHovered = true);
+                                  }
+                                },
+                              ),
+                            if (hasSecondaryTrack && isShadowingEnabled)
+                              const SizedBox(width: 8),
+                            if (isShadowingEnabled)
+                              _ShadowingButton(
+                                isHovered: _isHovered,
+                                isPersian: isPersian,
+                                onTap: () {
+                                  final player = ref.read(playerProvider);
+                                  PlayerActions.pause(player);
+                                  ref
+                                      .read(
+                                          activeShadowingStateProvider.notifier)
+                                      .state = true;
+                                },
+                              ),
+                            if (hasSecondaryTrack || isShadowingEnabled)
+                              const SizedBox(width: 8),
+                            _SpoilerButton(
+                              isHovered: _isHovered,
+                              isPersian: isPersian,
+                              isActive: isSpoilerMode,
+                              onTap: () {
+                                final next = !isSpoilerMode;
+                                ref
+                                    .read(isSubtitleSpoilerModeEnabledProvider
+                                        .notifier)
+                                    .state = next;
+                                if (next) {
+                                  // Blur the current cue immediately instead
+                                  // of leaving a previously revealed one open.
+                                  ref
+                                      .read(
+                                          activeRevealedSubtitleCueIndexProvider
+                                              .notifier)
+                                      .state = null;
+                                }
+                                saveSubtitleSpoilerMode(next);
+                              },
+                            ),
+                          ],
+                        ),
 
                         // Interactive Primary Subtitle Text (with optional Spoiler Blur)
                         if (isSpoilerBlurred)
@@ -479,8 +504,7 @@ class _TranslationToggle extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.white24, width: 0.8),
+                          border: Border.all(color: Colors.white24, width: 0.8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -590,3 +614,92 @@ class _ShadowingButton extends StatelessWidget {
   }
 }
 
+/// Spoiler blur toggle, always discoverable on the subtitle bar.
+///
+/// Toggles [isSubtitleSpoilerModeEnabledProvider] (same switch as Settings,
+/// persisted the same way). Active state is highlighted in accent.
+class _SpoilerButton extends StatelessWidget {
+  final bool isHovered;
+  final bool isPersian;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _SpoilerButton({
+    required this.isHovered,
+    required this.isPersian,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final visible = isHovered || isMobile;
+    final label = isPersian
+        ? (isActive ? 'اسپویلر فعال' : 'اسپویلر')
+        : (isActive ? 'Spoiler on' : 'Spoiler');
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: visible ? 1.0 : 0.0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: visible ? 36 : 0,
+        margin: EdgeInsets.only(bottom: visible ? 6 : 0),
+        child: visible
+            ? Semantics(
+                button: true,
+                label: label,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minHeight: 32, minWidth: 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppColors.primary.withValues(alpha: 0.18)
+                            : Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isActive
+                              ? AppColors.primary.withValues(alpha: 0.5)
+                              : Colors.white24,
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isActive
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color:
+                                isActive ? AppColors.primary : Colors.white60,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
