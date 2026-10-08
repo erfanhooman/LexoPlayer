@@ -1,25 +1,39 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:lexo_player/core/services/stt_service.dart';
-import 'package:lexo_player/core/services/tts_service.dart';
 import 'package:lexo_player/core/theme/app_colors.dart';
 import 'package:lexo_player/core/utils/speech_matcher.dart';
 import 'package:lexo_player/core/widgets/glass_container.dart';
 import 'package:lexo_player/core/engine/engine_providers.dart';
+import 'package:lexo_player/features/video_player/providers/player_provider.dart';
 
 /// Interactive Shadowing Practice Box overlay.
 /// Listens to user speech in real time, compares recognized tokens against
 /// [targetSentence], highlights matches in green / mismatches in red,
 /// and auto-resumes playback upon 100% completion.
+///
+/// The "hear" button replays the actual movie audio for the practiced cue
+/// ([cueStart]..[cueEnd]) instead of a synthesized voice.
 class ShadowingBoxWidget extends ConsumerStatefulWidget {
   final String targetSentence;
+
+  /// Start timestamp of the practiced subtitle cue in the video.
+  /// When null, replay falls back to the current player position.
+  final Duration? cueStart;
+
+  /// End timestamp of the practiced subtitle cue in the video.
+  /// When null, replay plays a short window from [cueStart].
+  final Duration? cueEnd;
   final VoidCallback onResume;
   final VoidCallback onClose;
 
   const ShadowingBoxWidget({
     super.key,
     required this.targetSentence,
+    this.cueStart,
+    this.cueEnd,
     required this.onResume,
     required this.onClose,
   });
@@ -34,7 +48,11 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
   bool _isListening = false;
   bool _isComplete = false;
   bool _isMicUnavailable = false;
+  bool _isReplaying = false;
   Timer? _autoResumeTimer;
+  StreamSubscription<Duration>? _replaySub;
+  // Player captured at replay time (never via `ref` in dispose — see below).
+  Player? _replayPlayer;
   int _countdownSeconds = 2;
   final TextEditingController _fallbackController = TextEditingController();
 
@@ -42,7 +60,6 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
   // detaches it before State.dispose runs, throwing StateError and crashing
   // the app on every exit from this widget).
   late final SttService _stt;
-  late final TtsService _tts;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -51,7 +68,6 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
   void initState() {
     super.initState();
     _stt = ref.read(sttServiceProvider);
-    _tts = ref.read(ttsServiceProvider);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -62,7 +78,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
     _startListening();
   }
 
-  Future<void> _startListening() async {
+  Future<void> _startListening({bool clearSpoken = true}) async {
     final available = await _stt.initialize();
 
     if (!mounted) return;
@@ -77,7 +93,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
     setState(() {
       _isListening = true;
       _isComplete = false;
-      _spokenText = '';
+      if (clearSpoken) _spokenText = '';
       _isMicUnavailable = false;
     });
 
@@ -126,6 +142,7 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
 
   Future<void> _retry() async {
     _autoResumeTimer?.cancel();
+    await _cancelReplay(resumeListening: false);
     _fallbackController.clear();
     setState(() {
       _isComplete = false;
@@ -134,14 +151,106 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
     await _startListening();
   }
 
+  /// Replays the actual movie audio for the practiced cue ([cueStart]..[cueEnd]).
+  ///
+  /// Mic capture is paused while the movie plays so the soundtrack is not
+  /// transcribed, then resumed without wiping the user's spoken progress.
+  /// Tapping again mid-replay stops the replay.
+  Future<void> _replayMovieAudio() async {
+    if (_isReplaying) {
+      await _cancelReplay(resumeListening: true);
+      return;
+    }
+
+    await _replaySub?.cancel();
+    _replaySub = null;
+    _autoResumeTimer?.cancel();
+    await _stt.stopListening();
+    if (!mounted) return;
+    setState(() {
+      _isListening = false;
+      _isComplete = false;
+      _isReplaying = true;
+    });
+
+    late final Player player;
+    try {
+      player = ref.read(playerProvider);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isReplaying = false);
+      await _startListening(clearSpoken: false);
+      return;
+    }
+    _replayPlayer = player;
+
+    var start = widget.cueStart ?? player.state.position;
+    if (start < Duration.zero) start = Duration.zero;
+    var end = widget.cueEnd ?? (start + const Duration(seconds: 4));
+    if (end <= start) end = start + const Duration(seconds: 4);
+    final replayEnd = end;
+
+    try {
+      await player.seek(start);
+      await player.play();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isReplaying = false);
+      await _startListening(clearSpoken: false);
+      return;
+    }
+
+    _replaySub = player.stream.position.listen((pos) async {
+      if (pos >= replayEnd) {
+        await _finishReplay();
+      }
+    });
+  }
+
+  /// Called when the replayed cue reaches [cueEnd]: pauses the movie and
+  /// resumes mic capture, keeping the user's spoken progress.
+  Future<void> _finishReplay() async {
+    if (!_isReplaying) return;
+    await _replaySub?.cancel();
+    _replaySub = null;
+    try {
+      await _replayPlayer?.pause();
+    } catch (_) {}
+    _replayPlayer = null;
+    if (!mounted) return;
+    setState(() => _isReplaying = false);
+    await _startListening(clearSpoken: false);
+  }
+
+  /// Stops an in-progress replay. When [resumeListening] is true, mic
+  /// capture resumes without wiping spoken progress.
+  Future<void> _cancelReplay({required bool resumeListening}) async {
+    if (!_isReplaying && _replaySub == null && _replayPlayer == null) return;
+    await _replaySub?.cancel();
+    _replaySub = null;
+    try {
+      await _replayPlayer?.pause();
+    } catch (_) {}
+    _replayPlayer = null;
+    if (!mounted) return;
+    setState(() => _isReplaying = false);
+    if (resumeListening) {
+      await _startListening(clearSpoken: false);
+    }
+  }
+
   @override
   void dispose() {
     _autoResumeTimer?.cancel();
+    _replaySub?.cancel();
+    _replaySub = null;
+    // NOTE: no `ref` use here by design (see field docs above).
+    // Best-effort pause so closing mid-replay leaves the video paused.
+    _replayPlayer?.pause();
+    _replayPlayer = null;
     _pulseController.dispose();
     _fallbackController.dispose();
-    // NOTE: no `ref` use here by design (see field docs above).
     _stt.stopListening();
-    _tts.stop();
     super.dispose();
   }
 
@@ -206,15 +315,22 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                   ),
                 ),
 
-                // TTS Speaker to listen to model pronunciation
+                // Replay the actual movie audio for this sentence
                 IconButton(
-                  tooltip:
-                      isPersian ? 'شنیدن تلفظ الگو' : 'Hear target sentence',
-                  icon: const Icon(Icons.volume_up_rounded,
-                      color: Colors.white70, size: 20),
-                  onPressed: () {
-                    _tts.speak(widget.targetSentence);
-                  },
+                  tooltip: isPersian
+                      ? (_isReplaying
+                          ? 'توقف پخش صدای فیلم'
+                          : 'پخش صدای فیلم')
+                      : (_isReplaying ? 'Stop movie audio' : 'Replay movie audio'),
+                  icon: Icon(
+                      _isReplaying
+                          ? Icons.stop_circle_outlined
+                          : Icons.replay_rounded,
+                      color: _isReplaying
+                          ? AppColors.primary
+                          : Colors.white70,
+                      size: 20),
+                  onPressed: _replayMovieAudio,
                 ),
 
                 // Close Button
@@ -281,14 +397,19 @@ class _ShadowingBoxWidgetState extends ConsumerState<ShadowingBoxWidget>
                 children: [
                   Flexible(
                     child: Text(
-                      _isListening
+                      _isReplaying
                           ? (isPersian
-                              ? 'در حال گوش دادن... صحبت کنید'
-                              : 'Listening... speak now')
-                          : (isPersian ? 'متوقف شد' : 'Paused'),
+                              ? 'در حال پخش صدای فیلم...'
+                              : 'Replaying movie audio...')
+                          : (_isListening
+                              ? (isPersian
+                                  ? 'در حال گوش دادن... صحبت کنید'
+                                  : 'Listening... speak now')
+                              : (isPersian ? 'متوقف شد' : 'Paused')),
                       style: TextStyle(
-                        color:
-                            _isListening ? AppColors.primary : Colors.white38,
+                        color: (_isListening || _isReplaying)
+                            ? AppColors.primary
+                            : Colors.white38,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),

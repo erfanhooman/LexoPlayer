@@ -256,7 +256,9 @@ class AppSettingsOverlay extends ConsumerWidget {
                               : 'Show mic button to speak & repeat subtitles with live feedback',
                           value: ref.watch(isShadowingModeEnabledProvider),
                           onChanged: (val) {
-                            ref.read(isShadowingModeEnabledProvider.notifier).state = val;
+                            ref
+                                .read(isShadowingModeEnabledProvider.notifier)
+                                .state = val;
                             saveShadowingMode(val);
                           },
                         ),
@@ -268,9 +270,13 @@ class AppSettingsOverlay extends ConsumerWidget {
                           subtitle: isPersian
                               ? 'مات کردن زیرنویس تا زمان کلیک برای تقویت مهارت شنیداری'
                               : 'Blurs subtitles until clicked to train listening comprehension',
-                          value: ref.watch(isSubtitleSpoilerModeEnabledProvider),
+                          value:
+                              ref.watch(isSubtitleSpoilerModeEnabledProvider),
                           onChanged: (val) {
-                            ref.read(isSubtitleSpoilerModeEnabledProvider.notifier).state = val;
+                            ref
+                                .read(isSubtitleSpoilerModeEnabledProvider
+                                    .notifier)
+                                .state = val;
                             saveSubtitleSpoilerMode(val);
                           },
                         ),
@@ -437,6 +443,8 @@ class _AppVersionTile extends ConsumerWidget {
     final updateInfo = ref.watch(appUpdateInfoProvider);
     final status = ref.watch(appUpdateStatusProvider);
     final progress = ref.watch(appUpdateProgressProvider);
+    final receivedBytes = ref.watch(appUpdateReceivedBytesProvider);
+    final totalBytes = ref.watch(appUpdateTotalBytesProvider);
     final downloading = ref.watch(appUpdateDownloadingProvider);
     final pending = ref.watch(pendingUpdateProvider);
     final pendingReady = pending != null &&
@@ -444,6 +452,8 @@ class _AppVersionTile extends ConsumerWidget {
         pending.tag == updateInfo.latestTag;
     final restartInstall =
         pendingReady && (pending.isSelfInstall || pending.isInPlaceAppImage);
+    final progressKnown = totalBytes != null && totalBytes > 0;
+    final totalForLabel = totalBytes ?? 0;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -509,17 +519,33 @@ class _AppVersionTile extends ConsumerWidget {
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
-          if (downloading && progress != null) ...[
+          if (downloading) ...[
             const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 4,
-              backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(_kAccent),
-            ),
+            if (updateInfo?.assetName != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${updateInfo!.assetName} • ${isPersian ? 'LexoPlayer-Updates' : 'LexoPlayer-Updates'}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ),
+            progressKnown
+                ? LinearProgressIndicator(
+                    value: progress ?? 0.0,
+                    minHeight: 4,
+                    backgroundColor: Colors.white10,
+                    valueColor: AlwaysStoppedAnimation<Color>(_kAccent),
+                  )
+                : LinearProgressIndicator(
+                    minHeight: 4,
+                    backgroundColor: Colors.white10,
+                    valueColor: AlwaysStoppedAnimation<Color>(_kAccent),
+                  ),
             const SizedBox(height: 4),
             Text(
-              '${((progress) * 100).toStringAsFixed(0)}%',
+              progressKnown
+                  ? '${formatBytes(receivedBytes)} / ${formatBytes(totalForLabel)} • ${(((progress ?? 0.0)) * 100).toStringAsFixed(0)}%'
+                  : '${formatBytes(receivedBytes)} ${isPersian ? 'دانلود شد…' : 'downloaded…'}',
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -548,48 +574,64 @@ class _AppVersionTile extends ConsumerWidget {
               if (updateInfo != null && updateInfo.hasUpdate) ...[
                 const SizedBox(width: 8),
                 Expanded(
-                  child: pendingReady
-                      ? ElevatedButton.icon(
-                          onPressed: downloading
-                              ? null
-                              : () =>
-                                  AutoUpdateService.installPendingUpdate(ref),
-                          icon: Icon(
-                              restartInstall
-                                  ? Icons.restart_alt_rounded
-                                  : Icons.file_open_rounded,
-                              size: 14),
-                          label: Text(restartInstall
-                              ? (isPersian
-                                  ? 'نصب و اجرای مجدد'
-                                  : 'Install & Restart')
-                              : (isPersian
-                                  ? 'باز کردن نصب‌کننده'
-                                  : 'Open Installer')),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kAccent,
-                            foregroundColor: Colors.white,
+                  child: downloading
+                      ? OutlinedButton.icon(
+                          onPressed: () =>
+                              AutoUpdateService.cancelUpdateDownload(ref),
+                          icon: const Icon(Icons.close_rounded,
+                              size: 14, color: Colors.redAccent),
+                          label: Text(isPersian ? 'لغو دانلود' : 'Cancel'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Color(0xFF5A2B2B)),
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         )
-                      : ElevatedButton.icon(
-                          onPressed: downloading
-                              ? null
-                              : () => AutoUpdateService.downloadUpdate(ref),
-                          icon: const Icon(Icons.download_rounded, size: 14),
-                          label: Text(isPersian ? 'دانلود' : 'Download'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kAccent,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      : pendingReady
+                          ? ElevatedButton.icon(
+                              onPressed: () =>
+                                  AutoUpdateService.installPendingUpdate(ref),
+                              icon: Icon(
+                                  restartInstall
+                                      ? Icons.restart_alt_rounded
+                                      : Icons.file_open_rounded,
+                                  size: 14),
+                              label: Text(restartInstall
+                                  ? (isPersian
+                                      ? 'نصب و اجرای مجدد'
+                                      : 'Install & Restart')
+                                  : (isPersian
+                                      ? 'باز کردن نصب‌کننده'
+                                      : 'Open Installer')),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _kAccent,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            )
+                          : ElevatedButton.icon(
+                              onPressed: () =>
+                                  AutoUpdateService.downloadUpdate(ref),
+                              icon:
+                                  const Icon(Icons.download_rounded, size: 14),
+                              label: Text(isPersian ? 'دانلود' : 'Download'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _kAccent,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
                 ),
               ],
             ],

@@ -39,8 +39,29 @@ final appUpdateInfoProvider = StateProvider<AppUpdateInfo?>((ref) => null);
 /// 0.0–1.0 download progress while an installer is downloading. Null = idle.
 final appUpdateProgressProvider = StateProvider<double?>((ref) => null);
 
+/// Bytes received so far for the in-progress installer download.
+final appUpdateReceivedBytesProvider = StateProvider<int>((ref) => 0);
+
+/// Total installer size in bytes when the server reports it. Null = unknown.
+final appUpdateTotalBytesProvider = StateProvider<int?>((ref) => null);
+
 /// True while the installer file is being downloaded.
 final appUpdateDownloadingProvider = StateProvider<bool>((ref) => false);
+
+/// Formats a byte count as `12.4 MB` / `850 KB` / `300 B` for download UI.
+String formatBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  var size = bytes.toDouble();
+  var unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit++;
+  }
+  return unit == 0
+      ? '${size.toStringAsFixed(0)} ${units[unit]}'
+      : '${size.toStringAsFixed(1)} ${units[unit]}';
+}
 
 /// A fully downloaded update file waiting for the user to install it.
 /// Null = nothing staged. Survives restarts via SharedPreferences.
@@ -586,6 +607,15 @@ class AutoUpdateService {
   ///
   /// When the file for this tag is already staged, it is NOT re-downloaded —
   /// the existing file is simply revealed and reported as ready.
+  ///
+  /// The download can be aborted at any time via [cancelUpdateDownload]
+  /// (the dialog's Cancel button): the partial file is deleted and all
+  /// progress state resets to idle. Closing the dialog does NOT cancel —
+  /// the download keeps running in the background and the Settings tile
+  /// keeps showing live progress + Cancel.
+  static CancelToken? _downloadCancel;
+  static String? _downloadSavePath;
+
   static Future<String?> downloadUpdate(
     dynamic ref, {
     void Function(int received, int total)? onProgress,
@@ -608,8 +638,13 @@ class AutoUpdateService {
       await _openWebUrl(info.assetUrl!);
       return null;
     }
+    if (ref.read(appUpdateDownloadingProvider) as bool) return null;
     ref.read(appUpdateDownloadingProvider.notifier).state = true;
     ref.read(appUpdateProgressProvider.notifier).state = 0.0;
+    ref.read(appUpdateReceivedBytesProvider.notifier).state = 0;
+    ref.read(appUpdateTotalBytesProvider.notifier).state = null;
+    _downloadCancel = CancelToken();
+    _downloadSavePath = null;
     try {
       final dir = await updatesDirectory();
       final fileName =
@@ -624,17 +659,27 @@ class AutoUpdateService {
         ref.read(pendingUpdateProvider.notifier).state = pending;
         ref.read(appUpdateStatusProvider.notifier).state =
             'Update ${info.latestTag} is already downloaded — ready to install.';
+        try {
+          final size = File(savePath).lengthSync();
+          ref.read(appUpdateReceivedBytesProvider.notifier).state = size;
+          ref.read(appUpdateTotalBytesProvider.notifier).state = size;
+        } catch (_) {}
         await revealInFinder(savePath);
         return savePath;
       }
 
+      _downloadSavePath = savePath;
       await _dio.download(
         info.assetUrl!,
         savePath,
+        cancelToken: _downloadCancel,
         onReceiveProgress: (received, total) {
           final progress = total > 0 ? received / total : 0.0;
           try {
             ref.read(appUpdateProgressProvider.notifier).state = progress;
+            ref.read(appUpdateReceivedBytesProvider.notifier).state = received;
+            ref.read(appUpdateTotalBytesProvider.notifier).state =
+                total > 0 ? total : null;
           } catch (_) {}
           onProgress?.call(received, total);
         },
@@ -661,15 +706,61 @@ class AutoUpdateService {
       await revealInFinder(savePath);
       return savePath;
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        // User-pressed Cancel: drop the partial file and reset to idle.
+        // Do NOT open the release page — cancelling was intentional.
+        final partial = _downloadSavePath;
+        if (partial != null) {
+          try {
+            final f = File(partial);
+            if (f.existsSync()) await f.delete();
+          } catch (_) {}
+        }
+        _resetDownloadState(ref);
+        ref.read(appUpdateStatusProvider.notifier).state =
+            'Update download cancelled.';
+        return null;
+      }
       developer.log('App update download failed: $e',
           name: 'AutoUpdateService');
+      _resetDownloadState(ref);
       ref.read(appUpdateStatusProvider.notifier).state =
           'Update download failed. Opening release page…';
       await openReleasePage(ref);
       return null;
     } finally {
+      _downloadCancel = null;
+      _downloadSavePath = null;
       ref.read(appUpdateDownloadingProvider.notifier).state = false;
     }
+  }
+
+  /// Aborts the in-progress installer download (if any), deletes the partial
+  /// file, and resets all download progress state to idle.
+  ///
+  /// Safe to call when nothing is downloading (resets stale state).
+  static Future<void> cancelUpdateDownload(dynamic ref) async {
+    final token = _downloadCancel;
+    _downloadCancel = null;
+    if (token != null && !token.isCancelled) {
+      token.cancel('User cancelled the update download');
+      // The awaiting [downloadUpdate] observes the cancellation and performs
+      // the cleanup above; reset here too in case it already finished.
+    }
+    _downloadSavePath = null;
+    try {
+      if (!(ref.read(appUpdateDownloadingProvider) as bool)) {
+        _resetDownloadState(ref);
+      }
+    } catch (_) {}
+  }
+
+  static void _resetDownloadState(dynamic ref) {
+    try {
+      ref.read(appUpdateProgressProvider.notifier).state = null;
+      ref.read(appUpdateReceivedBytesProvider.notifier).state = 0;
+      ref.read(appUpdateTotalBytesProvider.notifier).state = null;
+    } catch (_) {}
   }
 
   /// Step 2 — installs a previously staged update (no re-download).

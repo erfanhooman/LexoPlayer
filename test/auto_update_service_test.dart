@@ -36,6 +36,25 @@ void main() {
     });
   });
 
+  group('formatBytes (download progress labels)', () {
+    test('zero and bytes', () {
+      expect(formatBytes(0), '0 B');
+      expect(formatBytes(-5), '0 B');
+      expect(formatBytes(300), '300 B');
+    });
+
+    test('kilobytes', () {
+      expect(formatBytes(1024), '1.0 KB');
+      expect(formatBytes(850 * 1024), '850.0 KB');
+    });
+
+    test('megabytes and gigabytes', () {
+      expect(formatBytes(12 * 1024 * 1024 + 512 * 1024), '12.5 MB');
+      expect(formatBytes(245 * 1024 * 1024), '245.0 MB');
+      expect(formatBytes(2 * 1024 * 1024 * 1024), '2.0 GB');
+    });
+  });
+
   group('macOS bundle + staged-update helpers', () {
     test('staged-update asset detection', () {
       // On macOS hosts the ZIP is a self-installer; DMG/others are not.

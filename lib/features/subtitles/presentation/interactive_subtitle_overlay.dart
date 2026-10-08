@@ -30,6 +30,11 @@ class _InteractiveSubtitleOverlayState
     extends ConsumerState<InteractiveSubtitleOverlay> {
   bool _isHovered = false;
 
+  /// Cue timings captured when shadowing practice opens, so the shadowing
+  /// box can replay the actual movie audio for the practiced sentence.
+  Duration? _shadowingCueStart;
+  Duration? _shadowingCueEnd;
+
   /// Matches right-to-left scripts (Hebrew, Arabic, Persian, Urdu, etc.).
   static final RegExp _rtlRegex = RegExp(
     r'[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFB4F\uFB50-\uFDFF\uFE70-\uFEFF]',
@@ -78,6 +83,8 @@ class _InteractiveSubtitleOverlayState
         child: Center(
           child: ShadowingBoxWidget(
             targetSentence: displayText,
+            cueStart: _shadowingCueStart,
+            cueEnd: _shadowingCueEnd,
             onResume: () {
               ref.read(activeShadowingStateProvider.notifier).state = false;
               final player = ref.read(playerProvider);
@@ -188,6 +195,23 @@ class _InteractiveSubtitleOverlayState
                                 isPersian: isPersian,
                                 onTap: () {
                                   final player = ref.read(playerProvider);
+                                  // Capture the practiced cue's timings before
+                                  // pausing, so the shadowing box can replay
+                                  // the actual movie audio for this sentence.
+                                  final block = ref.read(
+                                      activeSubtitleBlockProvider);
+                                  final fallbackStart =
+                                      player.state.position;
+                                  _shadowingCueStart = block?.startTime ??
+                                      fallbackStart;
+                                  final blockEnd = block?.endTime;
+                                  _shadowingCueEnd =
+                                      (blockEnd != null &&
+                                              blockEnd >
+                                                  _shadowingCueStart!)
+                                          ? blockEnd
+                                          : _shadowingCueStart! +
+                                              const Duration(seconds: 4);
                                   PlayerActions.pause(player);
                                   ref
                                       .read(
@@ -224,53 +248,69 @@ class _InteractiveSubtitleOverlayState
 
                         // Interactive Primary Subtitle Text (with optional Spoiler Blur)
                         if (isSpoilerBlurred)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              if (activeIndex != null) {
-                                ref
-                                    .read(activeRevealedSubtitleCueIndexProvider
-                                        .notifier)
-                                    .state = activeIndex;
-                              }
-                            },
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                ImageFiltered(
-                                  imageFilter: ImageFilter.blur(
-                                      sigmaX: 7.0, sigmaY: 7.0),
-                                  child: _buildTokens(displayText, spans, ref),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.75),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: Colors.white24, width: 0.8),
+                          Semantics(
+                            button: true,
+                            label: isPersian
+                                ? 'کلیک کنید برای مشاهده'
+                                : 'Click to reveal subtitle',
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                if (activeIndex != null) {
+                                  ref
+                                      .read(
+                                          activeRevealedSubtitleCueIndexProvider
+                                              .notifier)
+                                      .state = activeIndex;
+                                }
+                              },
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // NOTE: intentionally non-interactive plain
+                                  // text here. Using _buildTokens() would mount
+                                  // SubtitleWordWidgets with their own tap /
+                                  // hover recognizers that win the gesture
+                                  // arena and prevent the reveal tap from
+                                  // firing (tap did nothing).
+                                  ImageFiltered(
+                                    imageFilter: ImageFilter.blur(
+                                        sigmaX: 7.0, sigmaY: 7.0),
+                                    child: _buildSpoilerBlurredText(
+                                        displayText, ref),
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.visibility_off_rounded,
-                                          color: Colors.white70, size: 14),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isPersian
-                                            ? 'کلیک کنید برای مشاهده'
-                                            : 'Click to reveal subtitle',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black
+                                          .withValues(alpha: 0.75),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: Colors.white24, width: 0.8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                            Icons.visibility_off_rounded,
+                                            color: Colors.white70, size: 14),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isPersian
+                                              ? 'کلیک کنید برای مشاهده'
+                                              : 'Click to reveal subtitle',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           )
                         else
@@ -283,6 +323,21 @@ class _InteractiveSubtitleOverlayState
           ),
         ),
       ),
+    );
+  }
+
+  /// Plain non-interactive text used for the spoiler-blurred state, so the
+  /// outer reveal [GestureDetector] reliably wins the gesture arena.
+  Widget _buildSpoilerBlurredText(
+    String displayText,
+    WidgetRef ref,
+  ) {
+    final isRtl = _rtlRegex.hasMatch(displayText);
+    return Text(
+      displayText,
+      textAlign: TextAlign.center,
+      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+      style: _baseStyle(ref),
     );
   }
 

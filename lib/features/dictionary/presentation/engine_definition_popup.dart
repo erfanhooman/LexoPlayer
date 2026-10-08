@@ -1569,7 +1569,7 @@ class _TranslationsRow extends StatelessWidget {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  WSD sense tile — rank + definition_en + very small translation_fa
+//  WSD sense tile — rank + definition_en only (no per-sense Persian)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 class _WsdSenseTile extends StatelessWidget {
@@ -1617,22 +1617,6 @@ class _WsdSenseTile extends StatelessWidget {
               ),
             ],
           ),
-          if (sense.translationFa != null &&
-              sense.translationFa!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Text(
-                sense.translationFa!,
-                style: const TextStyle(
-                  color: Color(0xFF8A8A93),
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

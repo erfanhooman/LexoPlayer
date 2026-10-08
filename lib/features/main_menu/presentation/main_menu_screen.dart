@@ -297,7 +297,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
               onTap: () => setState(() => _activeNav = 'Dictionaries'),
               child: GlassContainer(
                 borderRadius: BorderRadius.circular(16),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     Container(
@@ -305,9 +306,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                       decoration: BoxDecoration(
                         color: kNeutralAccent.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(color: kNeutralAccent.withValues(alpha: 0.4)),
+                        border: Border.all(
+                            color: kNeutralAccent.withValues(alpha: 0.4)),
                       ),
-                      child: Icon(Icons.sync_rounded, color: kNeutralAccent, size: 20),
+                      child: Icon(Icons.sync_rounded,
+                          color: kNeutralAccent, size: 20),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -341,12 +344,15 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () => setState(() => _activeNav = 'Dictionaries'),
+                      onPressed: () =>
+                          setState(() => _activeNav = 'Dictionaries'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kNeutralAccent,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
                       ),
                       icon: const Icon(Icons.download_rounded, size: 16),
@@ -511,7 +517,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     ),
                     BottomNavigationBarItem(
                       icon: Badge(
-                        isLabelVisible: ref.watch(savedSentencesProvider).any((s) => !s.isMastered),
+                        isLabelVisible: ref
+                            .watch(savedSentencesProvider)
+                            .any((s) => !s.isMastered),
                         backgroundColor: kNeutralAccent,
                         smallSize: 8,
                         child: const Icon(Icons.bookmark_added_rounded),
@@ -520,7 +528,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                     ),
                     BottomNavigationBarItem(
                       icon: Badge(
-                        isLabelVisible: ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
+                        isLabelVisible:
+                            ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
                         backgroundColor: kNeutralAccent,
                         smallSize: 8,
                         child: const Icon(Icons.menu_book_rounded),
@@ -586,7 +595,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                       _MainHeaderWidget(
                         activeNav: _activeNav,
                         onOpenSettings: () => AppSettingsOverlay.show(context),
-                        onOpenDictionaries: () => setState(() => _activeNav = 'Dictionaries'),
+                        onOpenDictionaries: () =>
+                            setState(() => _activeNav = 'Dictionaries'),
                       ),
 
                       // Main Scrollable Dashboard Area
@@ -791,7 +801,9 @@ class _SidebarWidget extends ConsumerWidget {
                     title: isPersian ? 'مرور جملات' : 'Review Later',
                     icon: Icons.bookmark_added_rounded,
                     isActive: activeNav == 'ReviewLater',
-                    hasBadge: ref.watch(savedSentencesProvider).any((s) => !s.isMastered),
+                    hasBadge: ref
+                        .watch(savedSentencesProvider)
+                        .any((s) => !s.isMastered),
                     onTap: () => onNavSelect('ReviewLater'),
                   ),
                   const SizedBox(height: 4),
@@ -799,7 +811,8 @@ class _SidebarWidget extends ConsumerWidget {
                     title: isPersian ? 'دیکشنری‌ها' : 'Dictionaries',
                     icon: Icons.menu_book_rounded,
                     isActive: activeNav == 'Dictionaries',
-                    hasBadge: ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
+                    hasBadge:
+                        ref.watch(dictUpdatesAvailableProvider).isNotEmpty,
                     onTap: () => onNavSelect('Dictionaries'),
                   ),
                   const SizedBox(height: 4),
@@ -2131,11 +2144,16 @@ class _AppUpdateDialog extends ConsumerWidget {
     final isPersian = ref.watch(appLanguageProvider) == 'fa';
     final downloading = ref.watch(appUpdateDownloadingProvider);
     final progress = ref.watch(appUpdateProgressProvider);
+    final receivedBytes = ref.watch(appUpdateReceivedBytesProvider);
+    final totalBytes = ref.watch(appUpdateTotalBytesProvider);
     final pending = ref.watch(pendingUpdateProvider);
     final pendingReady = pending != null && pending.tag == info.latestTag;
     final restartInstall =
         pendingReady && (pending.isSelfInstall || pending.isInPlaceAppImage);
     final browserOnly = Platform.isAndroid || Platform.isIOS;
+    final fileName = info.assetName ?? 'installer';
+    final progressKnown = totalBytes != null && totalBytes > 0;
+    final totalForLabel = totalBytes ?? 0;
 
     return AlertDialog(
       backgroundColor: const Color(0xFF16151E),
@@ -2218,37 +2236,109 @@ class _AppUpdateDialog extends ConsumerWidget {
               ),
             ),
           ],
-          if (downloading && progress != null) ...[
+          if (downloading) ...[
             const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 5,
-              backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(kNeutralAccent),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.file_download_rounded,
+                          color: Colors.white70, size: 14),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          fileName,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isPersian
+                        ? 'در حال ذخیره در Downloads/LexoPlayer-Updates'
+                        : 'Saving to Downloads/LexoPlayer-Updates',
+                    style:
+                        const TextStyle(color: Color(0xFF8A8A93), fontSize: 11),
+                  ),
+                  const SizedBox(height: 8),
+                  progressKnown
+                      ? LinearProgressIndicator(
+                          value: progress ?? 0.0,
+                          minHeight: 5,
+                          backgroundColor: Colors.white10,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(kNeutralAccent),
+                        )
+                      : LinearProgressIndicator(
+                          minHeight: 5,
+                          backgroundColor: Colors.white10,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(kNeutralAccent),
+                        ),
+                  const SizedBox(height: 6),
+                  Text(
+                    progressKnown
+                        ? '${formatBytes(receivedBytes)} / ${formatBytes(totalForLabel)} • ${((progress ?? 0.0) * 100).toStringAsFixed(0)}%'
+                        : '${formatBytes(receivedBytes)} ${isPersian ? 'دانلود شد…' : 'downloaded…'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isPersian
+                        ? 'می‌توانید این پنجره را ببندید — دانلود در پس‌زمینه ادامه پیدا می‌کند.'
+                        : 'You can close this dialog — the download keeps going in the background.',
+                    style:
+                        const TextStyle(color: Color(0xFF8A8A93), fontSize: 11),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Text('${(progress * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
           ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed: downloading
-              ? null
-              : () async {
-                  await AutoUpdateService.skipThisVersion(ref);
-                  if (context.mounted) Navigator.of(context).pop();
-                },
+          // Closing mid-download is allowed: the download keeps running in
+          // the background (progress stays visible in Settings).
+          onPressed: () async {
+            if (downloading) {
+              if (context.mounted) Navigator.of(context).pop();
+            } else {
+              await AutoUpdateService.skipThisVersion(ref);
+              if (context.mounted) Navigator.of(context).pop();
+            }
+          },
           child: Text(isPersian ? 'بعداً' : 'Later',
               style: const TextStyle(color: Color(0xFF8E8D94))),
         ),
         TextButton(
-          onPressed:
-              downloading ? null : () => AutoUpdateService.openReleasePage(ref),
+          onPressed: () => AutoUpdateService.openReleasePage(ref),
           child: Text(isPersian ? 'مشاهده تغییرات' : 'View release',
               style: TextStyle(color: kNeutralAccent)),
         ),
+        if (downloading)
+          TextButton(
+            onPressed: () => AutoUpdateService.cancelUpdateDownload(ref),
+            child: Text(isPersian ? 'لغو دانلود' : 'Cancel download',
+                style: const TextStyle(color: Colors.redAccent)),
+          ),
         if (pendingReady)
           TextButton(
             onPressed: downloading
